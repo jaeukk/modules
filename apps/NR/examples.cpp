@@ -6,6 +6,7 @@
   *	\brief Function implementations of testing the LocalNumber class. */
 
 #include <GenerateConfigs.h>
+#include <RSA_Gen.h>
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -162,14 +163,14 @@ void Example_NV_Binomial(std::istream & ifile, std::ostream & ofile) {
 	};
 
 	std::vector<GeometryVector> variances, samp_center;
-	samp_center = GetSamplingPoints(3, NumSampWindow, seed_window);
+	{ RandomGenerator rng_w(seed_window); GetSamplingPoints(3, NumSampWindow, samp_center, rng_w); }
 
 	//Ordinary function to compute the local number variance.
 	ofile << "Compute local number variance \n";
 	std::string name = "3D_BP/3D_BP_27000";
 	ofile << "Data will be save in files with a prefix " << name << std::endl;
 
-	MC_nv(GetConfig, NumConfigs, variances, Rmax, dR, samp_center);
+	MC_NV_Ensemble(GetConfig, NumConfigs, variances, Rmax, dR, samp_center);
 	WriteFunction(variances, (name + "_LNV").c_str());
 
 	//LocalNumber classes
@@ -210,14 +211,14 @@ void Example_NV_Poisson(std::istream & ifile, std::ostream & ofile) {
 	};
 
 	std::vector<GeometryVector> variances, samp_center;
-	samp_center = GetSamplingPoints(3, NumSampWindow, seed_window);
+	{ RandomGenerator rng_w(seed_window); GetSamplingPoints(3, NumSampWindow, samp_center, rng_w); }
 
 	//Ordinary function to compute the local number variance.
 	ofile << "Compute local number variance \n";
 	std::string name = "3D_PPP/3D_PPP_27000";
 	ofile << "Data will be save in files with a prefix " << name << std::endl;
 
-	MC_nv(GetConfig, NumConfigs, variances, Rmax, dR, samp_center);
+	MC_NV_Ensemble(GetConfig, NumConfigs, variances, Rmax, dR, samp_center);
 	WriteFunction(variances, (name + "_LNV").c_str());
 
 	//LocalNumber classes
@@ -252,14 +253,14 @@ void Example_NV_CubicLattice(std::istream & ifile, std::ostream & ofile) {
 		return c;
 	};
 	std::vector<GeometryVector> variances;
-	std::vector<GeometryVector> samp_center = GetSamplingPoints(dim, NumSampWindow_lattice, seed_window);
+	std::vector<GeometryVector> samp_center; { RandomGenerator rng_w(seed_window); GetSamplingPoints(dim, NumSampWindow_lattice, samp_center, rng_w); }
 
 	ofile << "Compute local number variance \n";
 	//std::string name = "3D_Cubic/3D_Cubic";
 	std::string name = "2D_Square/2D_Square";
 	ofile << "Data will be save in files with a prefix " << name << std::endl;
 
-	MC_nv(GetConfig, 1, variances, Rmax, dR, samp_center);
+	MC_NV_Ensemble(GetConfig, 1, variances, Rmax, dR, samp_center);
 	WriteFunction(variances, (name + "_LNV").c_str());
 
 	//LocalNumber classes
@@ -299,14 +300,14 @@ void Example_NV_RSA(std::istream & ifile, std::ostream & ofile) {
 	};
 
 	std::vector<GeometryVector> variances, samp_center;
-	samp_center = GetSamplingPoints(3, NumSampWindow, seed_window);
+	{ RandomGenerator rng_w(seed_window); GetSamplingPoints(3, NumSampWindow, samp_center, rng_w); }
 
 	//Ordinary function to compute the local number variance.
 	ofile << "Compute local number variance \n";
 	std::string name = "3D_RSA/3D_RSA_sat_64000";
 	ofile << "Data will be save in files with a prefix " << name << std::endl;
 
-	MC_nv(GetConfig, NumConfigs, variances, Rmax, dR, samp_center);
+	MC_NV_Ensemble(GetConfig, NumConfigs, variances, Rmax, dR, samp_center);
 	WriteFunction(variances, (name + "_LNV").c_str());
 
 	//LocalNumber classes

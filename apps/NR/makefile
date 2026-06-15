@@ -12,9 +12,9 @@ include ../../config.mk
 ODIR   := obj/
 TARGET := NR.out
 
-# Only main.cpp + NR_distribution.cpp are part of the build (distance-metrics.cpp
-# and examples.cpp are standalone scratch, excluded as in the legacy makefile).
-SRCS := main.cpp NR_distribution.cpp
+# main.cpp + NR_distribution.cpp + examples.cpp (example routines).
+# distance-metrics.cpp stays excluded (standalone scratch, not wired into NR).
+SRCS := main.cpp NR_distribution.cpp examples.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I$(pairstat) -I$(models) -I.
