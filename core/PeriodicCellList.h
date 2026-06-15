@@ -1,3 +1,17 @@
+/**
+ *	Author	: Ge Zhang
+ *	Email	: 
+ *	Created	:	2015? 
+ *	Comments: Jaeuk Kim (November 2025).
+ */
+
+/** \file PeriodicCellList.h
+ *	\brief Header file to define general point patterns under periodic boundary conditions. It and its derived classes (e.g., Configuration and SpherePacking) implement cell-list acceleration techniques. 
+ * 			(November 2025)
+ *	Some type-related and unintialized warnings are resolved. 
+ * */
+
+
 #ifndef PeriodicCellList_INCLUDED
 #define PeriodicCellList_INCLUDED
 
@@ -27,6 +41,7 @@ const size_t ParticlePerCell = 1;
 
 //Configuration & SpehrePacking are derived from this.
 
+/** \brief Cell-list accelerator for periodic point configurations parameterized by particle traits. */
 template<typename OtherCharacteristics>
 class PeriodicCellList
 {
@@ -108,12 +123,16 @@ protected:
 			}
 		}
 	}
+
+
 	Index GetIndex(const size_t a) const //get the index of the cell that a should be placed in, the LatticeCoordinates of particle must be in box
 	{
-		signed long index[::MaxDimension];
+		signed long index[::MaxDimension] = {0};
 		this->GetFullIndex(index, this->ParticleRelatives[a]);
 		return this->ConvertIndex(index);
 	}
+
+
 	bool UpdateCellList(std::vector<size_t>::iterator a, std::vector<size_t> & from)//move a to another cell if necessary, from is the cell that a comes from, return true if moved
 	{
 		//calculate new index
@@ -129,6 +148,8 @@ protected:
 		from.pop_back();
 		return true;
 	}
+
+
 	bool _VicinityLatticeIteration(GeometryVector now, DimensionType DimIDo, GeometryVector nowRelative, GeometryVector * ortho, double Rmax2, double Rmin2) const
 	{
 		const double VicinityLatticeRmin_Tolerance = 1e-10;
@@ -235,6 +256,8 @@ public:
 	//This class can work in one of the two modes:
 	//UseSortedList=true : efficient when the basis vectors almost never change.
 	//UseSortedList=false : efficient when the basis vectors change.
+
+	/** \brief Construct an empty list with no dimension set. */
 	PeriodicCellList()
 	{
 		//this->VicinityLatticesRc2=0;
@@ -245,12 +268,18 @@ public:
 		this->ApproximateCellSize = ::MaxDimension;
 		this->SortedVicinityList = false;
 		this->ClearVicinityLatticeList();
-		
+
 		for (DimensionType i = 0; i< ::MaxDimension; i++)
 			this->ReciprocalBasisVectorValid[i] = false;
 
 		this->vol = -1.0;
 	}
+
+	/** \brief Construct a periodic cell list for a given box geometry.
+	 *  \param Dimension Spatial dimension.
+	 *  \param BasisVectors Basis vectors defining the periodic box.
+	 *  \param CellSize Target linear cell size.
+	 *  \param UseSortedList Choose sorted vicinity list for faster neighbor checks when geometry is fixed. */
 	PeriodicCellList(DimensionType Dimension, GeometryVector * BasisVectors, double CellSize, bool UseSortedList = false)
 	{
 		//this->VicinityLatticesRc2=0;
@@ -286,15 +315,17 @@ public:
 
 		for (DimensionType i = 0; i< ::MaxDimension; i++)
 			this->ReciprocalBasisVectorValid[i] = false;
-		
+
 		this->vol = ::Volume(BasisVectors, Dimension);
 	}
+
+	/** \brief Copy-construct, duplicating geometry and particle data. */
 	PeriodicCellList(const PeriodicCellList<OtherCharacteristics> & source)
-		: Dimension(source.Dimension),
+		: MaxRadius(source.MaxRadius), Dimension(source.Dimension),
 		Cells(source.Cells), ApproximateCellSize(source.ApproximateCellSize),
 		SortedVicinityList(source.SortedVicinityList), VicinityLatticesRc2(0.0),
 		ParticleCartesians(source.ParticleCartesians), ParticleRelatives(source.ParticleRelatives),
-		ParticleCharacteristics(source.ParticleCharacteristics)
+		ParticleCharacteristics(source.ParticleCharacteristics), vol(source.vol)
 	{
 		for (DimensionType i = 0; i< ::MaxDimension; i++)
 		{
@@ -308,18 +339,17 @@ public:
 
 		for (DimensionType i = 0; i< ::MaxDimension; i++)
 			this->ReciprocalBasisVectorValid[i] = false;
-
-		this->vol = source.PeriodicVolume();
-		this->MaxRadius = source.MaxRadius;
 	}
 
-
+	/** \brief Construct from another list while assigning a uniform characteristic.
+	 *  \param add Source characteristic type.
+	 *  \param cha Characteristic value assigned to every particle. */
 	template<typename add> PeriodicCellList(const PeriodicCellList<add> & source, const OtherCharacteristics & cha)
 		: Dimension(source.Dimension),
 		Cells(source.Cells), ApproximateCellSize(source.ApproximateCellSize),
 		SortedVicinityList(source.SortedVicinityList), VicinityLatticesRc2(0.0),
 		ParticleCartesians(source.ParticleCartesians), ParticleRelatives(source.ParticleRelatives),
-		ParticleCharacteristics(source.NumParticle(), cha)
+		ParticleCharacteristics(source.NumParticle(), cha), vol(source.vol)
 	{
 		for (DimensionType i = 0; i< ::MaxDimension; i++)
 		{
@@ -333,30 +363,31 @@ public:
 
 		for (DimensionType i = 0; i< ::MaxDimension; i++)
 			this->ReciprocalBasisVectorValid[i] = false;
-
-		//this->vol = -1.0;
-		this->vol = source.PeriodicVolume();
-		this->MaxRadius = source.MaxRadius;
 	}
 
-	~PeriodicCellList()
-	{
-	}
+
+	/** \brief Trivial destructor. */
+	virtual ~PeriodicCellList() = default;
+
+	/** \brief Exact comparison of dimension, basis, and particle layout. */
 	bool operator == (const PeriodicCellList<OtherCharacteristics> & right) const
 	{
 		if (right.Dimension != this->Dimension)
 			return false;
 		if (right.NumParticle() != this->NumParticle())
 			return false;
-		for (DimensionType d = 0; d<this->Dimension; d++)
+		for (DimensionType d = 0; d<this->Dimension; d++){
 			if (right.BasisVector[d] != this->BasisVector[d])
 				return false;
-		for (size_t i = 0; i<this->NumParticle(); i++)
+		}
+		for (size_t i = 0; i<this->NumParticle(); i++){
 			if (right.ParticleRelatives[i] != this->ParticleRelatives[i])
 				return false;
-
+		}
 		return true;
 	}
+
+	/** \brief Reset cached vicinity lattice data. */
 	void ClearVicinityLatticeList(void)
 	{
 		this->VicinityLattices.clear();
@@ -364,6 +395,8 @@ public:
 		this->VicinityLatticePartitions.clear();
 		this->VicinityLatticePartitions.insert(std::make_pair((double)(0.0), (size_t)(0)));
 	}
+
+
 	void TryRefineBasisVectors_inner(int ilongest)
 	{
 		//find the other basis vector
@@ -407,6 +440,8 @@ public:
 			this->Cells[this->GetIndex(i)].push_back(i);
 		}
 	}
+
+
 	void TryRefineBasisVectors(void)
 	{
 		if (this->Dimension == 1)
@@ -414,6 +449,8 @@ public:
 		for (int i = 0; i<this->Dimension; i++)
 			this->TryRefineBasisVectors_inner(i);
 	}
+
+
 	double PeriodicVolume(void) const
 	{
 		//double result = ::Volume(this->BasisVector, this->Dimension);
@@ -428,10 +465,14 @@ public:
 		}
 		return result;
 	}
+
+	/** \brief Return the dimensionality of the configuration box. */
 	DimensionType GetDimension(void) const
 	{
 		return this->Dimension;
 	}
+
+	/** \brief Insert a particle with a characteristics at the given relative coordinate (wrapped to the box). */
 	virtual void Insert(OtherCharacteristics cha, const GeometryVector & RelativeCoordinate)
 	{
 		//this->Particles.push_back(particle(this->Dimension, cha));
@@ -454,6 +495,8 @@ public:
 		this->Cells[test].push_back(this->NumParticle() - 1);
 		//this->Cells[this->GetIndex(this->NumParticle() - 1)].push_back(this->NumParticle() - 1);
 	}
+
+	/** \brief Insert a particle at a random position using the supplied RNG. */
 	void Insert(OtherCharacteristics cha, RandomGenerator & gen)
 	{
 		GeometryVector a(this->Dimension);
@@ -461,6 +504,8 @@ public:
 			a.x[i] = gen.RandomDouble();
 		this->Insert(cha, a);
 	}
+
+	/** \brief Populate vicinity lattice up to distance Rc (squared cached). */
 	void GetVicinityLattice(double Rc) const
 	{
 		size_t PrevVicinityLatticeNum = this->VicinityLattices.size();
@@ -485,11 +530,15 @@ public:
 
 		this->VicinityLatticesRc2 = Rc*Rc;
 	}
+
+	/** \brief Debug-print vicinity lattice vectors. */
 	void _PrintVicinityLattices(std::ostream & out) const
 	{
 		for (auto iter = this->VicinityLattices.begin(); iter<this->VicinityLattices.end(); iter++)
 			out << (*iter).CartesianCoordinates << '\n';
 	}
+
+	/** \brief Pick a random particle index; optionally return its cell id. */
 	size_t GetRandomParticle(RandomGenerator & gen, Index * SourceCell = nullptr) const//pick up a random particle, return it's pointer, if SourceCell is not null, also return the cell that the particle come from
 	{
 		size_t result;
@@ -498,22 +547,32 @@ public:
 			*SourceCell = this->GetIndex(result);
 		return result;
 	}
+
+	/** \brief Total number of particles stored. */
 	size_t NumParticle(void) const
 	{
 		return this->ParticleRelatives.size();
 	}
+
+	/** \brief Access mutable per-particle characteristic. */
 	virtual OtherCharacteristics & GetCharacteristics(size_t Num)
 	{
 		return this->ParticleCharacteristics[Num];
 	}
+
+	/** \brief Access const per-particle characteristic. */
 	virtual const OtherCharacteristics & GetCharacteristics(size_t Num) const
 	{
 		return this->ParticleCharacteristics[Num];
 	}
+
+	/** \brief Relative (box) coordinates of a particle. */
 	const GeometryVector & GetRelativeCoordinates(size_t Num) const
 	{
 		return this->ParticleRelatives[Num];
 	}
+
+	/** \brief Cartesian coordinates of a particle. */
 	const GeometryVector & GetCartesianCoordinates(size_t Num) const
 	{
 		return this->ParticleCartesians[Num];
@@ -539,7 +598,6 @@ public:
 		//std::cerr<<"IterateThroughNeighbors for Rc="<<Rc<<'\n';
 
 		Rc = std::abs(Rc);
-		double Rc2 = Rc*Rc;
 		//find the true Rc, which consideres the distance from a particle to a lattice point
 		GeometryVector maxdist(this->Dimension);
 		for (DimensionType i = 0; i<this->Dimension; i++)
@@ -591,11 +649,11 @@ public:
 		}
 	}
 
-	//iterate through all neighbors centered at RelativeCoordinate with radius Rc.
-	//parameters of callback function:
-	//shift : vector from starting point to neighbor (all images under periodic boundary condition). LatticeShift : the part of shift that is because the starting point and neighbor is not in the same periodic cell
-	//PeriodicShift : same as LatticeShift, expressed in multiples of each lattice vectors. Sourceparticle : particle pointer to neighbor.
-	//pAbort : if it is not nullptr and points to true, the iteration will be stopped immediately
+	/** \brief Iterate over neighbors within Rc of a point in relative coordinates.
+	 *  \param RelativeCoordinate Center point in relative (box) coordinates.
+	 *  \param Rc	Neighbor cutoff radius.
+	 *  \param callback	A lambda function repeated for each neighbor with shift, lattice shift, periodic index shift, and source index.
+	 *  \param pAbort	An optional flag to abort iteration early when set to true. */
 	void IterateThroughNeighbors(const GeometryVector & RelativeCoordinate, double Rc, const std::function<void(const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle)> callback, bool * pAbort = nullptr) const
 	{
 		//debug temp
@@ -665,7 +723,7 @@ public:
 			StartCartesianCoordinate.AddFrom(this->BasisVector[i] * StartRelativeCoordinate.x[i]);
 
 		//Get the (dimensional) index of the cell that the start point is in
-		signed long index[::MaxDimension];
+		signed long index[::MaxDimension] = {0};
 		this->GetFullIndex(index, StartRelativeCoordinate);
 		//iterate through cells
 		for (auto iter = this->VicinityLattices.begin(); iter != IterationEnd; iter++)
@@ -683,8 +741,8 @@ public:
 			}
 
 
-			signed long newindex[::MaxDimension]; //the dimensional index for the cell
-			signed long newshift[::MaxDimension]; //the difference of periodic cell of new particle ant current particle, in terms of relative coordinate
+			signed long newindex[::MaxDimension]={0}; //the dimensional index for the cell
+			signed long newshift[::MaxDimension]={0}; //the difference of periodic cell of new particle ant current particle, in terms of relative coordinate
 			for (DimensionType i = 0; i<this->Dimension; i++)
 			{
 				signed long n = index[i] + iter->LatticeShift[i];
@@ -1671,10 +1729,13 @@ void ReadConfiguration(SpherePacking & conf, const std::string & InputName);
 /** Find all reciprocal lattice vectors (wavevectors) of a given periodic simulation box.
  *  It is modified to deal with errors.
  *	@param tempList	A periodic simulation box.
- *	@param (CircularKMax, LinearKMax)	Find all reciprocal lattice vectors (excluding parity pairs) whose magnitude is smaller than CircularKMax,
-										and then fina all integral multiples of the aforementioned vectors whose magnitudes are smaller than LinearKMax.
- *	@param SampleProbability	When <1, randomly choose wavevectors within CircularKMax by the prescribed probability.*/
-std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, double CircularKMax, double LinearKMax, double SampleProbability = 1.0, bool use_iteratethrough = true);
+ *	@param (CircularKMax, LinearKMax)	Find all reciprocal lattice vectors (excluding parity pairs) whose magnitude is smaller than CircularKMax but greater than CircularKMin, and then fina all integral multiples of the aforementioned vectors whose magnitudes are smaller than LinearKMax.
+ *	@param SampleProbability	When <1, randomly choose wavevectors within CircularKMax by the prescribed probability.
+ *	@param use_iteratethrough	True = use IterateThrough() function, which may surge memory use. 
+ *	@param CircularKMin			0 by default.  
+ */
+
+std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, double CircularKMax, double LinearKMax, double SampleProbability = 1.0, bool use_iteratethrough = true, double CircularKMin = 0.0);
 
 
 

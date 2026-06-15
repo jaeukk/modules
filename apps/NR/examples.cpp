@@ -7,6 +7,7 @@
 
 #include <GenerateConfigs.h>
 #include <RSA_Gen.h>
+#include <NumberVariance.h>
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +20,7 @@
 #include <GeometryVector.h>
 #include <PeriodicCellList.h>
 #include <RandomGenerator.h>
+
 #include "NR_distribution.h"
 
 

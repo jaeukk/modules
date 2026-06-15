@@ -447,7 +447,6 @@ void g2Computation::Write(const std::string OutputPrefix)
 {
 	std::vector<std::string> fields;
 	fields.emplace_back("#r\t#g_2\t#err. r\t#err. g2");
-	logfile<<"g_2:\n";
 	WriteFunction(result, (OutputPrefix+std::string("_gofr")).c_str(),fields);
 }
 
@@ -516,17 +515,16 @@ void Directionalg2Computation::Write(const std::string OutputPrefix)
  * --------------------------------- */
 void SkComputation::Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig)
 {
+	std::cout << "Compute from " << CircularKMin << " to " << LinearKMax <<"\n";
 	omp_set_num_threads(this->num_threads);
 	result.clear();
-	::IsotropicStructureFactor(GetConfigsFunction, NumConfig, CircularKMax, LinearKMax, result, KPrecision, SampleProbability, ! AverageOverSurface);
+	::IsotropicStructureFactor(GetConfigsFunction, NumConfig, CircularKMax, LinearKMax, result, KPrecision, SampleProbability, average_option, CircularKMin);
 }
 
 void SkComputation::Write(const std::string OutputPrefix)
 {
 	std::vector<std::string> fields;
 	fields.emplace_back("#k\t#S(k)\t#err. k\t#err. S(k)");	
-//	std::cout<<"S(k):\n";
-//	WriteFunction(result, logfile);
 	WriteFunction(result, (OutputPrefix+std::string("_Sofk")).c_str(), fields);
 }
 
@@ -539,8 +537,15 @@ void SkComputation::ProcessAdditionalOption(const std::string & option, std::ist
 	if (option == "SampleProbability")
 		//default=1, set>1 to get better x resolution, <1 to get better y resolution
 		input >> SampleProbability;
-	if (option == "AverageOverSurface")
-		AverageOverSurface = true;
+	else if (option == "AverageOverCounts")
+		average_option = 0;
+	else if (option == "AverageOverSurface")
+		average_option = 1;
+	else if (option == "BraggPeaks")
+		average_option = 2;
+	else if (option == "CircularKMin")
+		//default=0, set >0 to exclude some wavevectors smaller than this value.
+		input >> CircularKMin;
 	else
 		output << "Unrecognized command!\n";
 }
@@ -700,7 +705,7 @@ void LocalNumberVariance::Compute(std::function<const Configuration(size_t i)> G
 		/* Window centers = particle centers */
 		this->result.clear();
 
-		std::cout<< "\nComputing Number Variance (Use particle centers): ";
+		std::cout<< "\nComputing MC Number Variance (Use particle centers): ";
 		progress_display pd(NumConfig);
 		for (int i = 0; i < NumConfig; i++){
 			Configuration c = GetConfigsFunction(i);
@@ -813,3 +818,121 @@ void CoordinationNumberComputation::ProcessAdditionalOption(const std::string & 
 {
 	output << "Unrecognized command!\n";
 }
+
+void CumulativeCoordinationNumberComputation::Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig)
+{
+	this->rmin = CumulativeCoordinationNumber( GetConfigsFunction, NumConfig, rmin, rmax, dr, result, this->logscale);
+}
+
+void CumulativeCoordinationNumberComputation::Write(const std::string OutputPrefix)
+{
+	std::vector<std::string> fields;
+	fields.emplace_back("Z(r) = cumulative coordination number up to r\n");
+	if (this->logscale){
+		fields.emplace_back("logscale, r_i = rmin + sum_{j=0}^i dr_j, where dr_i = dr * ratio ^ i\n");
+		char text[300]={};
+		sprintf(text, "dr = %1.10e, ratio = %1.5e \n", this->dr, 1.01);
+		fields.emplace_back(std::string(text));
+		sprintf(text, "rmin = %1.16e \n", this->rmin);
+		fields.emplace_back(std::string(text));
+	}
+	fields.emplace_back("r\t#Z(r)\t#dr\t#err. Z ");	
+	std::cout<<"Z(r):\n";
+	WriteFunction(result, (OutputPrefix+std::string("_Zofr")).c_str(), fields);
+}
+
+void CumulativeCoordinationNumberComputation::Plot(const std::string OutputPrefix, const std::string &Title)
+{
+	PlotFunction_Grace(result, OutputPrefix+std::string("_Zofr"), "r", "Cumulative Coordination number", Title);
+}
+
+void CumulativeCoordinationNumberComputation::ProcessAdditionalOption(const std::string &option, std::istream &input, std::ostream &output)
+{
+	if (option == "logscale")
+		logscale = true;
+	else{
+		output << "Unrecognized command!\n";
+	}
+}
+
+
+void AverageClusterSizeComputation::Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig){
+	
+	omp_lock_t DisplayLock, PercolationRadiusLock;
+	omp_init_lock(&DisplayLock);
+	omp_init_lock(&PercolationRadiusLock);
+	std::cout << "Computing average cluster size";
+	progress_display pd(NumConfig);
+	std::map<size_t, size_t> counts;
+#pragma omp parallel
+	{
+#pragma omp for schedule(guided)
+		for (signed long i = 0; i<NumConfig; i++)
+		{
+			omp_set_lock(&DisplayLock);
+			pd++;
+			omp_unset_lock(&DisplayLock);
+
+			Configuration c = GetConfigsFunction(i);
+			RandomGenerator gen((seed + 1)*(i + 1));
+			DimensionType dim = c.GetDimension();
+
+			for (auto iter = result.begin(); iter != result.end(); ++iter)
+			{
+				double r = iter->x[0];
+				omp_set_lock(&PercolationRadiusLock);
+				if (r > PercolationRadius)
+				{
+					omp_unset_lock(&PercolationRadiusLock);
+					break;
+				}
+				omp_unset_lock(&PercolationRadiusLock);
+				for (size_t j = 0; j < SampleSize; j++)
+				{
+					bool percolating;
+					size_t csize = ClusterSize(c, c.GetRandomParticle(gen), r, percolating);
+					if (percolating)
+					{
+						omp_set_lock(&PercolationRadiusLock);
+						PercolationRadius = std::min(PercolationRadius, r);
+						omp_unset_lock(&PercolationRadiusLock);
+					}
+					else
+					{
+#pragma omp atomic
+						iter->x[1] += csize;
+					}
+				}
+			}
+		}
+	}
+	omp_destroy_lock(&DisplayLock);
+	omp_destroy_lock(&PercolationRadiusLock);
+	size_t AvailableDataSize = result.size();
+	for (auto iter = result.begin(); iter != result.end(); ++iter)
+	{
+		if (iter->x[0] > PercolationRadius)
+		{
+			std::cout << "Percolation detected at r=" << PercolationRadius << ", remove data beyond.\n";
+			AvailableDataSize = iter - result.begin();
+			break;
+		}
+		else
+			iter->x[1] /= (double)(SampleSize)*(double)(NumConfig);
+	}
+	result.resize(AvailableDataSize);
+	
+}
+
+
+void AverageClusterSizeComputation::Write(const std::string OutputPrefix)
+{
+	WriteFunction(result, (OutputPrefix + prefix).c_str());
+}
+
+void AverageClusterSizeComputation::Plot(const std::string OutputPrefix, const std::string & Title)
+{
+	//PlotFunction_MathGL(result, OutputPrefix + prefix, "N", "p(N)");
+	PlotFunction_Grace(result, OutputPrefix + prefix, "r", "average cluster size", Title);
+}
+

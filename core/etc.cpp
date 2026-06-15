@@ -14,10 +14,7 @@ bool AlsoWriteEPS = true;//false;
 double TwoBodyDistance_MaxLength=4;
 
 double PlotPhononFrequencies_MaxFrequencySquared_Override=0.0;
-// Library global: owned by the core module so consumers need not define it.
-// (The legacy cores/ left this to each executable's main; we centralize it
-// here so any module/consumer that links core gets it for free.)
-size_t Verbosity = 2;
+//size_t Verbosity = 2;
 time_t ProgramStart;
 time_t TimeLimit;
 
@@ -214,7 +211,6 @@ std::string cont::GetType() {
 inline std::istream & operator >> (std::istream & is, cont & a) {
 	if (a._int_ptr != nullptr) {
 		is >> *(a._int_ptr);
-		std::cout << *(a._int_ptr) << std::endl; 
 	}
 	else if (a._double_ptr != nullptr) {
 		is >> *(a._double_ptr);
@@ -223,17 +219,7 @@ inline std::istream & operator >> (std::istream & is, cont & a) {
 		is >> *(a._size_ptr);
 	}
 	else if (a._string_ptr != nullptr) {
-//		is >> *(a._string_ptr);
-//		char temp[256];
-//		is.getline(temp, 256);
-		std::string temp;
-		std::getline(is, temp);
-//		*(a._string_ptr) = temp;
-		//std::cout << is->rdbuf() << std::endl;
-		std::cout << temp << std::endl;
-		is.clear();
-//		std::cout << *(a._string_ptr) << std::endl;
-//		is >> temp;
+		is >> *(a._string_ptr);
 	}
 
 	if (is.fail()) {
@@ -268,7 +254,7 @@ inline std::ostream & operator << (std::ostream & os, cont & a) {
 
 /** \brief A routine to input parameters.
  *	The routine stops when one inputs "Start", "start", or "START".*/
-void Parameters::InputRoutine(std::istream & ifile, std::ostream & ofile) {
+void Parameters::InputRoutine(std::istream & ifile) {
 	std::string tempstring;
 	size_t count_wrong_input = 0;
 	bool correct_input = false;
@@ -284,11 +270,8 @@ void Parameters::InputRoutine(std::istream & ifile, std::ostream & ofile) {
 
 		for (auto i = this->ParamList.begin(); i != this->ParamList.end(); i++) {
 			if (i->first.compare(tempstring) == 0) {
-				if (i->second.txt.compare("") != 0){
-					ofile << i->second.txt << std::endl;
-				}
-				ifile >> i->second.ptr;
-				correct_input |= !(i->second.ptr.IsFail());
+				ifile >> i->second;
+				correct_input |= !(i->second.IsFail());
 				break;
 			}
 
@@ -315,7 +298,7 @@ void Parameters::ShowAllParameterNames(std::ostream & ofile) {
 	ofile << "\t\tList of parameter names\n";
 	ofile << "------------------------------------------\n";
 	for (auto i = ParamList.begin(); i != ParamList.end(); i++) {
-		ofile << i->first << "(" << i->second.ptr.GetType() << ")\n";
+		ofile << i->first << "(" << i->second.GetType() << ")\n";
 	}
 }
 
@@ -325,5 +308,5 @@ void Parameters::ShowAllParameters(std::ostream & ofile) {
 	ofile << "\t\tList of parameters\n";
 	ofile << "------------------------------------------\n";
 	for (auto i = ParamList.begin(); i != ParamList.end(); i++)
-		ofile << i->first << " :\t\t" << i->second.ptr << "\n";
+		ofile << i->first << " :\t\t" << i->second << "\n";
 }

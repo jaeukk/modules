@@ -16,11 +16,13 @@
 #include <vector>
 #include <fstream>
 
+// In $core
 #include <etc.h>
 #include <GeometryVector.h>
 #include <PeriodicCellList.h>
 #include <RandomGenerator.h>
-// #include <GenerateConfigs.h>
+size_t Verbosity = 2;
+
 
 #include "NR_distribution.h"
 
@@ -43,7 +45,7 @@ void Example_NV_Poisson(std::istream & ifile, std::ostream & ofile);
 void Example_NV_CubicLattice(std::istream & ifile, std::ostream & ofile);
 void Example_NV_RSA(std::istream & ifile, std::ostream & ofile);
 
-#include <GenerateConfigs.h>
+//#include <GenerateConfigs.h>
 
 /*	Analyze an ConfigurationPack with the LocalNumber class,
  * or load the data. */
@@ -143,7 +145,7 @@ int main(int argc, char ** argv) {
 		if (periodic_boundary) {
 			ofile << "** Periodic boundary condition is on\n";
 			if (dx < 0.0){
-				{ RandomGenerator rng_w(seed_window); GetSamplingPoints(dim, NumSampWindow, samp_center, rng_w); }	// migrated to lean pairstat API (R2)
+				samp_center = GetSamplingPoints(dim, NumSampWindow, seed_window);
 			}
 			else{
 				/* renew the number of sampling windows*/
@@ -179,7 +181,7 @@ int main(int argc, char ** argv) {
 			 * and L is the box size.	 */
 			Configuration c_temp = GetConfig(0);
 			if (dx < 0.0){
-				{ RandomGenerator rng_w(seed_window); GetSamplingPoints(dim, NumSampWindow, samp_center, rng_w); }	// migrated to lean pairstat API (R2)
+				samp_center = GetSamplingPoints(dim, NumSampWindow, seed_window);
 
 				GeometryVector x_center(static_cast<int>(c_temp.GetDimension()));
 				for (int i = 0; i < x_center.Dimension; i++) {

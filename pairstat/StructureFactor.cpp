@@ -68,12 +68,14 @@ double WeightedStructureFactor(const PeriodicCellList<std::complex<double>> & Co
 
 
 
-void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double CircularKMax, double LinearKMax, std::vector<GeometryVector> & Results, double KPrecision, double SampleProbability, bool AverageOverCounts)
+void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double CircularKMax, double LinearKMax, std::vector<GeometryVector> & Results, double KPrecision, double SampleProbability, size_t option, double CircularKMin)
 {
 	Results.clear();
-	if(!(CircularKMax>0))
+	if(!(CircularKMax > 0))
 		return;
-	if(!(LinearKMax>0))
+	if(!(LinearKMax > 0))
+		return;
+	if(CircularKMin > CircularKMax)
 		return;
 
 	if (KPrecision == 0.0)
@@ -83,19 +85,28 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 		KPrecision = std::sqrt(c.GetReciprocalBasisVector(0).Modulus2());
 	}
 	size_t NumBin = std::floor(LinearKMax / KPrecision) + 1;
-	std::vector<SkBin> vSkBin(NumBin, SkBin());
-
+	std::vector<SkBin> vSkBin; //(NumBin, SkBin());
 	DimensionType d = 0;
 	double V = 0.0;
 	GeometryVector prevBasis [ ::MaxDimension];
 	std::vector<GeometryVector> ks;
+	std::vector<double> k_amp;
 	if(Verbosity>1){
 		std::cout<<"Computing S(k)";
-		if (AverageOverCounts){
+		if (option == 0){
 			std::cout << ": averaged over reciprocal lattice points\n";
+			vSkBin.resize(NumBin, SkBin());
+		}
+		else if (option == 1){
+			std::cout << ": averaged over volume in the reciprocal space\n";
+			vSkBin.resize(NumBin, SkBin());
+		}
+		else if (option == 2){
+			std::cout << ": structure factor at Bragg peaks\n";
 		}
 		else{
-			std::cout << ": averaged over volume in the reciprocal space\n";
+			std::cout << ": Wrong option!!\n";
+			return ;
 		}
 	}
 	progress_display pd(NumConfigs);
@@ -106,53 +117,93 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 		Configuration CurrentConfig = GetConfigsFunction(j);
 		if(CurrentConfig.GetDimension()==0)
 			break;
-		if(j!=0)
+		if(j > 0)
 		{
 			bool SameBasis = true;
 			for(DimensionType i=0; i<CurrentConfig.GetDimension(); i++)
 				if( !(prevBasis[i]==CurrentConfig.GetBasisVector(i)) )
 					SameBasis=false;
 
-			if(SameBasis==false)
-				ks=GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability);
+			if(SameBasis==false){
+				ks=GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability, true, CircularKMin);
+				k_amp.resize(ks.size(), 0.0);
+				for (size_t i = 0; i < ks.size(); i++){
+					k_amp[i] = std::sqrt(ks[i].Modulus2());
+				}
+			}
 		}
 		else{
-			ks = GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability);
+			ks = GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability, false, CircularKMin);
+			k_amp.resize(ks.size(), 0.0);
+			for (size_t i = 0; i < ks.size(); i++){
+				k_amp[i] = std::sqrt(ks[i].Modulus2());
+			}
 			d = CurrentConfig.GetDimension();
 			V = CurrentConfig.PeriodicVolume();
+			if (option == 2){
+				vSkBin.resize(ks.size(), SkBin());
+			}
 		}
 
-		signed long end = ks.size();
+		const size_t end = ks.size();
 
-#pragma omp parallel for schedule(guided)
-		for(signed long i=0; i<end; i++)
+		if (option == 0 || option == 1){
+	#pragma omp parallel for schedule(guided)
+			for(size_t i=0; i<end; i++)
+			{
+				double s=StructureFactor(CurrentConfig, ks[i]);
+				//double k2 = ks[i].Modulus2();
+				size_t Bin = std::floor(k_amp[i] / KPrecision);
+		#pragma omp atomic
+				vSkBin[Bin].Sum1 += 1.0;
+				//-----added-----
+		#pragma omp atomic
+				vSkBin[Bin].SumK1 += k_amp[i]; 
+				//---------------
+		#pragma omp atomic
+				vSkBin[Bin].SumK2 += k_amp[i]*k_amp[i];
+		#pragma omp atomic
+				vSkBin[Bin].SumS += s;
+		#pragma omp atomic
+				vSkBin[Bin].SumS2 += s*s;
+					
+			}
+		}
+		else 
 		{
-			double s=StructureFactor(CurrentConfig, ks[i]);
-			double k2 = ks[i].Modulus2();
-			size_t Bin = std::floor(std::sqrt(k2) / KPrecision);
-#pragma omp atomic
-			vSkBin[Bin].Sum1 += 1.0;
-			//-----added-----
-#pragma omp atomic
-			vSkBin[Bin].SumK1 += sqrt(k2);
-			//---------------
-#pragma omp atomic
-			vSkBin[Bin].SumK2 += k2;
-#pragma omp atomic
-			vSkBin[Bin].SumS += s;
-#pragma omp atomic
-			vSkBin[Bin].SumS2 += s*s;
-			
+			/* at each wavevector */
+			#pragma omp parallel for schedule(guided)
+			for(size_t i=0; i<end; i++)
+			{
+				double s=StructureFactor(CurrentConfig, ks[i]);
+				//double k2 = ks[i].Modulus2();
+				vSkBin[i].Sum1 += 1.0;
+				vSkBin[i].SumK1 += k_amp[i];
+				vSkBin[i].SumK2 += k_amp[i]*k_amp[i];
+				vSkBin[i].SumS += s;
+				vSkBin[i].SumS2 += s*s;				
+			}			
 		}
+
 		for(DimensionType i=0; i<CurrentConfig.GetDimension(); i++)
 			prevBasis[i]=CurrentConfig.GetBasisVector(i);
 		pd++;
 	}
+
 	double Omega = std::pow(2.*pi, d)/V/NumConfigs;
-	for (auto iter = vSkBin.begin(); iter != vSkBin.end(); iter++)
-	{
-		if (iter->Sum1 != 0.0)
-		{
+	if  (option == 0 || option == 1){
+		// when wavenumbers are binned.
+		Results.reserve(NumBin);
+	}
+	else {
+		//Results.resize(vSkBin.size(), GeometryVector(int(4)));
+		Results.reserve(vSkBin.size());
+	}
+
+	//#pragma omp parallel for schedule(guided)
+	for (size_t i = 0; i < vSkBin.size(); i++ ){
+		auto iter = vSkBin.begin() + i;
+		if (iter->Sum1 > 0.0){
 			GeometryVector temp(4);
 			//temp.x[0] = std::sqrt(iter->SumK2 / iter->Sum1);
 			//temp.x[1] = iter->SumS / iter->Sum1;
@@ -163,21 +214,38 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 			temp.x[2] = (var > 0) ? std::sqrt(var) : 0;
 			
 			//CircularKMax
-			double k = KPrecision*(double)(iter - vSkBin.begin());// + 0.5);
-			if (AverageOverCounts || (k > CircularKMax)){
+			double k = temp.x[0];//KPrecision*(double)(iter - vSkBin.begin());// + 0.5);
+			if (option == 0 || (k > CircularKMax)){
+				/* average over number of wavevectors */
 				temp.x[1] = iter->SumS / iter->Sum1;
 				temp.x[3] = std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1)); // I modified it
+
+				Results.push_back(temp);
 			}
-			else{
-				double vd = 0.5*(HyperSphere_Volume(d, k+KPrecision) - HyperSphere_Volume(d, k)); //HyperSphere_SurfaceArea(d, k)*KPrecision/2.0;
+			else if (option == 1){
+				/* average over volume in reciprocal space*/
+				double vd = 0.5*(HyperSphere_Volume(d, k+0.5*KPrecision) - HyperSphere_Volume(d, k-0.5*KPrecision)); //HyperSphere_SurfaceArea(d, k)*KPrecision/2.0;
 				temp.x[1] = iter->SumS * Omega / vd;
 				temp.x[2] = 0.5*KPrecision; //Omega / vd;
 				temp.x[3] = std::sqrt((iter->SumS2  - temp.x[1] * temp.x[1]) / (iter->Sum1) ) * Omega / vd * iter->Sum1;
+
+				Results.push_back(temp);
 			}
-			Results.push_back(temp);
+			else if (option == 2){
+				/* Bragg peaks */
+				temp.x[1] = iter->SumS / iter->Sum1;
+				temp.x[3] = iter->Sum1; //std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1));
+
+				Results.push_back(temp);
+			}
+			
 		}
 	}
-	
+
+	if (option == 2){
+		std::sort(Results.begin(), Results.end(), [](const GeometryVector & left, const GeometryVector & right)->bool{return left.x[0] < right.x[0];} );
+	}
+
 	if(Verbosity>2)
 		std::cout<<"done!\n";
 }

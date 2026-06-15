@@ -18,7 +18,7 @@ include ../../config.mk
 ODIR   := obj/
 TARGET := soft_core_stealthy.out
 
-SRCS := main.cpp
+SRCS := main.cpp MultiStealthyPotential.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I$(pairstat) -I$(potential) -I. $(NLOPT_INC)

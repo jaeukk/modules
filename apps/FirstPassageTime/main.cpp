@@ -9,6 +9,7 @@
 
 
 #include <etc.h>
+size_t Verbosity = 2;  // each executable defines it (new_c++ convention)
 #include <GeometryVector.h>
 #include <RandomGenerator.h>
 

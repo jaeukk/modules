@@ -9,6 +9,7 @@
 
 #include <PeriodicCellList.h>
 #include <etc.h>
+size_t Verbosity = 2;  // each executable defines it (new_c++ convention)
 // Verbosity is owned by the core module (R5).
 
 #include "ComputationPacking.h"

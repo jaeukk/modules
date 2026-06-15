@@ -204,10 +204,6 @@ public:
 
 /**\brief A sloppy container to deal with pointers of four types (int, size_t, double, string).*/
 struct cont {
-	//A default constructor.
-	cont() {
-		_int_ptr = nullptr;	_double_ptr = nullptr;	_size_ptr = nullptr;	_string_ptr = nullptr; Fail = false;
-	}
 	cont(int & _val) : cont() { _int_ptr = &_val; }				//< A constructor for a int pointer.
 	cont(double & _val) : cont() { _double_ptr = &_val; }		//< A constructor for a double pointer.
 	cont(size_t & _val) : cont() { _size_ptr = &_val; }			//< A constructor for a size_t pointer.
@@ -231,25 +227,16 @@ protected:
 	std::string * _string_ptr;
 
 	bool Fail;	//< True = operator >> failed.
-	
+private:
+	//A default constructor.
+	cont() {
+		_int_ptr = nullptr;	_double_ptr = nullptr;	_size_ptr = nullptr;	_string_ptr = nullptr; Fail = false;
+	}
 };
 /** \brief Extraction operator for the cont struct. */
 std::istream & operator >> (std::istream & is, cont & a);
 /** \brief Insertion operator for the cont struct. */
 std::ostream & operator << (std::ostream & os, cont & a);
-
-/// @brief A data structure to store a cont variable and associated instruction.
-struct  Parameter
-{
-	cont ptr;
-	std::string txt;
-
-	template<typename T> Parameter (T val, const std::string & input_txt = std::string("")){
-		ptr = cont(val); 
-		txt = std::string(input_txt);
-	}	
-};
-
 
 
 /** \brief Data structure to help input a set of parameters. */
@@ -260,22 +247,20 @@ struct Parameters {
 	/** A member function to add one item in the parameter list
 	 * @param param_name	Name of the parameter.
 	 * @param val			A variable into which an input parameter is transferred. 
-							The type should be one of int, double, size_t, or std::string.	 
-	 * @param instruction	A string of instruction of the parameter.
-							*/
-	template<typename T> void Insert(const std::string & param_name, T & val, const std::string & instruction = std::string("")) {
+							The type should be one of int, double, size_t, or std::string.	 */
+	template<typename T> void Insert(const std::string & param_name, T & val) {
 		std::string new_param_name(param_name);
 		if (!this->case_insensitive) {
 			// Not Case insensitive -> change the parameter name in lower cases.
 			std::transform(new_param_name.begin(), new_param_name.end(), new_param_name.begin(), ::tolower);
 		}
-		ParamList.emplace_back(new_param_name, Parameter(val, instruction));
+		ParamList.emplace_back(new_param_name, cont(val));
 	}
 
 	/** \brief A routine to input parameters.
 	 *	The routine stops when one inputs "Start", "start", or "START".
 	 *	@param ifile	An inputstream. */
-	void InputRoutine(std::istream & ifile, std::ostream & ofile = std::cout);
+	void InputRoutine(std::istream & ifile);
 
 	/** \brief Display all parameter names. 
 	 *	@param ofile	An outputstream. */
@@ -286,7 +271,7 @@ struct Parameters {
 	void ShowAllParameters(std::ostream & ofile);
 
 protected:
-	std::vector<std::pair<std::string, Parameter >>	ParamList;	//< ParamList[i].first = Parameter name, and ParamList[i].second = Parameter object to store a pointer of variable and associated instruction. 
+	std::vector<std::pair<std::string, cont >>	ParamList;	//< ParamList[i].first = Parameter name, and ParamList[i].second = a pointer 
 	size_t limit_wrong_input = 4;	//< When there are incorrect parameters more than "limit_wrong_input", InputRoutine(...) automatically ends.
 	bool case_insensitive;			//< true = all parameter names are in lower case.
 };

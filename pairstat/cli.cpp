@@ -13,6 +13,7 @@
 /* header fields in $(cores) */
 #include <PeriodicCellList.h>
 #include <etc.h>
+size_t Verbosity = 2;  // each executable defines it (new_c++ convention)
 
 // Verbosity is defined by the core module (modules/core/etc.cpp).
 
