@@ -33,6 +33,11 @@ nonspherical := $(MODS)/nonspherical
 inverse      := $(MODS)/inverse
 tiling       := $(MODS)/tiling
 viz          := $(MODS)/viz
+# Header-only support modules split out of the apps:
+#   misc          : Discrepancy, ParameterSet, Interfaces (the legacy cli() dispatcher)
+#   visualization : Plots, DisplaySpheres (declarations; impls need MathGL/OpenGL)
+misc          := $(MODS)/misc
+visualization := $(MODS)/visualization
 
 #----- Library prefix auto-detection ------------------------------------------
 # First candidate whose include/gsl/gsl_matrix.h exists wins.
