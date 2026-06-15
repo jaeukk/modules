@@ -1,0 +1,9 @@
+# Build / target files
+obj/
+*.o
+*.out
+*.a
+*.so
+
+# Runtime-generated logs
+DetailedLog.txt
