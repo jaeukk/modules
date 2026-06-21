@@ -34,6 +34,9 @@ private:
 	int dist_type;	/* distribution of the number of vacancies
 					 * 0: Binomial distribution, 1: Poisson distribution	*/
 	int N0;			//the number of particles in initial packings
+	/** \brief Build the standard cubic (axis-aligned unit) basis in the given dimension. (CLAUDE)
+	 *  \param dimension  Spatial dimension.
+	 *  \return           Set of orthonormal cubic basis vectors. */
 	std::vector<GeometryVector> getCubicBasis(int dimension) {
 		std::vector<GeometryVector> b;
 		for (int i = 0; i < dimension; i++) {
@@ -43,6 +46,11 @@ private:
 		return b;
 	}
 public:
+	/** \brief Construct an imperfect-lattice generator from explicit basis vectors. (CLAUDE)
+	 *  \param basis          Basis vectors of the underlying lattice.
+	 *  \param numPrts        Number of particles in the initial (vacancy-free) lattice.
+	 *  \param p              Mean fraction of vacancies.
+	 *  \param numberdensity  Target number density. */
 	ImLatGen(const std::vector<GeometryVector> & basis, int numPrts, double p, double numberdensity) : LatticeGen(basis, 1){
 		SetBasis(basis);
 		//if (this->maxPhi > targetPackingFraction)
@@ -63,8 +71,14 @@ public:
 		this->N0 = this->numPrts;// *this->currPhi / this->maxPhi;
 		//this->p = 1.0 - this->currPhi / this->maxPhi;
 	}
+	/** \brief Construct an imperfect-lattice generator on a cubic lattice. (CLAUDE)
+	 *  \param dimension      Spatial dimension.
+	 *  \param numPrts        Number of particles in the initial (vacancy-free) lattice.
+	 *  \param p              Mean fraction of vacancies.
+	 *  \param numberdensity  Target number density. */
 	ImLatGen(int dimension, int numPrts, double p, double numberdensity) : ImLatGen(getCubicBasis(dimension), numPrts, p, numberdensity ){}
-	//set the final packing fraction!!
+	/** \brief set the final packing fraction!! (and derive the vacancy fraction)
+	 *  \param phi  Target packing fraction (must be below maxPhi). */
 	virtual void SetPackingFraction(double phi) {
 		if (phi < this->maxPhi) {
 			this->currPhi = phi;
@@ -77,7 +91,11 @@ public:
 			std::cout << "the target packing fraction is too high!\n";
 		}
 	}
+	/** \brief Set the target number density. (CLAUDE)
+	 *  \param numberdensity  Target number density. */
 	virtual void SetRho(double numberdensity) { this->rho = numberdensity; }
+	/** \brief Set the number of particles and re-derive the lattice side count. (CLAUDE)
+	 *  \param numPrts  Number of particles in the initial (vacancy-free) lattice. */
 	virtual void SetNumPrts(int numPrts) {
 		this->N0 = numPrts;
 		//int LengInOrigLat = (int)round(pow(numPrts / (1.0 - this->p), 1.0 / this->d));
@@ -87,6 +105,8 @@ public:
 		SetNumInEachSides(std::vector<size_t>(this->d, (size_t)LengInOrigLat));
 	}
 
+	/** \brief Generate a point configuration: tile the cell, then delete random vacancies. (CLAUDE)
+	 *  \param[out] c  Output configuration with vacancies removed. */
 	virtual void GenerateC(Configuration &c) {
 		Configuration temp = MultiplicateStructure(this->F_Cell, this->N);
 		int currN, idx;	RandomGenerator g(std::time(NULL));
@@ -100,6 +120,8 @@ public:
 		//double factor = pow(numDensity/ this->rho, 1.0/this->d);
 		//c.Rescale(factor);
 	}
+	/** \brief Generate a sphere packing from the vacancy-bearing lattice. (CLAUDE)
+	 *  \param[out] c  Output sphere packing built from the generated configuration. */
 	virtual void GenerateP(SpherePacking & c) {
 		Configuration temp; this->GenerateC(temp);
 		//double rho_i = this->N0 / (this->numPrts * this->F_Cell.PeriodicVolume());
@@ -121,18 +143,29 @@ protected:
 public:
 	bool initialPackingFriendly;
 	double origPackingFraction = -1;
+	/** \brief Compute the statistic over an ensemble of sphere packings. (CLAUDE)
+	 *  \param GetConfigsFunction  Callable returning configuration i.
+	 *  \param NumConfig           Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t i)> GetConfigsFunction, size_t NumConfig) = 0;
+	/** \brief Write the computed result to disk. (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) = 0;
 	//virtual void Plot(const std::string OutputPrefix, const std::string & Title) = 0;
 
-	//some computations allow additional options
-	//any command not understood by PairStatisticsCLI() is passed to here
+	/** \brief some computations allow additional options;
+	 *  any command not understood by PairStatisticsCLI() is passed to here.
+	 *  \param option  Command keyword not understood by the main CLI.
+	 *  \param input   Input stream for reading any option arguments.
+	 *  \param output  Output stream for messages. */
 	virtual void AdditionalOptions(const std::string & option, std::istream & input, std::ostream & output)
 	{
 		//by default, accept no additional option.
 		output << "Unrecognized command!\n";
 	}
+	/** \brief Set the number of threads used by Compute. (CLAUDE)
+	 *  \param num  Number of threads. */
 	void SetNumThreads(int num) { this->numThreads = num; }
+	/** \brief Destroy the Computation. (CLAUDE) */
 	virtual ~Computation()
 	{
 	}
@@ -143,6 +176,9 @@ public:
 	std::vector<GeometryVector> result;
 	double CircularKMax, LinearKMax, KPrecision;
 	bool lowStorage;	//Activate the low-storage mode of Isotropic spectral densities
+	/** \brief Construct by reading the chi_V parameters (K_max, precision, low-storage) from a stream. (CLAUDE)
+	 *  \param ifile  Input stream supplying the parameters.
+	 *  \param ofile  Output stream echoing the prompts. */
 	chivComputation(std::istream & ifile, std::ostream & ofile) {
 		ofile << "circular K_max=";
 		ifile >> CircularKMax; ofile << CircularKMax << "\n";
@@ -156,6 +192,9 @@ public:
 		//SampleProbability = 1.0;
 		initialPackingFriendly = true;
 	}
+	/** \brief Compute the isotropic spectral density chi_V(k) over the ensemble. (CLAUDE)
+	 *  \param GetConfig   Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t i)> GetConfig, size_t numConfigs) {
 		result.clear();
 		omp_set_num_threads(this->numThreads);
@@ -164,10 +203,16 @@ public:
 		else
 			::IsotropicSpectralDensity_Lstorage(GetConfig, numConfigs, CircularKMax, LinearKMax, result, KPrecision);
 	}
+	/** \brief Write chi_V(k) to "<prefix>_chiv". (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_chiv");
 		WriteFunction(result, name);
 	}
+	/** \brief Accept the "LowStorage" option toggling the low-storage chi_V mode. (CLAUDE)
+	 *  \param option  Command keyword ("LowStorage" is recognized).
+	 *  \param input   Input stream for any option arguments.
+	 *  \param output  Output stream for messages. */
 	virtual void AdditionalOptions(const std::string & option, std::istream & input, std::ostream & output) {
 		if (option == "LowStorage") {
 			//default = false; true => don't use map <,> in the calculation
@@ -185,6 +230,9 @@ public:
 	std::vector<GeometryVector> result;
 	double vMax, dv;
 	bool IsInitPacking = true;
+	/** \brief Construct by reading the cell-volume histogram parameters from a stream. (CLAUDE)
+	 *  \param ifile  Input stream supplying vMax, bin width and the init-packing flag.
+	 *  \param ofile  Output stream echoing the prompts. */
 	VoronoiCellDistribution(std::istream & ifile, std::ostream & ofile) {
 		ofile << "Max Cell-volume = ";
 		ifile >> vMax;	ofile << vMax << "\n";
@@ -194,6 +242,9 @@ public:
 		ifile >> IsInitPacking; ofile << IsInitPacking << "\n";
 		initialPackingFriendly = false;
 	}
+	/** \brief Compute the Voronoi cell-volume distribution over the ensemble. (CLAUDE)
+	 *  \param GetConfig   Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfig, size_t numConfigs) {
 		std::cout << "Computing Voronoi cell-volume distribution:\n";
 		if (IsInitPacking) {
@@ -278,6 +329,8 @@ public:
 			}
 		}
 	}
+	/** \brief Write the cell-volume distribution to "<prefix>_cellvolDist". (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_cellvolDist");
 		WriteFunction(result, name);
@@ -290,6 +343,9 @@ public:
 	int numMax;
 	bool IsInitPacking = true;
 
+	/** \brief Construct by reading the maximum vertex number from a stream. (CLAUDE)
+	 *  \param ifile  Input stream supplying numMax.
+	 *  \param ofile  Output stream echoing the prompts. */
 	VoronoiCellVertexDistribution(std::istream & ifile, std::ostream & ofile) {
 		ofile << "Max vertex number = ";
 		ifile >> numMax;	ofile << numMax << "\n";
@@ -297,6 +353,9 @@ public:
 		//ifile >> IsInitPacking;
 		initialPackingFriendly = false;
 	}
+	/** \brief Compute the distribution of Voronoi cell vertex counts over the ensemble. (CLAUDE)
+	 *  \param GetConfig   Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfig, size_t numConfigs) {
 		std::cout << "Computing Voronoi cell vertex number distribution:\n";
 		result.clear();
@@ -356,6 +415,8 @@ public:
 		}
 		
 	}
+	/** \brief Write the vertex-count distribution to "<prefix>_VertexDist". (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_VertexDist");
 		WriteFunction(result, name);
@@ -374,6 +435,9 @@ public:
 	std::vector<GeometryVector> result;
 	
 	int type;	bool IsInitPacking;
+	/** \brief Construct by reading the max-packing-fraction type and init-packing flag. (CLAUDE)
+	 *  \param ifile  Input stream supplying the type (1-3) and the init-packing flag.
+	 *  \param ofile  Output stream echoing the prompts. */
 	MaxPackingFraction(std::istream & ifile, std::ostream & ofile) {
 		ofile << "types of maximal packing fraction (1-3) ";
 		ifile >> type;
@@ -381,6 +445,9 @@ public:
 		ifile >> IsInitPacking;	ofile << IsInitPacking <<"\n";
 		initialPackingFriendly = false;
 	}
+	/** \brief Compute the maximal (achievable) packing fractions over the ensemble. (CLAUDE)
+	 *  \param GetConfigs  Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
 		std::cout << "Computing the Maximal Packing Fractions:\n";
 		//initialization
@@ -527,6 +594,8 @@ if(type>2)	maxPhi[i].x[3] = phi3;
 		result[1].x[0] = 0;
 		result[2].x[0] = 0;
 	}
+	/** \brief Write the per-config max packing fractions plus a summary to "<prefix>_MaxPackingFraction". (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_MaxPackingFraction");
 		WriteFunction(maxPhi, name);
@@ -546,6 +615,9 @@ public:
 	int numSamplingPts;
 	double Rmax, dR;
 	std::vector<GeometryVector> result;
+	/** \brief Construct by reading Rmax, dR and the sampling-point count from a stream. (CLAUDE)
+	 *  \param ifile  Input stream supplying Rmax, dR and numSamplingPts.
+	 *  \param ofile  Output stream echoing the prompts. */
 	LocalNumberVariance(std::istream & ifile, std::ostream & ofile) {
 		ofile << "Rmax = ";
 		ifile >> Rmax;	ofile << "\n" << Rmax << "\n";
@@ -555,11 +627,16 @@ public:
 		ifile >> numSamplingPts;	ofile << "\n" << numSamplingPts << "\n";
 		initialPackingFriendly = false;
 	}
+	/** \brief Compute the local number variance of particle centroids over the ensemble. (CLAUDE)
+	 *  \param GetConfigs  Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
 		auto GetC = [&GetConfigs](size_t i)->Configuration {return Configuration(GetConfigs(i),"a"); };
 		omp_set_num_threads(this->numThreads);
 		MC_nv(GetC, numConfigs, result, Rmax, dR, numSamplingPts);
 	}
+	/** \brief Write the local number variance to "<prefix>_localNumVar". (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_localNumVar");
 		WriteFunction(result, name);
@@ -572,6 +649,9 @@ public:
 	double Rmax, dR;
 	std::vector<GeometryVector> result;
 
+	/** \brief Construct by reading Rmax, dR and the sampling-point count from a stream. (CLAUDE)
+	 *  \param ifile  Input stream supplying Rmax, dR and numSamplingPts.
+	 *  \param ofile  Output stream echoing the prompts. */
 	LocalVolumeFractionVariance(std::istream & ifile, std::ostream & ofile) {
 		ofile << "Rmax = ";
 		ifile >> Rmax;	ofile << "\t" << Rmax << "\n";
@@ -581,10 +661,15 @@ public:
 		ifile >> numSamplingPts;	ofile << "\t" << numSamplingPts << "\n";
 		initialPackingFriendly = true;
 	}
+	/** \brief Compute the local volume-fraction variance of the particle phase over the ensemble. (CLAUDE)
+	 *  \param GetConfigs  Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
 		omp_set_num_threads(this->numThreads);
 		MC_vfv(GetConfigs, numConfigs, result, Rmax, dR, numSamplingPts);
 	}
+	/** \brief Write the local volume-fraction variance to "<prefix>_localVolVar". (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_localVolVar");
 		WriteFunction(result, name);
@@ -597,10 +682,16 @@ public:
 	std::vector<std::vector<GeometryVector>> displacement_i;
 	std::vector<GeometryVector> result;
 	bool output_each_config = false;
+	/** \brief Construct by reading whether per-config displacements should be written. (CLAUDE)
+	 *  \param ifile  Input stream supplying the output_each_config flag.
+	 *  \param ofile  Output stream echoing the prompts. */
 	CentroidComputation(std::istream & ifile, std::ostream & ofile) {
 		ofile << "Output displacements in each config? (y=1/n=0)\t";
 		ifile >> output_each_config; ofile << "  " << output_each_config << "\n";
 	}
+	/** \brief Compute the displacements between particles and their Voronoi-cell centroids. (CLAUDE)
+	 *  \param GetConfigs  Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
 		std::cout << "Computing diplacements between particles and cell centroids:\n";
 		displacement_i.reserve(numConfigs);	result.reserve(numConfigs);
@@ -622,6 +713,8 @@ public:
 #endif
 	}
 
+	/** \brief Write the summed displacements (and optionally per-config ones) to "<prefix>_SumDisplacements". (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string fname = OutputPrefix + std::string("_SumDisplacements");
 		WriteFunction(result, fname.c_str());
@@ -647,13 +740,19 @@ protected:
 	// 0			<= idx_m=1 <=indices[i][0]
 	// index[i][0]	< idx_m=2 <= indices[i][1] ...
 public:
+	/** \brief Copy the current per-config stage-index list out. (CLAUDE)
+	 *  \param[out] list  Receives a copy of the stage-index list. */
 	void OutputIndexList(std::vector<std::vector<int>> & list) {
 		list = std::vector<std::vector<int>>(this->indices);
 	}
+	/** \brief Set the per-config stage-index list. (CLAUDE)
+	 *  \param list  Stage-index list to copy in. */
 	void SetIndexList(const std::vector<std::vector<int>> & list) {
 		this->indices = std::vector<std::vector<int>>(list);
 	}
-	/* determine stages without any prior knowledge*/
+	/** \brief determine stages without any prior knowledge
+	 *  \param GetConfigs  Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	void GetIndexList(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
 		this->indices.resize(numConfigs, std::vector<int>());
 		/*	R[i][j] = jth largest radii for configuration i
@@ -748,8 +847,12 @@ public:
 			//this->indices=idx_list_new;
 		}
 	}
-	/*The indices list is competed after the computation*/
+	/** \brief The indices list is competed after the computation
+	 *  \param GetConfigs  Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) = 0;
+	/** \brief Write the multiscale result to disk. (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) = 0;
 
 };
@@ -761,6 +864,9 @@ public:
 	bool aroundOriginOnly;
 	std::vector < std::vector<GeometryVector>> result;
 	std::vector<int> outputIndex;
+	/** \brief Construct by reading the multiscale chi_V parameters (K_max, precision, interval). (CLAUDE)
+	 *  \param ifile  Input stream supplying the parameters.
+	 *  \param ofile  Output stream echoing the prompts. */
 	SpectralDensity_Multiscale(std::istream & ifile, std::ostream & ofile) {
 		ofile << "Do we plot chiv(0) vs m only? (y=1/n=0)\t";
 		ifile >> aroundOriginOnly; ofile << "\t" << aroundOriginOnly << "\n";
@@ -774,6 +880,9 @@ public:
 		ifile >> interval; ofile << "\t" << interval << "\n";
 		this->SetIndexList(std::vector<std::vector<int>>());
 	}
+	/** \brief Compute the per-stage spectral density chi_V(k) for the multiscale model. (CLAUDE)
+	 *  \param GetConfigs  Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
 		std::cout << "Computing the spectral densities for multiscale coated-sphere model at every " << this->interval << ":\n";
 		bool fillTheList = (this->indices.size() == 0);
@@ -898,6 +1007,8 @@ public:
 		}
 		this->result = chiV_k;
 	}
+	/** \brief Write the per-stage chi_V(k), or chi_V(0) vs stage, under OutputPrefix. (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string filename;
 		if (aroundOriginOnly) {//Write chiv(0) vs m
@@ -923,6 +1034,9 @@ public:
 	int interval;// , maxstep;
 	std::vector<GeometryVector> result;
 
+	/** \brief Construct by reading the stage interval from a stream. (CLAUDE)
+	 *  \param ifile  Input stream supplying the stage interval.
+	 *  \param ofile  Output stream echoing the prompts. */
 	VolumeFraction_Multiscale(std::istream & ifile, std::ostream & ofile) {
 		ofile << "Interval in stages = \t";
 		ifile >> interval;	ofile << "\t" << interval << "\n";
@@ -931,6 +1045,9 @@ public:
 		this->SetIndexList(std::vector<std::vector<int>>());
 	}
 
+	/** \brief Compute the packing fraction at every "interval" stages over the ensemble. (CLAUDE)
+	 *  \param GetConfigs  Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
 		std::cout << "Computing the volume fraction at every " << this->interval << " stages:\n";
 		
@@ -984,6 +1101,8 @@ public:
 			result[i].x[2] = sqrt(result[i].x[2] / ((double)numConfigs - 1));
 		}
 	}
+	/** \brief Write the per-stage packing fractions to "<prefix>_PackingFractions". (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string filename = OutputPrefix + std::string("_PackingFractions");
 		WriteFunction(result, filename);
@@ -998,6 +1117,9 @@ public:
 	int numSamplePts;
 	std::vector<std::vector<GeometryVector>> result;
 	std::vector<int> outputIndex;
+	/** \brief Construct by reading the stage interval, Rmax, dR and sample-point count. (CLAUDE)
+	 *  \param ifile  Input stream supplying interval, Rmax, dR and numSamplePts.
+	 *  \param ofile  Output stream echoing the prompts. */
 	VolumeFractionVariance_Multiscale(std::istream & ifile, std::ostream & ofile) {
 		ofile << "Interval in stage = \t";	ifile >> interval; ofile << "\t" << interval << "\n";
 		ofile << "R max = \t";	ifile >> Rmax;	ofile << "\t" << Rmax<<"\n";
@@ -1005,6 +1127,9 @@ public:
 		ofile << "the number of sample points = \t"; ifile >> numSamplePts; ofile << "\t" << numSamplePts << "\n";
 	}
 
+	/** \brief Compute the local volume-fraction variance at every "interval" stages. (CLAUDE)
+	 *  \param GetConfigs  Callable returning configuration i.
+	 *  \param numConfigs  Number of configurations in the ensemble. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
 		std::cout << "Computing the local volume fraction variance at every " << this->interval << " stages:\n";
 		bool fillTheList = (this->indices.size() == 0);
@@ -1036,6 +1161,8 @@ public:
 			this->result.push_back(RESULT);
 		}
 	}
+	/** \brief Write the per-stage local volume-fraction variances under OutputPrefix. (CLAUDE)
+	 *  \param OutputPrefix  Output filename prefix. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string filename;
 		for (int i = 0; i < outputIndex.size(); i++) {

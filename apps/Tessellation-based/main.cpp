@@ -35,6 +35,8 @@ std::string masterDir = "./";
 // TilingProblemCLI sliced verbatim from the legacy TilingProblem.cpp
 // (lines 1364-2100).
 //==============================================================================
+/** \brief Interactive CLI for the tiling problems (Voronoi-based and multiscale packings). (CLAUDE)
+ *  \return  0 on normal exit. */
 int TilingProblemCLI() {
 	std::string dir = "";
 	std::string savePrefix = "";
@@ -776,6 +778,10 @@ int TilingProblemCLI() {
 //==============================================================================
 // Entry point: the "Tiling" command extracted from the legacy Interfaces.h cli()
 //==============================================================================
+/** \brief Program entry point; reads top-level commands and dispatches "Tiling". (CLAUDE)
+ *  \param argc  Argument count; argv[1] (if present) sets masterDir.
+ *  \param argv  Argument vector.
+ *  \return      0 on normal exit. */
 int main(int argc, char ** argv)
 {
 	std::istream & ifile = std::cin;

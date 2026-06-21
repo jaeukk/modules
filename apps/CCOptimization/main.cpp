@@ -36,51 +36,51 @@ size_t Verbosity = 3;  // each executable defines it (new_c++ convention)
 
 /** \brief Perform the energy optimization multiple times for a given potential energy.
 Obtain ground-state configurations from multi initial configurations.
-@param[in]	pConfig	A pointer of a point configuration.
-@param[in]	pPotential	A pointer of a Potential object.
-@param[in]	gen	A random number generator.
-@param[in]	Prefix	A prefix of output files.
+\param[in]	pConfig	A pointer of a point configuration.
+\param[in]	pPotential	A pointer of a Potential object.
+\param[in]	gen	A random number generator.
+\param[in]	Prefix	A prefix of output files.
 			It generates three distinct ConfigurationPacks;
 			*_InitConfig	Initial configurations
 			*				Configurations after minimizing energy
 			*_Success		Configurations whose energy is lower than 1e-11 (a subset of *)
-@param[in]	SampleNumber	The number of initial configurations
-@param[in]	TimeLimit		When running time becomes larger than this, this function automatically ends.
-@param[in]	Algorithm	Name of alogrithm for optimizations. The followings are allowed; LBFGS, LocalGradientDescent, ConjugateGradient, SteepestDescent, MINOP
-@return 0 = exit without any problem. */
+\param[in]	SampleNumber	The number of initial configurations
+\param[in]	TimeLimit		When running time becomes larger than this, this function automatically ends.
+\param[in]	Algorithm	Name of alogrithm for optimizations. The followings are allowed; LBFGS, LocalGradientDescent, ConjugateGradient, SteepestDescent, MINOP
+\return 0 = exit without any problem. */
 int CollectiveCoordinateMultiRun(Configuration * pConfig, Potential * pPotential, RandomGenerator & gen, std::string Prefix, size_t SampleNumber, time_t TimeLimit, const std::string & AlgorithmName, double E_max, size_t max_num);
 
 
 /** \brief Perform a molecular dynamic simulation under NVT environment for a given potential energy.
 By default, it adjust time step optimally.
-@param[in]	pConfig	A pointer of a point configuration.
-@param[in]	pPotential	A pointer of a Potential object.
-@param[in]	gen	A random number generator.
-@param[in]	TimeStep Initial time step for the simulation.
-@param[in]	Temperature Temperature of the system.
-@param[in]	Prefix	A prefix of output files.
-@param[in]	SampleNumber	The number of target configurations.
-@param[in]	StepPerSample	The number of time steps per each configuration.
-@param[in]	AllowRestore	True if you want to load the previous setup (saved as *.MDDump).
-@param[in]	TimeLimit		When running time becomes larger than this, this function automatically ends.
-@param[in]	EquilibrateSamples	The number of sampling for equilibration.
-@param[in]	MDAutoTimeStep	True if you want to adjust time step during the equilibration.
-@return 0 = exit without any problem. */
+\param[in]	pConfig	A pointer of a point configuration.
+\param[in]	pPotential	A pointer of a Potential object.
+\param[in]	gen	A random number generator.
+\param[in]	TimeStep Initial time step for the simulation.
+\param[in]	Temperature Temperature of the system.
+\param[in]	Prefix	A prefix of output files.
+\param[in]	SampleNumber	The number of target configurations.
+\param[in]	StepPerSample	The number of time steps per each configuration.
+\param[in]	AllowRestore	True if you want to load the previous setup (saved as *.MDDump).
+\param[in]	TimeLimit		When running time becomes larger than this, this function automatically ends.
+\param[in]	EquilibrateSamples	The number of sampling for equilibration.
+\param[in]	MDAutoTimeStep	True if you want to adjust time step during the equilibration.
+\return 0 = exit without any problem. */
 int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, RandomGenerator & gen, double TimeStep, double Temperature, std::string Prefix, size_t SampleNumber, size_t StepPerSample, bool AllowRestore, time_t TimeLimit, size_t EquilibrateSamples, bool MDAutoTimeStep);
 
 
-/// @brief Get radius of the exclusion region in Fourier space corresponding to the chi value
-/// @param chi 	stealthiness parpameter
-/// @param rho 	number density
-/// @param d 	dimensions
-/// @return 
+/** \brief Get radius of the exclusion region in Fourier space corresponding to the chi value
+ *  \param chi 	stealthiness parpameter
+ *  \param rho 	number density
+ *  \param d 	dimensions
+ *  \return     Radius of the exclusion region in Fourier space. */
 double getK(double chi, double rho, DimensionType d);
 
-/// @brief Get stealthiness parameter chi from K and rho.
-/// @param K 
-/// @param rho 
-/// @param d 
-/// @return 
+/** \brief Get stealthiness parameter chi from K and rho.
+ *  \param K    Radius of the exclusion region in Fourier space.
+ *  \param rho  Number density.
+ *  \param d    Dimensions.
+ *  \return     Stealthiness parameter chi. */
 double get_chi(double K, double rho, DimensionType d);
 
 class ReadConfigPack
@@ -88,6 +88,10 @@ class ReadConfigPack
 public:
 	double Rescale;
 	ConfigurationPack p;
+	/** \brief Open a ConfigurationPack whose prefix is read interactively from a stream. (CLAUDE)
+	 *  \param ifile    Input stream supplying the pack prefix.
+	 *  \param ofile    Output stream for the input prompt.
+	 *  \param Rescale  Linear scale factor applied to each retrieved configuration. */
 	ReadConfigPack(std::istream & ifile, std::ostream & ofile, double Rescale)
 	{
 		this->Rescale=Rescale;
@@ -96,11 +100,17 @@ public:
 		ifile>>prefix;
 		p.Open(prefix);
 	}
+	/** \brief Open a ConfigurationPack with the given prefix. (CLAUDE)
+	 *  \param prefix   Prefix of the ConfigurationPack to open.
+	 *  \param Rescale  Linear scale factor applied to each retrieved configuration. */
 	ReadConfigPack(std::string prefix, double Rescale)
 	{
 		this->Rescale=Rescale;
 		p.Open(prefix);
 	}
+	/** \brief Retrieve and rescale the i-th configuration from the pack. (CLAUDE)
+	 *  \param i  Index of the configuration in the pack.
+	 *  \return   The i-th configuration, rescaled by Rescale. */
 	Configuration operator() (size_t i)
 	{
 		Configuration result=p.GetConfig((long long)i);
@@ -113,7 +123,10 @@ public:
 //masterDir = std::string("/tigress/jaeukk");
 
 
-// compute ground states of stealthy hyperuniform potentials + soft-core repulsions.
+/** \brief compute ground states of stealthy hyperuniform potentials + soft-core repulsions.
+ *  \param argc  Argument count, used to read run parameters (time limit, seed, start index, verbosity, vtilde).
+ *  \param argv  Argument vector carrying the run parameters.
+ *  \return      0 on success, 1 on invalid input. */
 int GetCCO(int argc, char ** argv){
 	char tempstring[1000] = {};
 	std::string tempstring2;
@@ -535,6 +548,10 @@ int GetCCO(int argc, char ** argv){
 	return 0;
 }
 
+/** \brief Generate stealthy collective-coordinate ground states via simulated-annealing Monte Carlo. (CLAUDE)
+ *  \param argc  Argument count, used to read run parameters (time limit, seed, start index, verbosity, vtilde).
+ *  \param argv  Argument vector carrying the run parameters.
+ *  \return      0 on success, 1 on invalid input. */
 int MC_CCO(int argc, char ** argv){
 	/* common input */
 	char tempstring[1000] = {};
@@ -961,13 +978,10 @@ int MC_CCO(int argc, char ** argv){
 
 // int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, RandomGenerator & gen, double TimeStep, double Temperature, std::string Prefix, size_t SampleNumber, size_t StepPerSample, bool AllowRestore, time_t TimeLimit, size_t EquilibrateSamples, bool MDAutoTimeStep);
 
-/**
- * @brief CLI of multi-stealthy hyperuniform packings
- * 
- * @param argc 
- * @param argv 
- * @return int 
- */
+/** \brief CLI of multi-stealthy hyperuniform packings
+ *  \param argc  Argument count, used to read run parameters (time limit, seed, start index, verbosity, vtilde).
+ *  \param argv  Argument vector carrying the run parameters.
+ *  \return      0 on success, 1 on invalid input. */
 int GetMultiCCO(int argc, char ** argv){
 
 	char tempstring[1000] = {};
@@ -1479,6 +1493,10 @@ int GetMultiCCO(int argc, char ** argv){
 
 
 
+/** \brief Program entry point; dispatches to the multi-species or single-species CC driver. (CLAUDE)
+ *  \param argc  Argument count; argv[1]=="multi" selects the multi-species driver.
+ *  \param argv  Argument vector forwarded to the selected driver.
+ *  \return      0 on success. */
 int main(int argc, char ** argv){
 	char tempstring[1000] = {};
 	char tempstring2[300] = {};

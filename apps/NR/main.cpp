@@ -28,7 +28,15 @@ size_t Verbosity = 2;
 
 void WriteFunction(const std::vector<GeometryVector> & result, std::ostream & ofile, const std::vector<std::string> & fields);
 void WriteFunction(const std::vector<GeometryVector> & result, const std::string & OutFilePrefix, const std::vector<std::string> & fields);
+/** \brief Read a table of GeometryVector data from an input stream. (CLAUDE)
+ *  \param[out] result	The table of GeometryVector rows read from the stream.
+ *  \param ifile		The input stream to read from.
+ *  \param NumColumns	The number of columns to read per row. */
 void ReadFunction(std::vector<GeometryVector> & result, std::istream & ifile, size_t NumColumns);
+/** \brief Read a table of GeometryVector data from a file named by a prefix. (CLAUDE)
+ *  \param[out] result		The table of GeometryVector rows read from the file.
+ *  \param InFilePrefix	Prefix of the input file name.
+ *  \param NumColumns		The number of columns to read per row. */
 void ReadFunction(std::vector<GeometryVector> & result, const std::string & InFilePrefix, size_t NumColumns);
 
 /* Please compile the "examples.cpp" file to use the following functions. */
@@ -47,8 +55,11 @@ void Example_NV_RSA(std::istream & ifile, std::ostream & ofile);
 
 //#include <GenerateConfigs.h>
 
-/*	Analyze an ConfigurationPack with the LocalNumber class,
- * or load the data. */
+/**	\brief Analyze an ConfigurationPack with the LocalNumber class, or load the data.
+ *	\param argc	The number of command-line arguments.
+ *	\param argv	Command-line arguments: [1] print PDF flag, [2] print CDF flag,
+ *				[3] periodic boundary flag, [4] window-center spacing dx.
+ *	\return 0 on success. */
 int main(int argc, char ** argv) {
 	std::string tempStr;
 	char tempstring[1000];

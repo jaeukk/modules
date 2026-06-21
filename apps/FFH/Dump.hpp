@@ -16,11 +16,17 @@ struct Homo_DielectricConstant_static {
 	std::vector<fftw_plan> FourierTransform_P, InverseFourierTransform_E;
 	size_t m;	/*< the number of stages */
 
+	/** \brief Construct an empty static dielectric-constant homogenizer. (CLAUDE) */
 	Homo_DielectricConstant_static() {
 		d = 0; epsilon1 = 0; epsilon2 = 0; delta_epsilon = 0;
 		update_G = false; update_plan = false; m = 0;
 	};
+	/** \brief Construct a static dielectric-constant homogenizer from a geometry and two permittivities. (CLAUDE)
+	 *  \param src       The two-phase dispersion (geometry).
+	 *  \param epsilon1  Permittivity of the matrix phase.
+	 *  \param epsilon2  Permittivity of the inclusion phase. */
 	Homo_DielectricConstant_static(const TwoPhaseDispersion& src, double epsilon1, double epsilon2);
+	/** \brief Destructor; destroys the fftw plans and tensor fields. (CLAUDE) */
 	~Homo_DielectricConstant_static() {
 		for (int i = 0; i < FourierTransform_P.size(); i++) {
 			fftw_destroy_plan(FourierTransform_P[i]);
@@ -32,21 +38,45 @@ struct Homo_DielectricConstant_static {
 		P_direct.~TensorField();	E_direct.~TensorField();
 	};
 
+	/** \brief Redefine the geometry and permittivities of the problem. (CLAUDE)
+	 *  \param src       The two-phase dispersion (geometry).
+	 *  \param epsilon1  Permittivity of the matrix phase.
+	 *  \param epsilon2  Permittivity of the inclusion phase. */
 	void RedefineProblem(const TwoPhaseDispersion& src, double epsilon1, double epsilon2);
-	/* Initialize the problem.
-	 * @param[in] direction	The direction of external static field. */
+	/** \brief Initialize the problem.
+	 *  \param[in] direction	The direction of external static field. */
 	void Prepare(size_t direction = 0);
+	/** \brief Advance the iterative solver by a number of stages. (CLAUDE)
+	 *  \param steps  Number of iteration stages. */
 	void Iterate(size_t steps = 1);
+	/** \brief Iterate using the direct DFT/IDFT routines (experimental). (CLAUDE)
+	 *  \param steps  Number of iteration stages. */
 	void Iterate_test(size_t steps = 1);
+	/** \brief Iterate using an alternative experimental scheme. (CLAUDE)
+	 *  \param steps  Number of iteration stages. */
 	void Iterate_test2(size_t steps = 1);
 
+	/** \brief Iterate until the convergence test passes. (CLAUDE) */
 	void Run();
 
+	/** \brief Test convergence via the mean |k . D(k)| in Fourier space. (CLAUDE)
+	 *  \param tolerance  Target tolerance.
+	 *  \return true if the mean divergence is below the tolerance. */
 	bool ConvergenceTest(double tolerance = 1e-14);
+	/** \brief Compute the effective permittivity from the converged fields. (CLAUDE)
+	 *  \return The effective (complex) permittivity. */
 	std::complex<double> ComputeEffectiveDielectric();
+	/** \brief Print the E and P fields in direct space. (CLAUDE)
+	 *  \param prefix  Output filename prefix. */
 	void Print(const std::string & prefix) const;
+	/** \brief Print the E and P fields in Fourier space. (CLAUDE)
+	 *  \param prefix  Output filename prefix. */
 	void Print_Fourier(const std::string & prefix) const;
+	/** \brief Print the 2D discretized geometry grid. (CLAUDE)
+	 *  \param prefix  Output filename prefix. */
 	void Print_Grid_2D(const std::string & prefix) const;
+	/** \brief Print the 2D Fourier-space Green's function components. (CLAUDE)
+	 *  \param prefix  Output filename prefix. */
 	void Print_GreenFn_2D(const std::string & prefix) const;
 
 private:
@@ -68,11 +98,17 @@ struct Homo_DielectricConstant_static_SCA {
 	std::vector<fftw_plan> FourierTransform_P, InverseFourierTransform_F;
 	size_t m;	/*< the number of stages */
 
+	/** \brief Construct an empty strong-contrast static dielectric homogenizer. (CLAUDE) */
 	Homo_DielectricConstant_static_SCA() {
 		d = 0; epsilon1 = 0; epsilon2 = 0; delta_epsilon = 0, L = 0;
 		update_H = false; update_plan = false; m = 0;
 	};
+	/** \brief Construct a strong-contrast static dielectric homogenizer from a geometry and two permittivities. (CLAUDE)
+	 *  \param src       The two-phase dispersion (geometry).
+	 *  \param epsilon1  Permittivity of the matrix phase.
+	 *  \param epsilon2  Permittivity of the inclusion phase. */
 	Homo_DielectricConstant_static_SCA(const TwoPhaseDispersion& src, double epsilon1, double epsilon2);
+	/** \brief Destructor; destroys the fftw plans and tensor fields. (CLAUDE) */
 	~Homo_DielectricConstant_static_SCA() {
 		for (int i = 0; i < FourierTransform_P.size(); i++) {
 			fftw_destroy_plan(FourierTransform_P[i]);
@@ -84,25 +120,51 @@ struct Homo_DielectricConstant_static_SCA {
 		P_direct.~TensorField();	F_direct.~TensorField();
 	};
 
+	/** \brief Redefine the geometry and permittivities of the problem. (CLAUDE)
+	 *  \param src       The two-phase dispersion (geometry).
+	 *  \param epsilon1  Permittivity of the matrix phase.
+	 *  \param epsilon2  Permittivity of the inclusion phase. */
 	virtual void RedefineProblem(const TwoPhaseDispersion& src, double epsilon1, double epsilon2);
-	/* Initialize the problem.
-	* @param[in] direction	The direction of external static field. */
+	/** \brief Initialize the problem.
+	 *  \param[in] direction	The direction of external static field. */
 	virtual void Prepare(size_t direction = 0);
+	/** \brief Advance the iterative solver by a number of stages. (CLAUDE)
+	 *  \param steps  Number of iteration stages. */
 	virtual void Iterate(size_t steps = 1);
 
+	/** \brief Iterate until the field and divergence tolerances are met. (CLAUDE)
+	 *  \param tol_field  Target tolerance on the change in the field.
+	 *  \param tol_div    Target tolerance on the divergence of the D field. */
 	virtual void Run(double tol_field = 1e-10, double tol_div = 1e-14);
 
+	/** \brief Check the change in the local cavity field between two stages. (CLAUDE)
+	 *  \param tol_field  Target tolerance.
+	 *  \return true if the change is below tol_field. */
 	bool CheckConvergence(double tol_field);
+	/** \brief Check the divergence of the D field in Fourier space. (CLAUDE)
+	 *  \param tol_div  Target tolerance.
+	 *  \return true if the divergence is below tol_div. */
 	bool CheckDivergenceFree(double tol_div);
+	/** \brief Compute the effective permittivity from the converged fields. (CLAUDE)
+	 *  \return The effective (complex) permittivity. */
 	std::complex<double> ComputeEffectiveDielectric();
+	/** \brief Print the F and P fields in direct space. (CLAUDE)
+	 *  \param prefix  Output filename prefix. */
 	void Print(const std::string & prefix) const;
+	/** \brief Print the F and P fields in Fourier space. (CLAUDE)
+	 *  \param prefix  Output filename prefix. */
 	void Print_Fourier(const std::string & prefix) const;
+	/** \brief Print the 2D discretized geometry grid. (CLAUDE)
+	 *  \param prefix  Output filename prefix. */
 	void Print_Grid_2D(const std::string & prefix) const;
+	/** \brief Print the 2D Fourier-space H-function components. (CLAUDE)
+	 *  \param prefix  Output filename prefix. */
 	void Print_GreenFn_2D(const std::string & prefix) const;
 
 protected:
 	TensorField k, F_direct_prev;	/* temporary storage */
 
+	/** \brief Compute the Fourier transform of the H-function Green's tensor. (CLAUDE) */
 	virtual void ComputeH_Fourier();
 };
 
@@ -110,16 +172,34 @@ protected:
 /* Class for homogenizing the static dielectric constant of two-phase sphere packings (Strong-contrast approach). */
 struct Homo_DielectricConstant_dynamic_SCA : public Homo_DielectricConstant_static_SCA {
 
+	/** \brief Construct an empty strong-contrast dynamic dielectric homogenizer. (CLAUDE) */
 	Homo_DielectricConstant_dynamic_SCA() : Homo_DielectricConstant_static_SCA() {};
+	/** \brief Construct a strong-contrast dynamic dielectric homogenizer with an incident wavevector. (CLAUDE)
+	 *  \param src       The two-phase dispersion (geometry).
+	 *  \param epsilon1  Permittivity of the matrix phase.
+	 *  \param epsilon2  Permittivity of the inclusion phase.
+	 *  \param k1        Wavevector of the field in the reference phase. */
 	Homo_DielectricConstant_dynamic_SCA(const TwoPhaseDispersion& src, double epsilon1, double epsilon2, const ConstantTensor & k1);
+	/** \brief Destructor. (CLAUDE) */
 	~Homo_DielectricConstant_dynamic_SCA() {};
 
+	/** \brief Redefine the geometry, permittivities, and incident wavevector. (CLAUDE)
+	 *  \param src       The two-phase dispersion (geometry).
+	 *  \param epsilon1  Permittivity of the matrix phase.
+	 *  \param epsilon2  Permittivity of the inclusion phase.
+	 *  \param k1        Wavevector of the field in the reference phase. */
 	void RedefineDynamicProblem(const TwoPhaseDispersion& src, double epsilon1, double epsilon2, const ConstantTensor & k1);
+	/** \brief Set the incident wavevector. (CLAUDE)
+	 *  \param k1  Wavevector of the field in the reference phase. */
 	void RedefineWavevector(const ConstantTensor & k1);
-	/* Initialize the problem.
-	* @param[in] direction	The direction of external static field. */
+	/** \brief Initialize the problem.
+	 *  \param[in] direction	The direction of external static field. */
 	virtual void Prepare(size_t direction = 0);
+	/** \brief Advance the iterative solver by a number of stages. (CLAUDE)
+	 *  \param steps  Number of iteration stages. */
 	virtual void Iterate(size_t steps = 1);
+	/** \brief Toggle the strong-contrast expansion. (CLAUDE)
+	 *  \param use_sc  true = use the strong-contrast expansion. */
 	virtual void Use_Strong_Contrast(bool use_sc);
 	//	virtual void Run(double tol_field = 1e-10, double tol_div = 1e-14);
 
@@ -132,14 +212,22 @@ struct Homo_DielectricConstant_dynamic_SCA : public Homo_DielectricConstant_stat
 	//	void Print_GreenFn_2D(const std::string & prefix) const;
 
 protected:
+	/** \brief Compute the Fourier transform of the dyadic G-function Green's tensor. (CLAUDE) */
 	virtual void ComputeG_Fourier();
+	/** \brief Compute the Fourier transform of the dyadic H-function Green's tensor. (CLAUDE) */
 	virtual void ComputeH_Fourier();
 	ConstantTensor k1;
 	bool use_strong_contrast = false;
 };
 
 
+/** \brief Compute the (brute-force) discrete Fourier transform of a tensor field. (CLAUDE)
+ *  \param[out] out  The transformed tensor field.
+ *  \param in        The input tensor field. */
 void DFT(TensorField & out, const TensorField &in);
+/** \brief Compute the (brute-force) inverse discrete Fourier transform of a tensor field. (CLAUDE)
+ *  \param[out] out  The inverse-transformed tensor field.
+ *  \param in        The input tensor field. */
 void IDFT(TensorField & out, const TensorField &in);
 
 
@@ -913,8 +1001,8 @@ void Homo_DielectricConstant_static_SCA::Iterate(size_t steps) {
 
 /* Iteratively solve the equation until achieving the mean change in field is smaller than [tol_field]
  and the mean divergence of the D field is smaller than [tol_div].
- @param[in] tol_field	The target tolerance in the mean change in the local cavity field
- @param[in] tol_div		The target tolerance in the mean divergence of the D field. */
+ \param[in] tol_field	The target tolerance in the mean change in the local cavity field
+ \param[in] tol_div		The target tolerance in the mean divergence of the D field. */
 void Homo_DielectricConstant_static_SCA::Run(double tol_field, double tol_div)
 {
 	bool good_solution = false;
@@ -958,7 +1046,7 @@ bool Homo_DielectricConstant_static_SCA::CheckDivergenceFree(double tolerance)
 }
 
 /* Compute the difference in F_direct at the current stage and the previous stage.
- * @param[in] tol_field	The tolerance in */
+ * \param[in] tol_field	The tolerance in */
 bool Homo_DielectricConstant_static_SCA::CheckConvergence(double tol_field)
 {
 	F_direct_prev -= F_direct;

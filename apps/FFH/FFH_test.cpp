@@ -2,8 +2,21 @@
 #include <GeometryVector.h>
 #include <vector>
 
+/** \brief Build a random checkerboard two-phase dispersion. (CLAUDE)
+ *  \param[out] dispersion  The resulting two-phase dispersion.
+ *  \param num_domains      Number of checkerboard domains per side (must be even).
+ *  \param num_pixels       Number of grid pixels per side.
+ *  \param rng              Random number generator. */
 void RandomCheckerBoard(TwoPhaseDispersion &, int num_domains, int num_pixels, RandomGenerator & rng);
+/** \brief Build a periodic checkerboard two-phase dispersion. (CLAUDE)
+ *  \param[out] dispersion  The resulting two-phase dispersion.
+ *  \param num_domains      Number of checkerboard domains per side (must be even).
+ *  \param num_pixels       Number of grid pixels per side. */
 void PeriodicCheckerBoard(TwoPhaseDispersion &, int num_domains, int num_pixels);
+/** \brief Build a periodic alternating-strip two-phase dispersion. (CLAUDE)
+ *  \param[out] dispersion  The resulting two-phase dispersion.
+ *  \param num_domains      Number of strip domains per side (must be even).
+ *  \param num_pixels       Number of grid pixels per side. */
 void PeriodicStrips(TwoPhaseDispersion &, int num_domains, int num_pixels);
 
 size_t FFH_verbosity = 2;
@@ -13,15 +26,15 @@ size_t FFH_verbosity = 2;
 
 #include "FFH_padded.h"
 
-/* A function to measure the four-point correlation function for 1D point patterns at a given set of points,
+/** \brief A function to measure the four-point correlation function for 1D point patterns at a given set of points,
  * i.e., x_{21} = x0.x[0] + x.x[0] * r, x_{31} = x0.x[1] + x.x[1] * r, x_{41} = x0.x[2] + x.x[2] * r,
- * @param[in]	getc	A function to generate configurations. 
- * @param[in]	num_config	The number of configurations.
- * @param[in]	x		direction of increase.
- * @param[in]	dx		increment in r.
- * @param[in]	Rmax	largest value of r.
- * @param[in,out]	result	result[i].x[0] = r, result[i].x[1] = g4, result[i].x[2] = standard error in g4
- * @param[in]	x0		The origin. */
+ * \param[in]	getc	A function to generate configurations.
+ * \param[in]	num_config	The number of configurations.
+ * \param[in]	x		direction of increase.
+ * \param[in]	dx		increment in r.
+ * \param[in]	Rmax	largest value of r.
+ * \param[in,out]	result	result[i].x[0] = r, result[i].x[1] = g4, result[i].x[2] = standard error in g4
+ * \param[in]	x0		The origin. */
 void Measure_g4(std::function<const Configuration(size_t i)> getc, size_t num_config,
 	const GeometryVector & x, double dx, double Rmax, std::vector<GeometryVector> & result, const GeometryVector & x0 = GeometryVector(0, 0, 0)) {
 
@@ -79,13 +92,13 @@ void Measure_g4(std::function<const Configuration(size_t i)> getc, size_t num_co
 }
 
 
-/* A function to measure the three-point correlation function for 1D point patterns at a given set of points,
+/** \brief A function to measure the three-point correlation function for 1D point patterns at a given set of points,
  * i.e., x_{21} and x_{31} in [-R_max, R_max]^2,
- * @param[in]	getc	A function to generate configurations. 
- * @param[in]	num_config	The number of configurations.
- * @param[in]	dx		increment in r and bin size.
- * @param[in]	Rmax	largest value of r.
- * @param[in,out]	g3	result[i].x[0] = x_{21}, result[i].x[1] = x_{31}, result[i].x[2] = g3, result[i].x[3] = standard error in g3. */
+ * \param[in]	getc	A function to generate configurations.
+ * \param[in]	num_config	The number of configurations.
+ * \param[in]	dx		increment in r and bin size.
+ * \param[in]	Rmax	largest value of r.
+ * \param[in,out]	g3	result[i].x[0] = x_{21}, result[i].x[1] = x_{31}, result[i].x[2] = g3, result[i].x[3] = standard error in g3. */
 void Measure_g3(std::function<const Configuration(size_t i)> getc, size_t num_config,
 	double dx, double Rmax, std::vector<GeometryVecotr> & g3) {
 
@@ -168,6 +181,12 @@ void Measure_g3(std::function<const Configuration(size_t i)> getc, size_t num_co
 }
 
 
+/** \brief Measure the three-point correlation function and store it in a TensorField. (CLAUDE)
+ *  \param[in] getc        A function to generate configurations.
+ *  \param[in] num_config  The number of configurations.
+ *  \param[in] dx          Increment in r and bin size.
+ *  \param[in] Rmax        Largest value of r.
+ *  \param[in,out] g3      Scalar tensor field receiving g3 and its standard error. */
 void Measure_g3(std::function<const Configuration(size_t i)> getc, size_t num_config,
 	double dx, double Rmax, TensorField & g3) {
 
@@ -239,7 +258,12 @@ void Measure_g3(std::function<const Configuration(size_t i)> getc, size_t num_co
 
 }
 
-/* compute F(Q) for the Zd*/
+/** \brief compute F(Q) for the Zd
+ *  \param d               Spatial dimension.
+ *  \param packingfraction Packing fraction of the lattice.
+ *  \param k_max           Largest wavenumber Q.
+ *  \param k_min           Smallest wavenumber Q (and step).
+ *  \param[out] FQ         Resulting (Q, F(Q)) pairs. */
 void ComputeAttenuationFn_Zd(int d, double packingfraction, double k_max, double k_min, std::vector<GeometryVector> & FQ) {
 
 	double a = pow(packingfraction / HyperSphere_Volume(d, 1.0), 1.0 / (double)d);
@@ -277,6 +301,12 @@ void ComputeAttenuationFn_Zd(int d, double packingfraction, double k_max, double
 		}
 }
 
+/** \brief Compute the local attenuation function F(Q) for the Zd lattice. (CLAUDE)
+ *  \param d               Spatial dimension.
+ *  \param packingfraction Packing fraction of the lattice.
+ *  \param k_max           Largest wavenumber Q.
+ *  \param k_min           Smallest wavenumber Q (and step).
+ *  \param[out] FQ         Resulting (Q, F(Q)) pairs. */
 void ComputeLocalAttenuationFn_Zd(int d, double packingfraction, double k_max, double k_min, std::vector<GeometryVector> & FQ) {
 
 	double a = pow(packingfraction / HyperSphere_Volume(d, 1.0), 1.0 / (double)d);
@@ -316,8 +346,15 @@ void ComputeLocalAttenuationFn_Zd(int d, double packingfraction, double k_max, d
 
 
 
+/** \brief Compute the effective dielectric constant of a cubic lattice via the strong-contrast formula. (CLAUDE)
+ *  \param d               Spatial dimension.
+ *  \param packingfraction Packing fraction of the lattice.
+ *  \param k_max           Largest wavenumber q.
+ *  \param k_min           Smallest wavenumber q (and step).
+ *  \param epsilon2        Permittivity of the inclusion phase.
+ *  \param[out] result     Resulting (q, epsilon_e) pairs. */
 void ComputeDielectricCubicLattice(int d, double packingfraction, double k_max, double k_min, double epsilon2, std::vector<GeometryVector> & result) {
-	
+
 	double a = pow(packingfraction / HyperSphere_Volume(d, 1.0), 1.0 / (double)d);
 	double phi2 = packingfraction;
 	double beta = (epsilon2 - 1.0) / (epsilon2 + d-1.0);
@@ -388,6 +425,10 @@ void ComputeDielectricCubicLattice(int d, double packingfraction, double k_max, 
 }
 
 
+/** \brief Estimate the pore-size distribution moments of a sphere packing via Monte Carlo sampling. (CLAUDE)
+ *  \param src           The sphere packing.
+ *  \param[out] Moments  The first two moments of the scaled pore radius.
+ *  \param num_sampling  Number of random sample points. */
 void MeasurePoreSize(SpherePacking & src, GeometryVector & Moments, int num_sampling = 10000){
 	
 	double dx = 0.5*src.NearestParticleDistance(0);
@@ -430,6 +471,9 @@ void MeasurePoreSize(SpherePacking & src, GeometryVector & Moments, int num_samp
 	std::cout << "End Measurement\n";
 }
 
+/** \brief Compute a normalized measure of the curl of the electric field in Fourier space. (CLAUDE)
+ *  \param src  A static dielectric problem with computed fields.
+ *  \return     The normalized RMS magnitude of the transverse (curl) component. */
 double curl(const StaticDielectricProblem & src) {
 	TensorField E, kE;
 	src.ComputeField_Fourier(E);
@@ -477,6 +521,8 @@ double curl(const StaticDielectricProblem & src) {
 	return sqrt(value);
 }
 
+/** \brief Test/scratch driver exercising the various homogenization solvers. (CLAUDE)
+ *  \return 0 on success. */
 int main() {
 	char tempstring[1000] = {};
 	std::istream & ifile = std::cin;

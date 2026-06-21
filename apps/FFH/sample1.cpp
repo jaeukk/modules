@@ -7,6 +7,8 @@
 
 size_t FFH_verbosity = 2;
 
+/** \brief Sample driver: homogenize a simple-cubic sphere packing (static dielectric). (CLAUDE)
+ *  \return 0 on success. */
 int main() {
 	char tempstring[1000] = {};
 	std::istream & ifile = std::cin;

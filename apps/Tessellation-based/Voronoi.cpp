@@ -34,6 +34,11 @@ typedef Delaunay::Vertex_handle Vertex_handle;
 typedef Delaunay::Simplex_handle Simplex_handle;
 typedef Delaunay::Point_d Point;
 
+/** \brief Convert a CGAL d-dimensional point to a GeometryVector. (CLAUDE)
+ *  \tparam point  CGAL point type exposing cartesian(i).
+ *  \param p  CGAL point to convert.
+ *  \param d  Spatial dimension.
+ *  \return   GeometryVector holding the point's Cartesian coordinates. */
 template <typename point> GeometryVector CGALPoint2GeometryVector(const point & p, DimensionType d)
 {
 	GeometryVector result(d);
@@ -42,7 +47,11 @@ template <typename point> GeometryVector CGALPoint2GeometryVector(const point & 
 	return result;
 }
 
-// test if point "tested" is on the convex hull
+/** \brief test if point "tested" is on the convex hull (of tested + neighbors).
+ *  \param tested     Point to test.
+ *  \param neighbors  Other points defining the convex hull.
+ *  \param d          Spatial dimension.
+ *  \return           true if "tested" lies on the convex hull. */
 bool IsOnConvexHull(const GeometryVector & tested, const std::vector<GeometryVector> & neighbors, DimensionType d)
 {
 	ConvexHull ch(d);
@@ -218,6 +227,11 @@ void GetVoronoiCell(const PeriodicCellList<Empty> & c, size_t i, std::vector<Geo
 }
 
 const double Perturbation = 0;
+/** \brief Volume of the convex hull of the given vertices, via simplex decomposition. (CLAUDE)
+ *  \param Vertices  Vertices whose convex-hull volume is computed.
+ *  \param d         Spatial dimension.
+ *  \param gen       Random generator used for an optional vertex perturbation.
+ *  \return          Volume of the convex hull. */
 double PolygonVolume_ConvexHull(const std::vector<GeometryVector> & Vertices, DimensionType d, RandomGenerator & gen)
 {
 	if (Vertices.size() == 0)
@@ -1012,11 +1026,19 @@ void GetVoronoiCell(const PeriodicCellList<Empty> & c, size_t i, std::vector<Geo
 	std::cerr << "Error : CGAL not enabled!\n";
 	return;
 }
+/** \brief CGAL-disabled stub of PolygonVolume; prints an error and returns 0. (CLAUDE)
+ *  \param Vertices  Unused (CGAL not enabled).
+ *  \param d         Unused (CGAL not enabled).
+ *  \return          0. */
 double PolygonVolume(std::vector<GeometryVector> Vertices, DimensionType d)
 {
 	std::cerr << "Error : CGAL not enabled!\n";
 	return 0;
 }
+/** \brief CGAL-disabled stub of PlotVoronoi2D; prints an error and returns. (CLAUDE)
+ *  \param prefix  Unused (CGAL not enabled).
+ *  \param List    Unused (CGAL not enabled).
+ *  \param remark  Unused (CGAL not enabled). */
 void PlotVoronoi2D(std::string prefix, const Configuration & List, const std::string & remark)
 {
 	std::cerr << "Error : CGAL not enabled!\n";
@@ -1696,9 +1718,22 @@ void VoronoiCellRoutine_radial(const SpherePacking &c, int numThreads, std::vect
 }
 
 #else
+	/** \brief voro++-disabled stub of VoronoiCellRoutine; prints an error. (CLAUDE)
+	 *  \param c           Unused (voro++ not enabled).
+	 *  \param cellVolume  Unused (voro++ not enabled).
+	 *  \param vertices    Unused (voro++ not enabled).
+	 *  \param faces       Unused (voro++ not enabled).
+	 *  \param centroids   Unused (voro++ not enabled). */
 	void VoronoiCellRoutine(const PeriodicCellList<Empty> &c, std::vector<double> &cellVolume, std::vector<int> & vertices, std::vector<int> & faces, std::vector<GeometryVector> & centroids) {
 		std::cout << "Please include \"VORO++\"\n";
 	}
+	/** \brief voro++-disabled stub of VoronoiCellRoutine_radial; prints an error. (CLAUDE)
+	 *  \param c           Unused (voro++ not enabled).
+	 *  \param cellVolume  Unused (voro++ not enabled).
+	 *  \param vertices    Unused (voro++ not enabled).
+	 *  \param faces       Unused (voro++ not enabled).
+	 *  \param centroids   Unused (voro++ not enabled).
+	 *  \param radial      Unused (voro++ not enabled). */
 	void VoronoiCellRoutine_radial(const SpherePacking &c, std::vector<double> &cellVolume, std::vector<int> & vertices, std::vector<int> & faces, std::vector<GeometryVector> & centroids, bool radial = false) {
 		std::cout << "Please include \"VORO++\"\n";
 	}

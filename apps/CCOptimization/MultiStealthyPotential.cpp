@@ -10,12 +10,9 @@
 
 
 
-/**
- * @brief Assign a particle to a species and refresh bookkeeping indices.
- * 
- * @param prt_idx Global particle index in the full configuration.
- * @param species Target species id.
- */
+/** \brief Assign a particle to a species and refresh bookkeeping indices.
+ *  \param prt_idx Global particle index in the full configuration.
+ *  \param species Target species id. */
 void MultiStealthyPotential::SetSpeciesOfParticle(size_t prt_idx, size_t species)
 {
 	this->species_constraints[species].idx.emplace_back(prt_idx);
@@ -55,23 +52,17 @@ void MultiStealthyPotential::SetSpeciesOfParticle(size_t prt_idx, size_t species
 
 
 
-/**
- * @brief Append a Fourier-space constraint to a given species.
- * 
- * @param species Species id to target.
- * @param k Wavevector for the constraint.
- * @param V List of constraint coefficients.
- */
+/** \brief Append a Fourier-space constraint to a given species.
+ *  \param species Species id to target.
+ *  \param k Wavevector for the constraint.
+ *  \param V List of constraint coefficients. */
 void MultiStealthyPotential::AddConstraint(size_t species, const GeometryVector &k, std::vector<double> V)
 {
 	this->species_constraints[species].CCPotential->AddConstraint(k, V);
 }
 
-/**
- * @brief Compute the structure factor contributions for a species.
- * 
- * @param s Species id to evaluate.
- */
+/** \brief Compute the structure factor contributions for a species.
+ *  \param s Species id to evaluate. */
 void MultiStealthyPotential::GetRho(size_t s)
 {
 	assert(this->pConfig!=nullptr);
@@ -101,11 +92,8 @@ void MultiStealthyPotential::GetRho(size_t s)
 	// this->species_constraints[s].RhoValid = true;
 }
 
-/**
- * @brief Print all species constraints and indices.
- * 
- * @param ofile Destination output stream.
- */
+/** \brief Print all species constraints and indices.
+ *  \param ofile Destination output stream. */
 void MultiStealthyPotential::PrintConstraints(std::ostream &ofile)
 {
 	for (size_t s = 0; s < this->species_constraints.size(); s ++ ){
@@ -124,10 +112,8 @@ void MultiStealthyPotential::PrintConstraints(std::ostream &ofile)
 	}
 }
 
-/**
- * @brief Set the working configuration from particle positions.
- * @param Position Full particle configuration.
- */
+/** \brief Set the working configuration from particle positions.
+ *  \param Position Full particle configuration. */
 void MultiStealthyPotential::SetConfiguration(const Configuration &Position)
 {
 	if (this->rc < 0.0){
@@ -155,22 +141,16 @@ void MultiStealthyPotential::SetConfiguration(const Configuration &Position)
 	}
 }
 
-/**
- * @brief Set particle radii for a configuration.
- * 
- * @param radii Radii list matching particles.
- */
+/** \brief Set particle radii for a configuration.
+ *  \param radii Radii list matching particles. */
 void MultiStealthyPotential::SetSecureRadii(const std::vector<double> &radii)
 {
 	assert(radii.size() == this->pConfig->NumParticle());
 	this->radii = std::vector<double> (radii);
 }
 
-/**
- * @brief Initialize configuration and radii from a packing object.
- * 
- * @param pck Input sphere packing.
- */
+/** \brief Initialize configuration and radii from a packing object.
+ *  \param pck Input sphere packing. */
 void MultiStealthyPotential::SetPacking(const SpherePacking &pck)
 {
 	if (this->rc < 0.0){
@@ -197,9 +177,7 @@ void MultiStealthyPotential::SetPacking(const SpherePacking &pck)
 	}
 }
 
-/**
- * @brief Rebuild sub-configurations for each species.
- */
+/** \brief Rebuild sub-configurations for each species. */
 void MultiStealthyPotential::UpdateSubconfigs()
 {
 	if (! this->SubconfigValid){
@@ -222,11 +200,8 @@ void MultiStealthyPotential::UpdateSubconfigs()
 	this->SubconfigValid = true;
 }
 
-/**
- * @brief Compute total energy from stealthy and repulsive contributions.
- * 
- * @return Total potential energy.
- */
+/** \brief Compute total energy from stealthy and repulsive contributions.
+ *  \return Total potential energy. */
 double MultiStealthyPotential::Energy()
 {
 	double CC = 0.0, CP = 0.0;
@@ -276,12 +251,9 @@ double MultiStealthyPotential::Energy()
 	return this->u0 * CC + this->e0 * CP;
 }
 
-/**
- * @brief Evaluate force on a single particle.
- * 
- * @param force Output force vector.
- * @param i Particle index.
- */
+/** \brief Evaluate force on a single particle.
+ *  \param force Output force vector.
+ *  \param i Particle index. */
 void MultiStealthyPotential::Force(GeometryVector &force, size_t i)
 {
 	// stealthy potential contribution
@@ -333,11 +305,8 @@ void MultiStealthyPotential::Force(GeometryVector &force, size_t i)
 	force = force_CP + force_CC;
 }
 
-/**
- * @brief Evaluate forces for all particles.
- * 
- * @param results Output vector of forces.
- */
+/** \brief Evaluate forces for all particles.
+ *  \param results Output vector of forces. */
 void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 {
 	long end = this->pConfig->NumParticle();

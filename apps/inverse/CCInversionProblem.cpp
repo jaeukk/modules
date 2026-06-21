@@ -1,5 +1,10 @@
 #include "CCInversionProblem.h"
 
+/** \brief Generate a Poisson (uniformly random) point configuration in a unit cubic box scaled to N particles. (CLAUDE)
+ *  \param dim  Spatial dimension.
+ *  \param N    Number of points to insert (the box is resized so that the number density is unity).
+ *  \param g    Random generator used to draw the relative coordinates.
+ *  \return     The generated Poisson configuration. */
 Configuration GeneratePoisson(int dim, int N, RandomGenerator & g){
 	Configuration c = GetUnitCubicBox(dim);
 	c.Resize((double)N);
@@ -695,6 +700,14 @@ bool FrankInvCCUniqueTest4(const Configuration & target, size_t Nc, size_t numCo
 // dim=1, i=1 : Poisson 
 // dim=1, i=2 : non-Bravais lattice
 // dim=2, i=0 :
+/** \brief Build a target configuration of a requested type (perturbed lattice, Poisson, or non-Bravais lattice) for the inversion tests. (CLAUDE)
+ *  \param i          Index of the target (used to seed the random generator so successive targets differ).
+ *  \param type       Target family: 0=perturbed lattice, 1=Poisson, 2=non-Bravais lattice (d=1 only).
+ *  \param N          Number of particles in the configuration.
+ *  \param basis      Lattice basis vectors; their count sets the spatial dimension.
+ *  \param parameter  Perturbation magnitude for type 0 (maximum random displacement); unused by other types.
+ *  \param[out] systN  If non-null, receives a short name tag describing the generated system (e.g. "_PL_0.100", "_Poisson", "_nonBravais").
+ *  \return           The generated target configuration. */
 Configuration GetTarget(size_t i, int type, int N, std::vector<GeometryVector> & basis, double parameter, char * systN) {
 	Configuration c;
 	int dim = (int)basis.size();

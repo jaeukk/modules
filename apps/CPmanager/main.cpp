@@ -33,6 +33,10 @@ void ReadFunction(std::vector<GeometryVector> & result, const std::string & InFi
 
 //#include <Windows.h>
 #include <algorithm>
+/** \brief Entry point dispatching ConfigurationPack <-> txt conversion utilities by option code. (CLAUDE)
+ *  \param argc  Argument count; argv[1] selects the mode and the remaining entries are mode-specific parameters.
+ *  \param argv  Argument vector: argv[1] is the option (0=CheckCP statistics, 1=CP2txt, 2=txt2CP), followed by the parameters required for that option.
+ *  \return      Process exit status (0 on normal completion). */
 int main(int argc, char ** argv) {
 
 	//char tempstring[1000];

@@ -7,6 +7,10 @@
 
 size_t FFH_verbosity = 2;
 
+/** \brief Build a periodic checkerboard two-phase dispersion. (CLAUDE)
+ *  \param[out] out      The resulting two-phase dispersion.
+ *  \param num_domains   Number of checkerboard domains per side (must be even).
+ *  \param num_pixels    Number of grid pixels per side. */
 void PeriodicCheckerBoard(TwoPhaseDispersion & out, int num_domains, int num_pixels)
 {
 	SpherePacking c(GetUnitCubicBox(2, 1), 0.0);
@@ -67,6 +71,8 @@ void PeriodicCheckerBoard(TwoPhaseDispersion & out, int num_domains, int num_pix
 	}
 }
 
+/** \brief Sample driver: homogenize a periodic checkerboard (static dielectric). (CLAUDE)
+ *  \return 0 on success. */
 int main() {
 	char tempstring[1000] = {};
 	std::istream & ifile = std::cin;

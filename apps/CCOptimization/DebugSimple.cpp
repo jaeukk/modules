@@ -207,8 +207,14 @@ void SetTrialMovement(std::vector<SimpleHarmonic> &pot, std::vector<Configuratio
 
 void SetTrialMovement(std::vector<SimpleHarmonic> &pot, std::vector<RandomGenerator> & g, double &dx, double T, double lowAccept, double upperAccept, int numSteps);
 
-//do the trial movement du for particle i in the configuration, and if it is acceptable, then keep going
-//if the movement is accepted then return 1, otherwise return 0;
+/** \brief Try displacement du for particle i and accept it by the Metropolis rule; keep going if acceptable.
+ *  \param pot          Harmonic potential whose energy change is evaluated.
+ *  \param conf         Configuration being evolved.
+ *  \param g            Random number generator for the acceptance test.
+ *  \param temperature  Temperature of the Metropolis acceptance.
+ *  \param du           Trial displacement for particle i.
+ *  \param i            Index of the particle to move.
+ *  \return             1 if the move is accepted, 0 otherwise. */
 double MCevolve(SimpleHarmonic &pot, Configuration & conf, RandomGenerator &g, const double temperature, GeometryVector & du, size_t i) {
 	double result = 0;
 	double delta_E = pot.Delta_energy(i, du);
@@ -222,6 +228,13 @@ double MCevolve(SimpleHarmonic &pot, Configuration & conf, RandomGenerator &g, c
 	return result;
 }
 
+/** \brief Try displacement du for particle i using the potential's own configuration and accept it by the Metropolis rule. (CLAUDE)
+ *  \param pot          Harmonic potential whose energy change is evaluated.
+ *  \param g            Random number generator for the acceptance test.
+ *  \param temperature  Temperature of the Metropolis acceptance.
+ *  \param du           Trial displacement for particle i.
+ *  \param i            Index of the particle to move.
+ *  \return             1 if the move is accepted, 0 otherwise. */
 double MCevolve(SimpleHarmonic &pot, RandomGenerator &g, const double temperature, GeometryVector & du, size_t i) {
 	double result = 0;
 	double delta_E = pot.Delta_energy(i, du);
@@ -235,6 +248,12 @@ double MCevolve(SimpleHarmonic &pot, RandomGenerator &g, const double temperatur
 	return result;
 }
 
+/** \brief Make one trial move for every particle in every configuration and return the overall acceptance rate. (CLAUDE)
+ *  \param pot          List of harmonic potentials, one per configuration.
+ *  \param g            List of random number generators, one per configuration.
+ *  \param temperature  Temperature of the Metropolis acceptance.
+ *  \param dx           Maximum magnitude of a trial displacement component.
+ *  \return             Fraction of accepted moves over all particles and configurations. */
 double MCevolve(std::vector<SimpleHarmonic> &pot, std::vector<RandomGenerator> &g, const double temperature, const double dx) {//make trial moves for all particles in all configurations
 	if (pot.size() == g.size()) {
 		double rate = 0;
@@ -270,6 +289,14 @@ double MCevolve(std::vector<SimpleHarmonic> &pot, std::vector<RandomGenerator> &
 
 #include "TilingProblem.h"
 
+/** \brief Convert a monodisperse packing into a polydisperse one by sizing particles to their Voronoi-cell volumes. (CLAUDE)
+ *  \param config       Input packing whose Voronoi cells are measured.
+ *  \param resultConfig Output packing with radii set from Voronoi-cell volumes.
+ *  \param targetPhi    Target packing fraction of the result.
+ *  \param Volumes      Output Voronoi-cell volume of each particle.
+ *  \param numThreads   Number of OpenMP threads to use.
+ *  \param numVertices  Optional output count of vertices of each Voronoi cell (may be nullptr).
+ *  \return             Ratio of the largest-sphere volume to the maximum Voronoi-cell volume. */
 double MakeMono2Poly_parallel_test(const SpherePacking & config, SpherePacking & resultConfig, double targetPhi, std::vector<double> &Volumes, int numThreads, std::vector<int> * numVertices) {
 	//make resultConfig empty
 	resultConfig = SpherePacking(config);
@@ -508,6 +535,9 @@ double MakeMono2Poly_parallel_test(const SpherePacking & config, SpherePacking &
 	thickness 2		0.0		0.0		phase
 	...
 */
+/** \brief Convert a 1D sphere packing into the ordered sequence of phase-1 (particle) and phase-2 (matrix) layer thicknesses. (CLAUDE)
+ *  \param c  Input 1D sphere packing.
+ *  \param x  Output list of layers; each entry stores a thickness and a phase label (1=particle, 2=matrix). */
 void SpherePacking2Layers(const SpherePacking & c, std::vector<GeometryVector> & x) {
 	//box size
 	double xi = 0.0;	double xf = sqrt(c.GetBasisVector(0).Modulus2());
@@ -557,6 +587,9 @@ void SpherePacking2Layers(const SpherePacking & c, std::vector<GeometryVector> &
 	std::cout << "Total size = " << total << "\t";
 }
 
+/** \brief Reorder layers so the two phases strictly alternate (chirp the layered pattern). (CLAUDE)
+ *  \param input   Input list of layers tagged by phase.
+ *  \param result  Output list of layers with the two phases interleaved. */
 void chirping(const std::vector<GeometryVector> & input, std::vector<GeometryVector> & result ) {
 	result.clear();	result.reserve(input.size());
 
@@ -601,6 +634,9 @@ void chirping(const std::vector<GeometryVector> & input, std::vector<GeometryVec
 /*
 	phase 2 -> particle
 */
+/** \brief Rebuild a 1D sphere packing from a sequence of layer thicknesses. (CLAUDE)
+ *  \param thickness  Input list of layers; each entry stores a thickness and a phase label.
+ *  \param c          Output 1D sphere packing reconstructed from the particle-phase layers. */
 void Layer2SpherePacking(const std::vector<GeometryVector> & thickness, SpherePacking & c) {
 	double total = 0;
 	for (int i = 0; i < thickness.size(); i++)
@@ -628,6 +664,10 @@ void Layer2SpherePacking(const std::vector<GeometryVector> & thickness, SpherePa
 #include "ParticleShapes.h"
 #include "Dispersions.h"
 
+/** \brief Convert a sphere packing into a dispersion of cubes, sizing each cube from its sphere radius. (CLAUDE)
+ *  \param initConfig       Input sphere packing.
+ *  \param resultConfig     Output cube dispersion.
+ *  \param packingFraction  Target packing fraction; negative selects inscribed cubes. */
 void SpherePacking2DispersionCube(const SpherePacking & initConfig, Dispersion_cube & resultConfig, double packingFraction=-1) {
 	DimensionType d = initConfig.GetDimension();
 	int numPrts = initConfig.NumParticle();
@@ -669,11 +709,16 @@ public:
 		sigma;	//< length scale for LJ
 	ShiftedCCPotential * CCPotential;
 
+	/** \brief Construct the potential with a stealthy collective-coordinate kernel and a soft-core repulsion. (CLAUDE)
+	 *  \param dim      Spatial dimension of the configuration.
+	 *  \param epsilon  Energy scale of the soft-core repulsion.
+	 *  \param sigma    Length scale (contact diameter) of the soft-core repulsion. */
 	RepulsiveCCPotential(DimensionType dim, double epsilon, double sigma) : Potential (dim) {
 		CCPotential = new ShiftedCCPotential(dim);
 		e0 = epsilon;	this->sigma = sigma;	this->rc = sigma;/*this->rc = pow(2, 1.0/6.0)*sigma;*/
 	}
 
+	/** \brief Destructor. (CLAUDE) */
 	virtual ~RepulsiveCCPotential() {}
 
 	/** \brief Compute the truncated LJ potential and collective-coordiante potentials for a given configuraiton. */
@@ -703,10 +748,9 @@ public:
 		return LJ + CC;
 	}
 
-	/** /brief Compute the force exerted at particle i
- * 	 * @param[out] force	Net force in a GeometryVector.
- * 	 	 * @param[in] i			Particle index.
- * 	 	 	 */
+	/** \brief Compute the force exerted at particle i
+	 *  \param[out] force	Net force in a GeometryVector.
+	 *  \param[in] i			Particle index. */
 	virtual void Force(GeometryVector & force, size_t i) {
 		GeometryVector force_LJ(static_cast<int> (this->Dimension));
 
@@ -726,8 +770,8 @@ public:
 		force = force_LJ + force_cc;
 	}
 
-	/** /brief Compute the force exerted at all particles.
- * 	 * @param[out] result[i]	Force exerted at particle i.	 */
+	/** \brief Compute the force exerted at all particles.
+	 *  \param[out] result	result[i] is the force exerted at particle i. */
 	virtual void AllForce(std::vector<GeometryVector> & result) {
 		this->CCPotential->AllForce(result);
 		this->pConfig->PrepareIterateThroughNeighbors(this->rc);
@@ -740,7 +784,7 @@ public:
 	}
 
 	/** \brief Define a configuration to compute energy and forces.
- * 	 * @param c	A configuration of interest.	 */
+	 *  \param c	A configuration of interest. */
 	virtual void SetConfiguration(const Configuration & c) {
 		this->pConfig = &c;
 		this->CCPotential->SetConfiguration(c);
@@ -748,6 +792,9 @@ public:
 
 };
 
+/** \brief Relax a configuration toward a stealthy ground state, logging energy and saving snapshots along the way. (CLAUDE)
+ *  \param pConfig  Configuration to evolve (modified in place).
+ *  \param chi      Target stealthiness parameter setting the number of constrained wavevectors. */
 void ObserveEvl(Configuration &pConfig, double chi) {
 	DimensionType Dimension = pConfig.GetDimension();
 	size_t NumP = pConfig.NumParticle();
@@ -822,6 +869,8 @@ void ObserveEvl(Configuration &pConfig, double chi) {
 	WriteFunction(log, "Evolution/logs_RSA2SHU");
 }
 
+/** \brief Scratch driver collecting ad-hoc experiments (hard-sphere fluids, stealthy packings, etc.). (CLAUDE)
+ *  \return  0 on completion. */
 int DebugSimple()
 {
 
@@ -6033,6 +6082,14 @@ return 0;
 	
 
 
+/** \brief Auto-tune the trial-displacement size dx so the MC acceptance rate falls within a target window. (CLAUDE)
+ *  \param pot          List of harmonic potentials, one per configuration.
+ *  \param g            List of random number generators, one per configuration.
+ *  \param dx           In/out maximum trial-displacement size, adjusted until acceptance is in range.
+ *  \param T            Temperature of the Metropolis acceptance.
+ *  \param lowAccept    Lower bound of the target acceptance rate.
+ *  \param upperAccept  Upper bound of the target acceptance rate.
+ *  \param numSteps     Number of trial moves per configuration used to estimate the acceptance rate. */
 void SetTrialMovement(std::vector<SimpleHarmonic> &pot, std::vector<RandomGenerator>& g, double &dx, double T, double lowAccept, double upperAccept, int numSteps) {
 	double acceptRate = 0.0;
 	int numConfig = pot.size();

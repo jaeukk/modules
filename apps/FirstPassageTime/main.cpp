@@ -21,21 +21,64 @@ size_t Verbosity = 2;  // each executable defines it (new_c++ convention)
 #include "FirstPassageTime.h"
 #include <chrono>
 
+/** \brief Write a list of GeometryVectors as columns to an output stream, with header fields. (CLAUDE)
+ *  \param result  Data rows to write.
+ *  \param ofile   Output stream to write to.
+ *  \param fields  Header/comment lines emitted before the data. */
 void WriteFunction(const std::vector<GeometryVector> & result, std::ostream & ofile, const std::vector<std::string> & fields);
+/** \brief Write a list of GeometryVectors to a file given by prefix, with header fields. (CLAUDE)
+ *  \param result         Data rows to write.
+ *  \param OutFilePrefix  Output file path prefix.
+ *  \param fields         Header/comment lines emitted before the data. */
 void WriteFunction(const std::vector<GeometryVector> & result, const std::string & OutFilePrefix, const std::vector<std::string> & fields);
+/** \brief Read a list of GeometryVectors from an input stream, taking a fixed number of columns. (CLAUDE)
+ *  \param result      Output vector populated with the parsed rows.
+ *  \param ifile       Input stream to read from.
+ *  \param NumColumns  Number of columns to read per row. */
 void ReadFunction(std::vector<GeometryVector> & result, std::istream & ifile, size_t NumColumns);
+/** \brief Read a list of GeometryVectors from a file given by prefix, taking a fixed number of columns. (CLAUDE)
+ *  \param result       Output vector populated with the parsed rows.
+ *  \param InFilePrefix  Input file path prefix.
+ *  \param NumColumns   Number of columns to read per row. */
 void ReadFunction(std::vector<GeometryVector> & result, const std::string & InFilePrefix, size_t NumColumns);
 
+/** \brief Test routine that samples whether random points fall inside a polygon and writes the result. (CLAUDE) */
 void Test_IsInside();
+/** \brief Test routine that computes distances of random points to a polygon boundary and writes the result. (CLAUDE) */
 void Test_distance();
+/** \brief Test routine that reads an example dispersion and probes inside/outside and nearest-neighbor queries. (CLAUDE) */
 void Test_Dispersion();
+/** \brief Test routine that tabulates the hitting probability p1 and mean hitting time over a range of radii. (CLAUDE) */
 void Test_p1();
+/** \brief Test routine that runs a single fixed-step first-passage walk from a given start point. (CLAUDE)
+ *  \param x          x-coordinate of the initial test-particle position.
+ *  \param y          y-coordinate of the initial test-particle position.
+ *  \param num_steps  Number of jump steps to perform. */
 void Test_simulation(double x, double y, size_t);
+/** \brief Run the first-passage-time time-evolution simulation on a rescaled honeycomb network. (CLAUDE)
+ *  \param time_max       Total simulation time.
+ *  \param time_interval  Time increment between recorded slices.
+ *  \param phi2           Target area fraction of phase 2 to rescale to.
+ *  \param sigma1         Conductivity of the host phase.
+ *  \param sigma2         Conductivity of the particle phase. */
 void HoneycombNetwork(double, double, double, double, double);
+/** \brief Run the first-passage-time time-evolution simulation on a checkerboard configuration. (CLAUDE)
+ *  \param time_max       Total simulation time.
+ *  \param time_interval  Time increment between recorded slices.
+ *  \param sigma1         Conductivity of the host phase.
+ *  \param sigma2         Conductivity of the particle phase. */
 void Checkerboard(double, double, double, double);
 
+/** \brief Test routine that estimates the host-phase hitting probability by repeated single-step walks. (CLAUDE)
+ *  \param x    x-coordinate of the fixed initial test-particle position.
+ *  \param y    y-coordinate of the fixed initial test-particle position.
+ *  \param num  Number of independent trials. */
 void Test_interface(double x, double y, size_t);
 
+/** \brief Program entry point; dispatches to a simulation mode selected by the first command-line argument. (CLAUDE)
+ *  \param argc  Number of command-line arguments.
+ *  \param argv  Command-line argument values; argv[1] selects the mode ("0"-"4"), remaining arguments are mode-specific.
+ *  \return      Exit status (0 on success). */
 int main(int argc, char ** argv) {
 	std::string tempStr;
 	char tempstring[1000];

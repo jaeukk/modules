@@ -20,7 +20,7 @@ inline size_t LocalNumber::GetRandomIndex(RandomGenerator & rng) const {
 	return std::lower_bound(this->CDF.begin(), this->CDF.end(), probability) - this->CDF.begin();
 }
 
-/** A member function to compare all counts.*/
+/** \brief A member function to compare all counts.*/
 bool LocalNumber::CheckSum() {
 	size_t sum = 0;
 	for (auto c = counts.begin(); c != counts.end(); c++)
@@ -30,7 +30,7 @@ bool LocalNumber::CheckSum() {
 }
 
 
-/** Get an estimated mean of this distribution. */
+/** \brief Get an estimated mean of this distribution. */
 double LocalNumber::GetMean() const {
 	double mean = 0;// guessed_av = 0.5*(this->min + this->max);
 #pragma omp parallel for reduction(+:mean)
@@ -39,7 +39,7 @@ double LocalNumber::GetMean() const {
 
 	return this->min + mean;
 }
-/** Get a standard error in the estimated mean. */
+/** \brief Get a standard error in the estimated mean. */
 double LocalNumber::GetSE_Mean(double & mean) const {
 	mean = this->GetMean();
 	double SE = 0.0, mean_i = mean - this->min;
@@ -51,7 +51,7 @@ double LocalNumber::GetSE_Mean(double & mean) const {
 	SE = (SE > 0) ? sqrt(SE) : 0.0;
 	return SE;
 }
-/** Get an estimated variance. */
+/** \brief Get an estimated variance. */
 double LocalNumber::GetVariance() const {
 	double mean = this->GetMean() - this->min;	//Mean of the indices.
 	double variance = 0.0;
@@ -65,10 +65,10 @@ double LocalNumber::GetVariance() const {
 //	variance = (variance - mean * mean) * (1.0 + 1.0 / (this->totalCount - 1));
 	return std::max(0.0, variance);
 }
-/** Get a standard error in the estimated variance.
+/** \brief Get a standard error in the estimated variance.
  * Bootstrap method is used.
- * @param Bootstrap_Size	The number of bootstrap replica.
- * @return Standard error of variance via the Bootstrap algorithm. */
+ * \param Bootstrap_Size	The number of bootstrap replica.
+ * \return Standard error of variance via the Bootstrap algorithm. */
 double LocalNumber::GetSE_Variance(int Bootstrap_Size, int seed) const {
 	double variance = 0.0, SE = 0.0;
 	UpdateCDF();
@@ -89,7 +89,7 @@ double LocalNumber::GetSE_Variance(int Bootstrap_Size, int seed) const {
 	return SE;
 }
 
-/** Compute CDF again if CDF_uptodate = false. */
+/** \brief Compute CDF again if CDF_uptodate = false. */
 void LocalNumber::UpdateCDF() {
 	// CDF is not updated yet. Recompute CDF from this->counts.
 	if (!CDF_uptodate) {
@@ -137,13 +137,13 @@ void LocalNumber::UpdateCDF() const {
 
 
 
-/** Give a histogram.
- * @param result	A vector of GeometryVectors that describe the table of histogram.
+/** \brief Give a histogram.
+ * \param result	A vector of GeometryVectors that describe the table of histogram.
 		result[i].x[0] = x value
 		result[i].x[1] = probability density
 		result[i].x[2] = error in x
 		result[i].x[3] = error in y (via multinomial distribution)
- * @param width	Bin width in which counts are averaged.	 */
+ * \param width	Bin width in which counts are averaged.	 */
 void LocalNumber::GetHistogram(std::vector<GeometryVector> & result, size_t width) const {
 	result.clear();
 	if (counts.size() > 0) {
@@ -167,7 +167,7 @@ void LocalNumber::GetHistogram(std::vector<GeometryVector> & result, size_t widt
 	}
 }
 
-/** A member function to store data in a binary file. */
+/** \brief A member function to store data in a binary file. */
 void LocalNumber::WriteBinary(std::ostream & ofile) const {
 	ofile.write((char *)(&this->min), sizeof(this->min));
 	ofile.write((char *)(&this->max), sizeof(this->max));
@@ -176,7 +176,7 @@ void LocalNumber::WriteBinary(std::ostream & ofile) const {
 		ofile.write((char *)(&this->counts[i]), sizeof(this->counts[i]));
 	}
 }
-/** A constructor by loading data written by WriteBinary(). */
+/** \brief A constructor by loading data written by WriteBinary(). */
 LocalNumber::LocalNumber(std::istream & ifile) {
 	ifile.read((char *)(&this->min), sizeof(this->min));
 	ifile.read((char *)(&this->max), sizeof(this->max));
@@ -485,10 +485,10 @@ void BootstrapSetup::Compute(const LocalNumber & data,
 
 /** \brief Compute distance metrices from the normal (or Gaussian) distribution.
  *	Parallelized with OpenMP.
-	*  @param[in] data		A LocalNumber object that stores the empirical distribution to compute statistics.
-	*	@param[in] metrics	metric[i].x[0] = metric_i, metric[i].x[1] = SE_metric_i.
-	*	@param[in] R		Window radius.	 
-	*	@param[in] SampleSize	If SampleSize = 0, the size of a Bootstrap sample is 
+	*  \param[in] data		A LocalNumber object that stores the empirical distribution to compute statistics.
+	*	\param[in] metrics	metric[i].x[0] = metric_i, metric[i].x[1] = SE_metric_i.
+	*	\param[in] R		Window radius.
+	*	\param[in] SampleSize	If SampleSize = 0, the size of a Bootstrap sample is
 							identical to the original size. */
 void BootstrapSetup::ComputeMetrics(const LocalNumber & data, std::vector<GeometryVector> & metrics,
 	double R, size_t SampleSize) const{
@@ -655,12 +655,12 @@ std::vector<GeometryVector> GetSamplingPoints(DimensionType dim, size_t NumPoint
  *	This function searches all points inside a sphere of a maximum radius,
 and compute their distances from the sphere center, which tell the radius of a sphere to which the particle belongs.
 
- *	@param[in] CurrConfig	A Configuration object.
- *	@parma[out] results		A table of N(R), the number of particles inside spheres.
+ *	\param[in] CurrConfig	A Configuration object.
+ *	\param[out] results		A table of N(R), the number of particles inside spheres.
 				results[i] = N(R) for R = dR * (i+1)
- *	@param[in] Rmax			A maximal radius up to which N(R) is computed
- *	@param[in] dR			A bin width.
- *	@param[in] Center_RelativeCoordinates	A center of the window in relative Coordinates. */
+ *	\param[in] Rmax			A maximal radius up to which N(R) is computed
+ *	\param[in] dR			A bin width.
+ *	\param[in] Center_RelativeCoordinates	A center of the window in relative Coordinates. */
 inline void GetN(const Configuration & CurrConfig, std::vector<size_t> &results,
 	double Rmax, double dR, const GeometryVector & Center_RelativeCoordinates) {
 
@@ -694,15 +694,15 @@ inline void GetN(const Configuration & CurrConfig, std::vector<size_t> &results,
 
 /** \brief Measure the Local number variance associated with spherical windows.
 *	This function is specialized to efficiently compute the local number variance.
-*	@param[in] GetConfig	A lambda function to generate Configuration objects.
-*	@param[in] NumConfigs	The number of Configurations.
-*	@param[out] Result		A list of GeometryVector objects that describe the local number variances.
+*	\param[in] GetConfig	A lambda function to generate Configuration objects.
+*	\param[in] NumConfigs	The number of Configurations.
+*	\param[out] Result		A list of GeometryVector objects that describe the local number variances.
 				Result[i].x[0] = R
 				Result[i].x[1] = sigma_N ^2(R)
 				Result[i].x[2] = SE in sigma_N ^2(R), which is computed under the assumption that N(R) follows the central limit theorem.
-*	@param[in] Rmax			The largest window radius
-*	@param[in] dR			R-resolution
-*	@param[in] WindowCenters	GeometryVector objects that describe the centers of windows in Relative coordinates.
+*	\param[in] Rmax			The largest window radius
+*	\param[in] dR			R-resolution
+*	\param[in] WindowCenters	GeometryVector objects that describe the centers of windows in Relative coordinates.
 								Users can prescribe the centers of sampling windows through this argumement,
 								but also use default centers that are binomial point pattern of "NumWindowCenters" particles.  */
 void MC_nv(const std::function<Configuration(size_t i)> & GetConfig, size_t NumConfigs,
@@ -805,15 +805,15 @@ void MC_nv(const std::function<Configuration(size_t i)> & GetConfig, size_t NumC
 
 /** \brief Compute Local number variance and other statistics by taking advantages of Bootstrap method.
 *
-*	@param[in] GetConfig	A lambda function to construct Configuration objects.
-*	@param[in] NumConfigs	The number of configurations.
-*	@param[out] Results		A table of local number variance. @see MC_Nv()
-*	@param[in] Rmax			Largest window radius.
-*	@param[in] dR			Bin width of window radius
-*	@param[in] WHAT2DO		A BootstrapSetup class that stores information about what to compute and aids certain bootstrap computations.
-*	@param[in] NumWindowCenters	The number of sampling windows.
-*	@param[in] see			A seed for a random number generator.
-*	@param[in] WindowsCenters	A list of sampling centers in relative coordinates.
+*	\param[in] GetConfig	A lambda function to construct Configuration objects.
+*	\param[in] NumConfigs	The number of configurations.
+*	\param[out] Results		A table of local number variance. \see MC_Nv()
+*	\param[in] Rmax			Largest window radius.
+*	\param[in] dR			Bin width of window radius
+*	\param[in] WHAT2DO		A BootstrapSetup class that stores information about what to compute and aids certain bootstrap computations.
+*	\param[in] NumWindowCenters	The number of sampling windows.
+*	\param[in] see			A seed for a random number generator.
+*	\param[in] WindowsCenters	A list of sampling centers in relative coordinates.
 Users can prescribe the centers of sampling windows through this argumement,
 but also use default centers that are binomial point pattern of "NumWindowCenters" particles.  */
 void MC_nv_distribution(const std::function<Configuration(size_t i)> & GetConfig, size_t NumConfigs,
@@ -950,13 +950,13 @@ void MC_nv_distribution(const std::function<Configuration(size_t i)> & GetConfig
  *	This function is parallelized in the for loops of particles.
  *	This function implements a post sampling method to reduce the finite-size effects
  *	in the void MC_nv_distribution(...) function.
- *	@param[in] GetConfig	A lambda function to construct Configuration objects.
- *	@param[in] NumConfigs	The number of configurations.
- *	@param[out] Results		A table of local number variance. @see MC_Nv()
- *	@param[in] Rmax			Largest window radius.
- *	@param[in] dR			Bin width of window radius
- *	@param[in] WHAT2DO		A BootstrapSetup class that stores information about what to compute and aids certain bootstrap computations.
- *	@param[in] WindowsCenters	A list of sampling centers in relative coordinates.
+ *	\param[in] GetConfig	A lambda function to construct Configuration objects.
+ *	\param[in] NumConfigs	The number of configurations.
+ *	\param[out] Results		A table of local number variance. \see MC_Nv()
+ *	\param[in] Rmax			Largest window radius.
+ *	\param[in] dR			Bin width of window radius
+ *	\param[in] WHAT2DO		A BootstrapSetup class that stores information about what to compute and aids certain bootstrap computations.
+ *	\param[in] WindowsCenters	A list of sampling centers in relative coordinates.
 								Users can prescribe the centers of sampling windows through this argumement.  */
 void MC_nv_distribution_PostSampling(const std::function<Configuration(size_t i)> & GetConfig, size_t NumConfigs,
 	std::vector<GeometryVector> & Result, double Rmax, double dR, const BootstrapSetup & WHAT2DO, const std::vector<GeometryVector> & WindowCenters){

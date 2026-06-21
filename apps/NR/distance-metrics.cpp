@@ -24,13 +24,29 @@
 		  << std::endl;
   }
 
+/** \brief Evaluate the Gaussian probability density at x for a given mean and variance. (CLAUDE)
+ *  \param x	The point at which to evaluate the density.
+ *  \param mean	The mean of the Gaussian distribution.
+ *  \param var	The variance of the Gaussian distribution.
+ *  \return The Gaussian probability density at x. */
 double gaussian_pdf(const double &x, const double &mean, const double &var){
   return gsl_ran_gaussian_pdf(x-mean, sqrt(var));
 }
 
-std::pair<double,double> compute_l2_and_kl(const unsigned &n, const std::vector<int> &N, 
-    const double &fn, const double &ln, 
-    const unsigned &from, const unsigned &to, 
+/** \brief Compute the L2 norm and Kullback-Leibler distance of an empirical N(R) histogram from a Gaussian reference. (CLAUDE)
+ *  \param n		The total number of samples (trials) in the empirical histogram.
+ *  \param N		The empirical histogram of counts, indexed by N(R) value.
+ *  \param fn		The first nonzero index (smallest observed N(R)) of the histogram.
+ *  \param ln		The last nonzero index (largest observed N(R)) of the histogram.
+ *  \param from	The lower bound of the summation range.
+ *  \param to		The upper bound (exclusive) of the summation range.
+ *  \param norm	Normalization constant for the truncated Gaussian reference density.
+ *  \param mean	The mean of the reference Gaussian distribution.
+ *  \param sigma2	The variance of the reference Gaussian distribution.
+ *  \return A pair {L2 norm, Kullback-Leibler distance}. */
+std::pair<double,double> compute_l2_and_kl(const unsigned &n, const std::vector<int> &N,
+    const double &fn, const double &ln,
+    const unsigned &from, const unsigned &to,
     const double &norm,
     const double &mean, const double &sigma2){
 

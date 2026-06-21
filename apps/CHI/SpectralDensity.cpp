@@ -12,6 +12,7 @@ struct SkBin
 		SumK2,		//< sum of squared magnitudes of wavevectors (|k|^2)
 		SumS,		//< sum of spectral functions
 		SumS2;		//< sum of squared spectral functions
+	/** \brief Construct an empty bin with all accumulators set to zero. (CLAUDE) */
 	SkBin() : Sum1(0), SumK1(0), SumK2(0), SumS(0), SumS2(0)
 	{}
 };

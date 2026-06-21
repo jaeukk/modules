@@ -28,6 +28,11 @@ public:
 		sigma;	//< length scale for LJ
 	ShiftedCCPotential * CCPotential;
 
+	/** \brief Construct the potential, choosing the stealthy or equiluminous collective-coordinate kernel. (CLAUDE)
+	 *  \param dim      Spatial dimension of the configuration.
+	 *  \param epsilon  Energy scale of the soft-core repulsion; repulsion is disabled when near zero.
+	 *  \param sigma    Length scale (contact diameter) of the soft-core repulsion.
+	 *  \param S0       Target structure factor for the equiluminous kernel; 0 selects the plain stealthy kernel. */
 	RepulsiveCCPotential(DimensionType dim, double epsilon, double sigma, double S0 = 0.0) : Potential (dim) {
 		if (S0 == 0.0){
 			CCPotential = new ShiftedCCPotential(dim);
@@ -45,6 +50,7 @@ public:
 		}
 	}
 
+	/** \brief Destructor. (CLAUDE) */
 	virtual ~RepulsiveCCPotential() {}
 
 	/** \brief Compute the truncated LJ potential and collective-coordiante potentials for a given configuraiton. */
@@ -80,10 +86,9 @@ public:
 		return LJ + CC;
 	}
 
-	/** /brief Compute the force exerted at particle i
- * 	 * @param[out] force	Net force in a GeometryVector.
- * 	 	 * @param[in] i			Particle index.
- * 	 	 	 */
+	/** \brief Compute the force exerted at particle i
+	 *  \param[out] force	Net force in a GeometryVector.
+	 *  \param[in] i			Particle index. */
 	virtual void Force(GeometryVector & force, size_t i) {
 		GeometryVector force_LJ(static_cast<int> (this->Dimension));
 
@@ -111,8 +116,8 @@ public:
 		force = force_LJ + force_cc;
 	}
 
-	/** /brief Compute the force exerted at all particles.
- * 	 * @param[out] result[i]	Force exerted at particle i.	 */
+	/** \brief Compute the force exerted at all particles.
+	 *  \param[out] result	result[i] is the force exerted at particle i. */
 	virtual void AllForce(std::vector<GeometryVector> & result) {
 		this->CCPotential->AllForce(result);
 			if (this->WithRepulsion){
@@ -127,7 +132,7 @@ public:
 	}
 
 	/** \brief Define a configuration to compute energy and forces.
- * 	 * @param c	A configuration of interest.	 */
+	 *  \param c	A configuration of interest. */
 	virtual void SetConfiguration(const Configuration & c) {
 		this->pConfig = &c;
 		if(this->WithRepulsion){

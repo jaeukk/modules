@@ -19,11 +19,11 @@
 
 size_t FFH_verbosity = 2;
 
-/**
- * Read a list of DisArray files 
- * Perform homogenization!!
- * Compute statistics... 
-*/
+/** \brief Read a list of DisArray files, perform homogenization, and compute statistics.
+ *  \param argc  Argument count.
+ *  \param argv  [1] DisArray prefix (printf format), [2] number of files, [3] epsilon2,
+ *               [4] output prefix, [5] number of threads.
+ *  \return      0 on success. */
 int main(int argc, char ** argv) {
 	char tempstring[1000] = {};
 	std::istream & ifile = std::cin;

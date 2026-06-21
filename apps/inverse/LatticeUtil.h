@@ -18,7 +18,10 @@
 #include <GeometryVector.h>
 #include <PeriodicCellList.h>
 
-//Generate lattice points x = n_0*basis[0]+...+n_{d-1}*basis[d-1], n_i = 0..Nmax_i-1
+/** \brief Generate lattice points x = n_0*basis[0]+...+n_{d-1}*basis[d-1], n_i = 0..Nmax_i-1.
+ *  \param basis  Lattice basis vectors; their count sets the spatial dimension.
+ *  \param Nmax   Per-dimension counts: component i gives the number of lattice steps along basis[i].
+ *  \return       A Configuration containing the generated lattice points. */
 inline Configuration GetLattice_config(const std::vector<GeometryVector> &basis, const GeometryVector & Nmax) {
 	int d = basis.size();
 	GeometryVector * Basis;
@@ -48,7 +51,10 @@ inline Configuration GetLattice_config(const std::vector<GeometryVector> &basis,
 	return result;
 }
 
-//same, with an isotropic Nmax in every dimension
+/** \brief Same, with an isotropic Nmax in every dimension.
+ *  \param basis  Lattice basis vectors; their count sets the spatial dimension.
+ *  \param Nmax   Number of lattice steps along every basis direction.
+ *  \return       A Configuration containing the generated lattice points. */
 inline Configuration GetLattice_config(const std::vector<GeometryVector> &basis, int Nmax) {
 	DimensionType d = basis.size();
 	GeometryVector Nmax_(static_cast<int> (d));
@@ -58,7 +64,9 @@ inline Configuration GetLattice_config(const std::vector<GeometryVector> &basis,
 	return GetLattice_config(basis, Nmax_);
 }
 
-// smallest prime factor of n; returns 1 if n is prime
+/** \brief Smallest prime factor of n; returns 1 if n is prime.
+ *  \param n  Integer to factor.
+ *  \return   The smallest prime factor of n, or 1 if n is prime. */
 inline int Find_LeastCommonDivider(int n) {
 	int max = (int)std::floor(std::sqrt((double)n));
 	for (int i = 2; i <= max; i++) {
