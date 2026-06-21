@@ -18,13 +18,15 @@ private:
 	/** \brief Cache the engine's min and max output values. (CLAUDE) */
 	void initialize(void);
 public:
-	/** \brief Seed the underlying generator with a specific integer. */
+	/** \brief Seed the underlying generator with a specific integer.
+	 *  \param s  Seed value for the Mersenne-Twister engine. */
 	void seed(int s);
 
 	/** \brief Construct a generator seeded from current time. */
 	RandomGenerator();
 
-	/** \brief Construct a generator with an explicit seed value. */
+	/** \brief Construct a generator with an explicit seed value.
+	 *  \param Seed  Seed value for the underlying engine. */
 	RandomGenerator(int Seed);
 
 	/** \brief Draw a uniform deviate in [0,1). */
@@ -34,14 +36,16 @@ public:
 	 *  \param inverseCp Inverse CDF mapping from uniform [0,1) to the target distribution. */
 	double RandomDouble(const std::function<double(double)> &inverseCp);
 
-	/** \brief Draw a Gaussian deviate with mean 0 and supplied standard deviation. */
+	/** \brief Draw a Gaussian deviate with mean 0 and supplied standard deviation.
+	 *  \param std  Standard deviation of the normal distribution. */
 	double RandomDouble_normal(double std) {
 		boost::normal_distribution<> nd(0.0, std);
 		boost::variate_generator<boost::mt19937&, boost::normal_distribution<> > var_nor(this->gen, nd);
 		return var_nor();
 	}
 
-	/** \brief Draw a Poisson deviate with given mean. */
+	/** \brief Draw a Poisson deviate with given mean.
+	 *  \param mean  Mean (lambda) of the Poisson distribution. */
 	int PoissonRNG(double mean); 
 
 	/** \brief Draw an integer from the full underlying engine range. */

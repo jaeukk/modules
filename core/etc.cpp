@@ -207,7 +207,10 @@ std::string cont::GetType() {
 	}
 }
 
-/** \brief Extraction operator for the cont struct. */
+/** \brief Extraction operator for the cont struct.
+ *  \param is  The input stream to read from.
+ *  \param a   The cont whose pointed-to value receives the extracted value.
+ *  \return    The input stream. */
 inline std::istream & operator >> (std::istream & is, cont & a) {
 	if (a._int_ptr != nullptr) {
 		is >> *(a._int_ptr);
@@ -232,7 +235,10 @@ inline std::istream & operator >> (std::istream & is, cont & a) {
 	return is;
 }
 
-/** \brief Insertion operator for the cont struct. */
+/** \brief Insertion operator for the cont struct.
+ *  \param os  The output stream to write to.
+ *  \param a   The cont whose pointed-to value is written.
+ *  \return    The output stream. */
 inline std::ostream & operator << (std::ostream & os, cont & a) {
 	if (a._int_ptr != nullptr) {
 		os << *(a._int_ptr);
@@ -253,7 +259,8 @@ inline std::ostream & operator << (std::ostream & os, cont & a) {
 /* Member functions of the Parameters class. */
 
 /** \brief A routine to input parameters.
- *	The routine stops when one inputs "Start", "start", or "START".*/
+ *	The routine stops when one inputs "Start", "start", or "START".
+ *	\param ifile	An inputstream. */
 void Parameters::InputRoutine(std::istream & ifile) {
 	std::string tempstring;
 	size_t count_wrong_input = 0;
@@ -292,7 +299,8 @@ void Parameters::InputRoutine(std::istream & ifile) {
 	}
 }
 
-/** \brief Display all parameter names. */
+/** \brief Display all parameter names.
+ *	\param ofile	An outputstream. */
 void Parameters::ShowAllParameterNames(std::ostream & ofile) {
 	ofile << "------------------------------------------\n";
 	ofile << "\t\tList of parameter names\n";
@@ -302,7 +310,8 @@ void Parameters::ShowAllParameterNames(std::ostream & ofile) {
 	}
 }
 
-/** \brief Display all parameter names and their values. */
+/** \brief Display all parameter names and their values.
+ *	\param ofile	An outputstream. */
 void Parameters::ShowAllParameters(std::ostream & ofile) {
 	ofile << "------------------------------------------\n";
 	ofile << "\t\tList of parameters\n";

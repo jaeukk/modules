@@ -35,7 +35,8 @@ public:
 	DimensionType Dimension;
 #endif
 
-	/** \brief Record the current dimension (debug builds only). */
+	/** \brief Record the current dimension (debug builds only).
+	 *  \param d  Dimension to record. */
 	void SetDimension(DimensionType d)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -57,7 +58,8 @@ public:
 	//do not change this "int" to "DimensionType"!
 	//otherwize GeometryVector(2) would be ambiguous.
 
-	/** \brief Construct a zero vector with an explicit dimension. */
+	/** \brief Construct a zero vector with an explicit dimension.
+	 *  \param dimension  Dimension to assign to the vector. */
 	GeometryVector(int dimension)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -67,7 +69,8 @@ public:
 			this->x[i]=0.0L;
 	}
 
-	/** \brief Construct a 1D vector. */
+	/** \brief Construct a 1D vector.
+	 *  \param xx  First (x) coordinate. */
 	GeometryVector(double xx)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -79,7 +82,9 @@ public:
 			this->x[i]=0;
 	}
 
-	/** \brief Construct a 2D vector. */
+	/** \brief Construct a 2D vector.
+	 *  \param xx  First (x) coordinate.
+	 *  \param yy  Second (y) coordinate. */
 	GeometryVector(double xx, double yy)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -92,7 +97,10 @@ public:
 			this->x[i]=0;
 	}
 
-	/** \brief Construct a 3D vector. */
+	/** \brief Construct a 3D vector.
+	 *  \param xx  First (x) coordinate.
+	 *  \param yy  Second (y) coordinate.
+	 *  \param zz  Third (z) coordinate. */
 	GeometryVector(double xx, double yy, double zz)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -106,7 +114,11 @@ public:
 			this->x[i]=0;
 	}
 
-	/** \brief Construct a 4D vector. */
+	/** \brief Construct a 4D vector.
+	 *  \param xx  First (x) coordinate.
+	 *  \param yy  Second (y) coordinate.
+	 *  \param zz  Third (z) coordinate.
+	 *  \param aa  Fourth coordinate. */
 	GeometryVector(double xx, double yy, double zz, double aa)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -121,7 +133,8 @@ public:
 			this->x[i]=0;
 	}
 
-	/** \brief Copy-construct from another vector. */
+	/** \brief Copy-construct from another vector.
+	 *  \param src  Source vector to copy from. */
 	GeometryVector(const GeometryVector & src)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -133,7 +146,8 @@ public:
 			this->x[i]=src.x[i];
 	}
 
-	/** \brief Add components from another vector in-place. */
+	/** \brief Add components from another vector in-place.
+	 *  \param right  Vector whose components are added to this one. */
 	void AddFrom(const GeometryVector & right)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -144,7 +158,8 @@ public:
 			this->x[i]+=right.x[i];
 	}
 
-	/** \brief Subtract components from another vector in-place. */
+	/** \brief Subtract components from another vector in-place.
+	 *  \param right  Vector whose components are subtracted from this one. */
 	void MinusFrom(const GeometryVector & right)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -155,7 +170,8 @@ public:
 			this->x[i]-=right.x[i];
 	}
 
-	/** \brief Scale all components by a constant. */
+	/** \brief Scale all components by a constant.
+	 *  \param right  Scalar multiplier applied to every component. */
 	void MultiplyFrom(const double & right)
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -165,7 +181,9 @@ public:
 			this->x[i]*=right;
 	}
 
-	/** \brief Inner product with another vector. */
+	/** \brief Inner product with another vector.
+	 *  \param right  The other operand of the inner product.
+	 *  \return       The scalar inner product. */
 	double Dot(const GeometryVector & right) const		// equivalent to the inner product
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -183,7 +201,9 @@ public:
 	}
 	//cross product
 
-	/** \brief 3D cross product. */
+	/** \brief 3D cross product.
+	 *  \param right  The right-hand operand of the cross product.
+	 *  \return       The 3D vector orthogonal to both operands. */
 	GeometryVector Cross(const GeometryVector & right) const
 	{
 		GeometryVector result((int)3);
@@ -206,7 +226,9 @@ public:
 		return this->Dot(*this);
 	}
 
-	/** \brief Exact component-wise equality test. */
+	/** \brief Exact component-wise equality test.
+	 *  \param right  Vector to compare against.
+	 *  \return       True if all compared components are exactly equal. */
 	bool IsEqual(const GeometryVector & right) const
 	{
 #ifdef GEOMETRYVECTOR_RECORDDIMENSION
@@ -223,29 +245,39 @@ public:
 		return true;
 	}
 
-	/** \brief Stream out the first dim coordinates separated by tabs. */
+	/** \brief Stream out the first dim coordinates separated by tabs.
+	 *  \param os   Output stream to write to.
+	 *  \param dim  Number of leading coordinates to write. */
 	void OutputCoordinate(std::ostream & os, DimensionType dim) const
 	{
 		for(int i=0; i< dim; i++)
 			os<<this->x[i]<<" \t";
 	}
 
-	/** \brief Read dim coordinates from a stream. */
+	/** \brief Read dim coordinates from a stream.
+	 *  \param is   Input stream to read from.
+	 *  \param dim  Number of leading coordinates to read. */
 	void InputCoordinate(std::istream & is, DimensionType dim)
 	{
 		for(int i=0; i< dim; i++)
 			is>>this->x[i];
 	}
 
-	/** \brief Write coordinates in binary form. */
+	/** \brief Write coordinates in binary form.
+	 *  \param ofile      Output stream to write the binary data to.
+	 *  \param dimension  Number of coordinates to write. */
 	void WriteBinary(std::ostream & ofile, DimensionType dimension) const;
 
-	/** \brief Read coordinates from binary form. */
+	/** \brief Read coordinates from binary form.
+	 *  \param ifile      Input stream to read the binary data from.
+	 *  \param dimension  Number of coordinates to read. */
 	void ReadBinary(std::istream & ifile, DimensionType dimension);
 
 	friend inline GeometryVector SameDimensionZeroVector(const GeometryVector & src);
 };
-/** \brief Create another GeometryVector with same dimension as src, but the value is zero. */
+/** \brief Create another GeometryVector with same dimension as src, but the value is zero.
+ *  \param src  Vector whose dimension is matched.
+ *  \return     A zero vector of the same dimension as src. */
 //create another GeometryVector with same dimension as src, but the value is zero
 inline GeometryVector SameDimensionZeroVector(const GeometryVector & src)
 {
@@ -258,7 +290,10 @@ inline GeometryVector SameDimensionZeroVector(const GeometryVector & src)
 
 
 
-/** \brief Stream out all MaxDimension coordinates followed by a newline. (CLAUDE) */
+/** \brief Stream out all MaxDimension coordinates followed by a newline. (CLAUDE)
+ *  \param os  Output stream to write to.
+ *  \param a   Vector to write.
+ *  \return    The output stream. */
 inline std::ostream & operator << (std::ostream & os, const GeometryVector & a)
 {
 	//os<<a.Dimension<<" \t";
@@ -266,7 +301,10 @@ inline std::ostream & operator << (std::ostream & os, const GeometryVector & a)
 	os<<'\n';
 	return os;
 }
-/** \brief Read all MaxDimension coordinates from a stream. (CLAUDE) */
+/** \brief Read all MaxDimension coordinates from a stream. (CLAUDE)
+ *  \param is  Input stream to read from.
+ *  \param a   Vector to receive the read coordinates.
+ *  \return    The input stream. */
 inline std::istream & operator >> (std::istream & is, GeometryVector & a)
 {
 	//is>>a.Dimension;
@@ -276,40 +314,58 @@ inline std::istream & operator >> (std::istream & is, GeometryVector & a)
 	a.InputCoordinate(is, ::MaxDimension);
 	return is;
 }
-/** \brief Component-wise vector addition. (CLAUDE) */
+/** \brief Component-wise vector addition. (CLAUDE)
+ *  \param left   Left-hand operand.
+ *  \param right  Right-hand operand.
+ *  \return       The component-wise sum. */
 inline GeometryVector operator + (const GeometryVector & left, const GeometryVector & right)
 {
 	GeometryVector result(left);
 	result.AddFrom(right);
 	return result;
 }
-/** \brief Component-wise vector subtraction. (CLAUDE) */
+/** \brief Component-wise vector subtraction. (CLAUDE)
+ *  \param left   Left-hand operand (minuend).
+ *  \param right  Right-hand operand (subtrahend).
+ *  \return       The component-wise difference. */
 inline GeometryVector operator - (const GeometryVector & left, const GeometryVector & right)
 {
 	GeometryVector result(left);
 	result.MinusFrom(right);
 	return result;
 }
-/** \brief Scale a vector by a scalar on the right. (CLAUDE) */
+/** \brief Scale a vector by a scalar on the right. (CLAUDE)
+ *  \param left   Vector to scale.
+ *  \param right  Scalar multiplier.
+ *  \return       The scaled vector. */
 inline GeometryVector operator * (const GeometryVector & left, const double & right)
 {
 	GeometryVector result(left);
 	result.MultiplyFrom(right);
 	return result;
 }
-/** \brief Scale a vector by a scalar on the left. (CLAUDE) */
+/** \brief Scale a vector by a scalar on the left. (CLAUDE)
+ *  \param left   Scalar multiplier.
+ *  \param right  Vector to scale.
+ *  \return       The scaled vector. */
 inline GeometryVector operator * (const double & left, const GeometryVector & right)
 {
 	GeometryVector result(right);
 	result.MultiplyFrom(left);
 	return result;
 }
-/** \brief Exact component-wise equality comparison. (CLAUDE) */
+/** \brief Exact component-wise equality comparison. (CLAUDE)
+ *  \param left   Left-hand operand.
+ *  \param right  Right-hand operand.
+ *  \return       True if the vectors are exactly equal. */
 inline bool operator == (const GeometryVector & left, const GeometryVector & right)
 {
 	return left.IsEqual(right);
 }
-/** \brief Exact component-wise inequality comparison. (CLAUDE) */
+/** \brief Exact component-wise inequality comparison. (CLAUDE)
+ *  \param left   Left-hand operand.
+ *  \param right  Right-hand operand.
+ *  \return       True if the vectors differ in any component. */
 inline bool operator != (const GeometryVector & left, const GeometryVector & right)
 {
 	return !left.IsEqual(right);
@@ -394,7 +450,8 @@ public:
 		this->dim=0;
 		this->x=nullptr;
 	}
-	/** \brief Construct a zero vector of the given dimension. (CLAUDE) */
+	/** \brief Construct a zero vector of the given dimension. (CLAUDE)
+	 *  \param dimension  Number of components to allocate. */
 	BigVector(size_t dimension)
 	{
 		this->dim=dimension;
@@ -402,14 +459,16 @@ public:
 		for(size_t i=0; i<dimension; i++)
 			this->x[i]=0.0;
 	}
-	/** \brief Copy-construct from another vector (deep copy). (CLAUDE) */
+	/** \brief Copy-construct from another vector (deep copy). (CLAUDE)
+	 *  \param src  Source vector to copy from. */
 	BigVector(const BigVector & src)
 	{
 		this->dim=src.dim;
 		this->x=new double[this->dim];
 		std::memcpy(this->x, src.x, sizeof(double)*this->dim);
 	}
-	/** \brief Move-construct from another vector, leaving the source empty. (CLAUDE) */
+	/** \brief Move-construct from another vector, leaving the source empty. (CLAUDE)
+	 *  \param src  Source vector whose storage is taken over (left empty). */
 	BigVector(BigVector && src)
 	{
 		this->dim=src.dim;
@@ -423,27 +482,32 @@ public:
 		if(this->x!=nullptr)
 			delete [] this->x;
 	}
-	/** \brief Add components from another vector in-place. (CLAUDE) */
+	/** \brief Add components from another vector in-place. (CLAUDE)
+	 *  \param right  Vector whose components are added to this one. */
 	void AddFrom(const BigVector & right)
 	{
 		assert(right.dim==this->dim);
 		for(size_t i=0; i<this->dim; i++)
 			this->x[i]+=right.x[i];
 	}
-	/** \brief Subtract components from another vector in-place. (CLAUDE) */
+	/** \brief Subtract components from another vector in-place. (CLAUDE)
+	 *  \param right  Vector whose components are subtracted from this one. */
 	void MinusFrom(const BigVector & right)
 	{
 		assert(right.dim==this->dim);
 		for(size_t i=0; i<this->dim; i++)
 			this->x[i]-=right.x[i];
 	}
-	/** \brief Scale all components by a constant. (CLAUDE) */
+	/** \brief Scale all components by a constant. (CLAUDE)
+	 *  \param right  Scalar multiplier applied to every component. */
 	void MultiplyFrom(const double & right)
 	{
 		for(size_t i=0; i<this->dim; i++)
 			this->x[i]*=right;
 	}
-	/** \brief Inner product with another vector. (CLAUDE) */
+	/** \brief Inner product with another vector. (CLAUDE)
+	 *  \param src  The other operand of the inner product.
+	 *  \return     The scalar inner product. */
 	double Dot(const BigVector & src) const
 	{
 		assert(src.dim==this->dim);
@@ -457,20 +521,25 @@ public:
 	{
 		return this->Dot(*this);
 	}
-	/** \brief Stream out all dim coordinates separated by tabs. (CLAUDE) */
+	/** \brief Stream out all dim coordinates separated by tabs. (CLAUDE)
+	 *  \param os  Output stream to write to. */
 	void OutputCoordinate(std::ostream & os) const
 	{
 		for(size_t i=0; i< dim; i++)
 			os<<this->x[i]<<" \t";
 	}
-	/** \brief Read dim coordinates from a stream. (CLAUDE) */
+	/** \brief Read dim coordinates from a stream. (CLAUDE)
+	 *  \param is  Input stream to read from. */
 	void InputCoordinate(std::istream & is)
 	{
 		for(size_t i=0; i< dim; i++)
 			is>>this->x[i];
 	}
 };
-/** \brief Component-wise addition of two BigVectors. (CLAUDE) */
+/** \brief Component-wise addition of two BigVectors. (CLAUDE)
+ *  \param left   Left-hand operand.
+ *  \param right  Right-hand operand.
+ *  \return       The component-wise sum. */
 inline BigVector operator + (const BigVector & left, const BigVector & right)
 {
 	BigVector result(left);
@@ -478,7 +547,10 @@ inline BigVector operator + (const BigVector & left, const BigVector & right)
 	return result;
 }
 
-/** \brief Component-wise subtraction of two BigVectors. (CLAUDE) */
+/** \brief Component-wise subtraction of two BigVectors. (CLAUDE)
+ *  \param left   Left-hand operand (minuend).
+ *  \param right  Right-hand operand (subtrahend).
+ *  \return       The component-wise difference. */
 inline BigVector operator - (const BigVector & left, const BigVector & right)
 {
 	BigVector result(left);
@@ -486,7 +558,10 @@ inline BigVector operator - (const BigVector & left, const BigVector & right)
 	return result;
 }
 
-/** \brief Scale a BigVector by a scalar on the right. (CLAUDE) */
+/** \brief Scale a BigVector by a scalar on the right. (CLAUDE)
+ *  \param left   Vector to scale.
+ *  \param right  Scalar multiplier.
+ *  \return       The scaled vector. */
 inline BigVector operator * (const BigVector & left, const double & right)
 {
 	BigVector result(left);
@@ -494,7 +569,10 @@ inline BigVector operator * (const BigVector & left, const double & right)
 	return result;
 }
 
-/** \brief Scale a BigVector by a scalar on the left. (CLAUDE) */
+/** \brief Scale a BigVector by a scalar on the left. (CLAUDE)
+ *  \param left   Scalar multiplier.
+ *  \param right  Vector to scale.
+ *  \return       The scaled vector. */
 inline BigVector operator * (const double & left, const BigVector & right)
 {
 	return  right*left;

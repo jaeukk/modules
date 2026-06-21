@@ -3,7 +3,9 @@
 
 
 
-/** \brief Write a Configuration to a .pos text file with the given prefix. (CLAUDE) */
+/** \brief Write a Configuration to a .pos text file with the given prefix. (CLAUDE)
+ *  \param prefix File name prefix (".pos" is appended).
+ *  \param List   Configuration to write. */
 void Output(std::string prefix, const Configuration & List)
 {
 	prefix+=std::string(".pos");
@@ -13,7 +15,9 @@ void Output(std::string prefix, const Configuration & List)
 	Output(out, List);
 }
 
-/** \brief Write a Configuration in .pos text format to an output stream. (CLAUDE) */
+/** \brief Write a Configuration in .pos text format to an output stream. (CLAUDE)
+ *  \param out  Output stream to write to.
+ *  \param List Configuration to write. */
 void Output(std::ostream & out, const Configuration & List)
 {
 	const Configuration * list = & List;
@@ -77,14 +81,18 @@ void Output(std::ostream & out, const Configuration & List)
 		out<<'\n';
 	}
 }
-/** \brief Read a Configuration from a .pos file with the given prefix. (CLAUDE) */
+/** \brief Read a Configuration from a .pos file with the given prefix. (CLAUDE)
+ *  \param prefix File name prefix (".pos" is appended).
+ *  \return       The Configuration read from file. */
 Configuration ReadPos(std::string prefix)
 {
 	std::string name=prefix+std::string(".pos");
 	std::fstream file(name.c_str(), std::fstream::in);
 	return ReadPos(file);
 }
-/** \brief Read a Configuration in .pos format from an input stream. (CLAUDE) */
+/** \brief Read a Configuration in .pos format from an input stream. (CLAUDE)
+ *  \param ifile Input stream in .pos format.
+ *  \return      The Configuration read from the stream. */
 Configuration ReadPos(std::istream & ifile)
 {
 	const std::string flag1("Primitive");
@@ -179,14 +187,18 @@ Configuration ReadPos(std::istream & ifile)
 	}
 	return result;
 }
-/** \brief Read a Configuration from a HOOMD .xml file with the given prefix. (CLAUDE) */
+/** \brief Read a Configuration from a HOOMD .xml file with the given prefix. (CLAUDE)
+ *  \param prefix File name prefix (".xml" is appended).
+ *  \return       The Configuration read from file. */
 Configuration ReadHoomdXml(std::string prefix)
 {
 	prefix+=std::string(".xml");
 	std::fstream ifile(prefix.c_str());
 	return ReadHoomdXml(ifile);
 }
-/** \brief Read a Configuration from a HOOMD XML input stream. (CLAUDE) */
+/** \brief Read a Configuration from a HOOMD XML input stream. (CLAUDE)
+ *  \param ifile Input stream in HOOMD XML format.
+ *  \return      The Configuration read from the stream. */
 Configuration ReadHoomdXml(std::istream & ifile)
 {
 	std::string temp;
@@ -308,12 +320,17 @@ Configuration ReadHoomdXml(std::istream & ifile)
 
 	return result;
 }
-/** \brief Read a Configuration of relative coordinates from an input stream (unit side length). (CLAUDE) */
+/** \brief Read a Configuration of relative coordinates from an input stream (unit side length). (CLAUDE)
+ *  \param file Input stream of relative coordinates.
+ *  \return     The Configuration read from the stream. */
 Configuration ReadCoordinate(std::istream & file)
 {
 	return ReadCoordinate(file, 1.0);
 }
-/** \brief Read a Configuration of relative coordinates with the given side length. (CLAUDE) */
+/** \brief Read a Configuration of relative coordinates with the given side length. (CLAUDE)
+ *  \param file       Input stream of relative coordinates.
+ *  \param SideLength Side length used for the (cubic) box basis vectors.
+ *  \return           The Configuration read from the stream. */
 Configuration ReadCoordinate(std::istream & file, double SideLength)
 {
 	DimensionType dim=0;
@@ -362,12 +379,17 @@ Configuration ReadCoordinate(std::istream & file, double SideLength)
 
 	return result;
 }
-/** \brief Read a Configuration of Cartesian coordinates from an input stream (unit side length). (CLAUDE) */
+/** \brief Read a Configuration of Cartesian coordinates from an input stream (unit side length). (CLAUDE)
+ *  \param file Input stream of Cartesian coordinates.
+ *  \return     The Configuration read from the stream. */
 Configuration ReadCartesianCoordinate(std::istream & file)
 {
 	return ReadCartesianCoordinate(file, 1.0);
 }
-/** \brief Read a Configuration of Cartesian coordinates with the given side length. (CLAUDE) */
+/** \brief Read a Configuration of Cartesian coordinates with the given side length. (CLAUDE)
+ *  \param file       Input stream of Cartesian coordinates.
+ *  \param SideLength Side length used for the (cubic) box basis vectors.
+ *  \return           The Configuration read from the stream. */
 Configuration ReadCartesianCoordinate(std::istream & file, double SideLength)
 {
 	DimensionType dim=0;
@@ -418,7 +440,9 @@ Configuration ReadCartesianCoordinate(std::istream & file, double SideLength)
 	return result;
 }
 
-/** \brief Read a Configuration from a GROMACS .gro input stream (reads only atoms named 'O'). (CLAUDE) */
+/** \brief Read a Configuration from a GROMACS .gro input stream (reads only atoms named 'O'). (CLAUDE)
+ *  \param file Input stream in GROMACS .gro format.
+ *  \return     The Configuration read from the stream. */
 Configuration ReadGro(std::istream & file)
 {
 	GeometryVector basis[ ::MaxDimension];
@@ -472,7 +496,10 @@ Configuration ReadGro(std::istream & file)
 
 	return result;
 }
-/** \brief Read a Configuration from a stealth-format input stream with the given side length. (CLAUDE) */
+/** \brief Read a Configuration from a stealth-format input stream with the given side length. (CLAUDE)
+ *  \param file       Input stream in stealth format.
+ *  \param SideLength Side length used for the (cubic) box basis vectors.
+ *  \return           The Configuration read from the stream. */
 Configuration ReadStealthOutput(std::istream & file, double SideLength)
 {
 	DimensionType dim=0;
@@ -537,13 +564,17 @@ Configuration ReadStealthOutput(std::istream & file, double SideLength)
 
 	return result;
 }
-/** \brief Read a Configuration from a stealth-format input stream (unit side length). (CLAUDE) */
+/** \brief Read a Configuration from a stealth-format input stream (unit side length). (CLAUDE)
+ *  \param file Input stream in stealth format.
+ *  \return     The Configuration read from the stream. */
 Configuration ReadStealthOutput(std::istream & file)
 {
 	return ReadStealthOutput(file, 1.0);
 }
 
-/** \brief Read a SpherePacking from a Torquato-Jiao (TJ) format input stream. (CLAUDE) */
+/** \brief Read a SpherePacking from a Torquato-Jiao (TJ) format input stream. (CLAUDE)
+ *  \param inFile Input stream in TJ format.
+ *  \return       The SpherePacking read from the stream. */
 SpherePacking ReadTJOutput(std::istream & inFile)
 {
 	std::string input;
@@ -612,14 +643,18 @@ SpherePacking ReadTJOutput(std::istream & inFile)
 	return packing; //Got a packing!
 
 }
-/** \brief Read a SpherePacking from a TJ-format .dat file with the given prefix. (CLAUDE) */
+/** \brief Read a SpherePacking from a TJ-format .dat file with the given prefix. (CLAUDE)
+ *  \param prefix File name prefix (".dat" is appended).
+ *  \return       The SpherePacking read from file. */
 SpherePacking ReadTJOutput(const std::string & prefix)
 {
 	std::string name = prefix + std::string(".dat");
 	std::fstream ifile(name.c_str(), std::fstream::in);
 	return ReadTJOutput(ifile);
 }
-/** \brief Write a SpherePacking in TJ format to an output file stream. (CLAUDE) */
+/** \brief Write a SpherePacking in TJ format to an output file stream. (CLAUDE)
+ *  \param ofile Output file stream to write to.
+ *  \param pk    SpherePacking to write. */
 void WriteTJOutput(std::fstream & ofile, const SpherePacking & pk)
 {
 	ofile.precision(17);
@@ -664,7 +699,9 @@ void WriteTJOutput(std::fstream & ofile, const SpherePacking & pk)
 			ofile << pk.GetCharacteristics(n);
 	}
 }
-/** \brief Write a SpherePacking in TJ format to a .dat file with the given prefix. (CLAUDE) */
+/** \brief Write a SpherePacking in TJ format to a .dat file with the given prefix. (CLAUDE)
+ *  \param prefix File name prefix (".dat" is appended).
+ *  \param pk     SpherePacking to write. */
 void WriteTJOutput(const std::string & prefix, const SpherePacking & pk)
 {
 	std::string name = prefix + std::string(".dat");
@@ -673,7 +710,10 @@ void WriteTJOutput(const std::string & prefix, const SpherePacking & pk)
 }
 
 
-/** \brief Tile a Configuration NumberInEachSide times along every box direction. (CLAUDE) */
+/** \brief Tile a Configuration NumberInEachSide times along every box direction. (CLAUDE)
+ *  \param src             Source configuration to tile.
+ *  \param NumberInEachSide Number of replicas along each box direction.
+ *  \return                The tiled configuration. */
 Configuration MultiplicateStructure(const Configuration & src, size_t NumberInEachSide)
 {
 	double dNumberInEachSide=static_cast<double>(NumberInEachSide);
@@ -713,7 +753,10 @@ Configuration MultiplicateStructure(const Configuration & src, size_t NumberInEa
 	}
 	return result;
 }
-/** \brief Tile a Configuration with per-direction replication counts. (CLAUDE) */
+/** \brief Tile a Configuration with per-direction replication counts. (CLAUDE)
+ *  \param src             Source configuration to tile.
+ *  \param NumberInEachSide Per-direction number of replicas.
+ *  \return                The tiled configuration. */
 Configuration MultiplicateStructure(const Configuration & src, const std::vector<size_t> & NumberInEachSide)
 {
 	assert(NumberInEachSide.size()==src.GetDimension());
@@ -760,7 +803,10 @@ Configuration MultiplicateStructure(const Configuration & src, const std::vector
 	}
 	return result;
 }
-/** \brief Return an empty unit cubic box configuration of dimension d. (CLAUDE) */
+/** \brief Return an empty unit cubic box configuration of dimension d. (CLAUDE)
+ *  \param d        Spatial dimension of the box.
+ *  \param CellSize Target linear cell size.
+ *  \return         An empty unit cubic box configuration. */
 Configuration GetUnitCubicBox(DimensionType d, double CellSize)
 {
 	std::vector<GeometryVector> vbas;
@@ -777,7 +823,8 @@ Configuration GetUnitCubicBox(DimensionType d, double CellSize)
 
 
 
-/** \brief Open (or attach to) the pack files identified by prefix. (CLAUDE) */
+/** \brief Open (or attach to) the pack files identified by prefix. (CLAUDE)
+ *  \param prefix File name prefix identifying the pack files. */
 void ConfigurationPack::Open(const std::string & prefix)
 {
 	this->IndexName = prefix + ".ConfigPackIndex";
@@ -797,7 +844,8 @@ long long ConfigurationPack::NumConfig(void)
 {
 	return NConfig;
 }
-/** \brief Append a configuration to the pack files. (CLAUDE) */
+/** \brief Append a configuration to the pack files. (CLAUDE)
+ *  \param c Configuration to append. */
 void ConfigurationPack::AddConfig(const Configuration & c)
 {
 	std::fstream indexFile(IndexName.c_str(), std::fstream::in | std::fstream::out | std::fstream::binary);
@@ -830,7 +878,9 @@ void ConfigurationPack::AddConfig(const Configuration & c)
 	if (packFile.fail())
 		std::cerr << "Warning in ConfigurationPack::AddConfig : Pack file failing!\n";
 }
-/** \brief Read and return the i-th configuration from the pack. (CLAUDE) */
+/** \brief Read and return the i-th configuration from the pack. (CLAUDE)
+ *  \param i Index of the configuration to read.
+ *  \return  The i-th configuration in the pack. */
 Configuration ConfigurationPack::GetConfig(long long i)
 {
 	if (i >= this->NConfig)
@@ -856,7 +906,9 @@ void ConfigurationPack::Clear(void)
 
 // Implementations of member functions of the SpherePacking class
 // for First-Passage-Time simulations
-/** \brief Return the ID of the particle containing the given relative coordinate, or -1 if none. (CLAUDE) */
+/** \brief Return the ID of the particle containing the given relative coordinate, or -1 if none. (CLAUDE)
+ *  \param RelativeCoordinate Test point in relative (box) coordinates.
+ *  \return                   ID of the containing particle, or -1 if the point is outside every sphere. */
 int SpherePacking::IsInsideParticle(const GeometryVector & RelativeCoordinate) const
 {
 	int idx = -1;
@@ -878,7 +930,11 @@ int SpherePacking::IsInsideParticle(const GeometryVector & RelativeCoordinate) c
 	return idx;
 }
 
-/** \brief Find the nearest sphere interfaces to a test point and the closest interface point and normal. (CLAUDE) */
+/** \brief Find the nearest sphere interfaces to a test point and the closest interface point and normal. (CLAUDE)
+ *  \param[in]  RelativeCoordinate Test point in relative (box) coordinates.
+ *  \param[out] list               Nearest interfaces, each as GeometryVector(distance, side ID, particle ID).
+ *  \param[out] x0_Relative        Interface point closest to the test point, in relative coordinates.
+ *  \param[out] n2host             Unit outward normal vector at x0. */
 void SpherePacking::FindNearestNeighbors (const GeometryVector & RelativeCoordinate, std::vector<GeometryVector> & list, GeometryVector & x0_Relative, GeometryVector & n2host) const{
 	//TODO: fix this!
 	size_t num = 1;
@@ -1023,7 +1079,11 @@ void SpherePackingPack::Clear(void)
 	this->NConfig = 0;
 }
 */
-/** \brief Construct an empty sphere packing for a given box geometry. (CLAUDE) */
+/** \brief Construct an empty sphere packing for a given box geometry. (CLAUDE)
+ *  \param Dimension    Spatial dimension.
+ *  \param BasisVectors Basis vectors defining the periodic box.
+ *  \param CellSize     Target linear cell size.
+ *  \param UseSortedList Choose sorted vicinity list for faster neighbor checks when geometry is fixed. */
 //polydisperse sphere packing
 SpherePacking::SpherePacking(DimensionType Dimension, GeometryVector * BasisVectors, double CellSize, bool UseSortedList) : PeriodicCellList<double>(Dimension, BasisVectors, CellSize, UseSortedList)
 {
@@ -1031,7 +1091,9 @@ SpherePacking::SpherePacking(DimensionType Dimension, GeometryVector * BasisVect
 	MaxRadius=0;
 }
 
-/** \brief Insert a sphere of the given radius at a relative coordinate. (CLAUDE) */
+/** \brief Insert a sphere of the given radius at a relative coordinate. (CLAUDE)
+ *  \param radius            Radius of the sphere to insert.
+ *  \param RelativeCoordinate Position of the sphere center in relative (box) coordinates. */
 void SpherePacking::Insert(double radius, const GeometryVector & RelativeCoordinate)
 {
 	UpdateMaxRadius();
@@ -1052,7 +1114,11 @@ void SpherePacking::Insert(double radius, const GeometryVector & RelativeCoordin
 	if(this->MaxRadius<radius)
 		this->MaxRadius=radius;
 }
-/** \brief Check whether the voxel at cr (with given halfsize) is completely covered by existing spheres. (CLAUDE) */
+/** \brief Check whether the voxel at cr (with given halfsize) is completely covered by existing spheres. (CLAUDE)
+ *  \param cr       Voxel center in relative (box) coordinates.
+ *  \param halfsize Half the voxel side length (in relative units).
+ *  \param Radius   Cartesian radius of the upcoming sphere.
+ *  \return         True if the voxel is completely covered by existing spheres. */
 //relative coord and halfsize
 //Radius : cartesian radius of the upcoming sphere
 bool SpherePacking::CheckVoxelOverlap(const GeometryVector & cr, double halfsize, double Radius) const
@@ -1079,7 +1145,11 @@ bool SpherePacking::CheckVoxelOverlap(const GeometryVector & cr, double halfsize
 	return Overlap;
 }
 
-/** \brief Returns 0 if voxel is completely empty, 2 if voxel is fully occupied, 1 otherwise. (CLAUDE) */
+/** \brief Returns 0 if voxel is completely empty, 2 if voxel is fully occupied, 1 otherwise. (CLAUDE)
+ *  \param cr       Voxel center in relative (box) coordinates.
+ *  \param halfsize Half the voxel side length (in relative units).
+ *  \param Radius   Cartesian radius of the upcoming sphere.
+ *  \return         0 if empty, 2 if fully occupied, 1 if partially occupied. */
 //returns 0 if voxel is completely empty
 //2 if voxel is fully occupied
 //1 otherwise
@@ -1119,7 +1189,10 @@ int SpherePacking::CheckVoxelOverlap2(const GeometryVector & cr, double halfsize
 }
 
 
-/** \brief Check whether a sphere of the given radius placed at cr overlaps any existing sphere. (CLAUDE) */
+/** \brief Check whether a sphere of the given radius placed at cr overlaps any existing sphere. (CLAUDE)
+ *  \param cr     Sphere center in relative (box) coordinates.
+ *  \param Radius Cartesian radius of the upcoming sphere.
+ *  \return       True if the new sphere overlaps any existing sphere. */
 //relative coord and halfsize
 //Radius : cartesian radius of the upcoming sphere
 bool SpherePacking::CheckOverlap(const GeometryVector & cr, double Radius) const
@@ -1137,7 +1210,11 @@ bool SpherePacking::CheckOverlap(const GeometryVector & cr, double Radius) const
 }
 
 
-/** \brief Pixelizing the configuration to MeshSide pixes in each side. (CLAUDE) */
+/** \brief Pixelizing the configuration to MeshSide pixes in each side. (CLAUDE)
+ *  \param[in]  c        Configuration to pixelize.
+ *  \param[in]  radius   Sphere radius placed on each particle.
+ *  \param[in]  MeshSide Number of pixels along each box direction.
+ *  \param[out] occu     Filled with the occupancy grid (1 = occupied). */
 //pixelizing the configuration to MeshSide pixes in each side
 void DigitizeConfiguration(const Configuration & c, double radius, size_t MeshSide, std::vector<VoxelType> & occu)
 {
@@ -1189,7 +1266,12 @@ void DigitizeConfiguration(const Configuration & c, double radius, size_t MeshSi
 		}
 	}
 }
-/** \brief Calculate volume fraction if each particle is replaced with a hypersphere of certain radius; do this by pixelizing the configuration to MeshSide pixes in each side. (CLAUDE) */
+/** \brief Calculate volume fraction if each particle is replaced with a hypersphere of certain radius; do this by pixelizing the configuration to MeshSide pixes in each side. (CLAUDE)
+ *  \param c        Configuration whose occupied volume is measured.
+ *  \param radius   Sphere radius placed on each particle.
+ *  \param MeshSide Number of pixels along each box direction.
+ *  \param pbuffer  Optional scratch buffer for the occupancy grid; allocated internally if null.
+ *  \return         The occupied (covered) volume. */
 //calculate volume fraction if each particle is replaced with a hypersphere of certain radius
 //do this by pixelizing the configuration to MeshSide pixes in each side
 double Volume(const Configuration & c, double radius, size_t MeshSide, std::vector<VoxelType> * pbuffer)
@@ -1219,7 +1301,11 @@ double Volume(const Configuration & c, double radius, size_t MeshSide, std::vect
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
 #include <set>
-/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particles a and b will be connected. (CLAUDE) */
+/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particles a and b will be connected. (CLAUDE)
+ *  \param c Configuration of particles.
+ *  \param a Index of the first particle.
+ *  \param b Index of the second particle.
+ *  \return  Minimum sphere diameter D that connects particles a and b. */
 //return the minimum D such that if each particle is replaced with a sphere with diameter D, particles a and b will be connected.
 double MinConnectDiameter(const Configuration & c, size_t a, size_t b)
 {
@@ -1345,7 +1431,11 @@ double MinConnectDiameter(const Configuration & c, size_t a, size_t b)
 //	}
 //}
 
-/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particle n will connect to its periodic image in direction dir. (CLAUDE) */
+/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particle n will connect to its periodic image in direction dir. (CLAUDE)
+ *  \param c   Configuration of particles.
+ *  \param n   Index of the particle.
+ *  \param dir Box direction along which percolation is tested.
+ *  \return    Minimum sphere diameter D that connects particle n to its periodic image. */
 //return the minimum D such that if each particle is replaced with a sphere with diameter D,
 //particle n will connect to its periodic image in direction dir.
 double PercolationDiameter(const Configuration & c, size_t n, DimensionType dir)
@@ -1361,7 +1451,12 @@ double PercolationDiameter(const Configuration & c, size_t n, DimensionType dir)
 //FoundPeriodicImages: whether or not found more than 1 periodic images of a particle, 
 //which means the cluster size is actually infinite rather than the returned value.
 #include <list>
-/** \brief Replace each particle in c with a hypersphere with radius, what's the cluster size InitParticle is in? FoundPeriodicImages: whether or not found more than 1 periodic images of a particle, which means the cluster size is actually infinite rather than the returned value. (CLAUDE) */
+/** \brief Replace each particle in c with a hypersphere with radius, what's the cluster size InitParticle is in? FoundPeriodicImages: whether or not found more than 1 periodic images of a particle, which means the cluster size is actually infinite rather than the returned value. (CLAUDE)
+ *  \param[in]  c                  Configuration of particles.
+ *  \param[in]  InitParticle       Index of the seed particle whose cluster is measured.
+ *  \param[in]  radius             Sphere radius placed on each particle.
+ *  \param[out] FoundPeriodicImages Set true if more than one periodic image of a particle was found (cluster is effectively infinite).
+ *  \return                        Number of particles in the cluster containing InitParticle. */
 size_t ClusterSize(const Configuration & c, size_t InitParticle, double radius, bool & FoundPeriodicImages)
 {
 	FoundPeriodicImages = false;
@@ -1408,7 +1503,9 @@ size_t ClusterSize(const Configuration & c, size_t InitParticle, double radius, 
 }
 
 
-/** \brief Write a Configuration (dimension, basis vectors, Cartesian coordinates) to a .txt file. (CLAUDE) */
+/** \brief Write a Configuration (dimension, basis vectors, Cartesian coordinates) to a .txt file. (CLAUDE)
+ *  \param conf       Configuration to write.
+ *  \param OutputName File name prefix (".txt" is appended). */
 void WriteConfiguration(const Configuration & conf, const std::string & OutputName)
 {
 	// dimension 0	0	0
@@ -1428,7 +1525,9 @@ void WriteConfiguration(const Configuration & conf, const std::string & OutputNa
 	output.close();
 }
 
-/** \brief Write a SpherePacking (dimension, basis vectors, coordinates and radii) to a .txt file. (CLAUDE) */
+/** \brief Write a SpherePacking (dimension, basis vectors, coordinates and radii) to a .txt file. (CLAUDE)
+ *  \param conf       SpherePacking to write.
+ *  \param OutputName File name prefix (".txt" is appended). */
 void WriteConfiguration(const SpherePacking & conf, const std::string & OutputName)
 {
 	//dimension	0	0	0
@@ -1453,7 +1552,9 @@ void WriteConfiguration(const SpherePacking & conf, const std::string & OutputNa
 	ofile.close();
 }
 
-/** \brief Write a generic PeriodicCellList (dimension, basis vectors, coordinates) to a .txt file. (CLAUDE) */
+/** \brief Write a generic PeriodicCellList (dimension, basis vectors, coordinates) to a .txt file. (CLAUDE)
+ *  \param conf       PeriodicCellList to write.
+ *  \param OutputName File name prefix (".txt" is appended). */
 template<typename T> void WriteConfiguration(const PeriodicCellList<T> & conf, const std::string & OutputName)
 {
 
@@ -1471,7 +1572,9 @@ template<typename T> void WriteConfiguration(const PeriodicCellList<T> & conf, c
 	}
 	ofile.close();
 }
-/** \brief Read a Configuration from a .txt file written by WriteConfiguration (assume # columns = 4). (CLAUDE) */
+/** \brief Read a Configuration from a .txt file written by WriteConfiguration (assume # columns = 4). (CLAUDE)
+ *  \param conf      Configuration to populate.
+ *  \param InputName File name prefix (".txt" is appended). */
 //assume # columns = 4
 void ReadConfiguration(Configuration & conf, const std::string & InputName) {
 	
@@ -1523,7 +1626,9 @@ void ReadConfiguration(Configuration & conf, const std::string & InputName) {
 
 }
 
-/** \brief Read a SpherePacking from a .txt file written by WriteConfiguration (assume # of columns is 5). (CLAUDE) */
+/** \brief Read a SpherePacking from a .txt file written by WriteConfiguration (assume # of columns is 5). (CLAUDE)
+ *  \param conf      SpherePacking to populate.
+ *  \param InputName File name prefix (".txt" is appended). */
 //assume # of columns is 5
 void ReadConfiguration(SpherePacking & conf, const std::string & InputName) {
 	std::string name = InputName + std::string(".txt");
@@ -1594,7 +1699,14 @@ void ReadConfiguration(SpherePacking & conf, const std::string & InputName) {
 }
 
 
-/** \brief Find all reciprocal lattice vectors (wavevectors) of a given periodic simulation box. (CLAUDE) */
+/** \brief Find all reciprocal lattice vectors (wavevectors) of a given periodic simulation box. (CLAUDE)
+ *  \param tempList          A periodic simulation box.
+ *  \param CircularKMax      Upper magnitude bound for the circularly-selected wavevectors.
+ *  \param LinearKMax        Upper magnitude bound for the integer multiples of the selected wavevectors.
+ *  \param SampleProbability When <1, randomly keep wavevectors within CircularKMax with this probability.
+ *  \param use_iteratethrough True = use IterateThroughNeighbors() (may surge memory use).
+ *  \param CircularKMin      Lower magnitude bound for the circularly-selected wavevectors (0 by default).
+ *  \return                  The selected reciprocal lattice vectors (wavevectors). */
 std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, double CircularKMax, double LinearKMax, double SampleProbability, bool use_iteratethrough, double CircularKMin)
 {
 	//Exclude probablematic cases.
@@ -1814,7 +1926,11 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 #ifdef VORONOI_INCLUDED
 #include "Voronoi.h"
 #include <gsl/gsl_sf_legendre.h>
-/** \brief Evaluate the spherical-harmonic-normalized associated Legendre function P_l^m(x), including negative m. (CLAUDE) */
+/** \brief Evaluate the spherical-harmonic-normalized associated Legendre function P_l^m(x), including negative m. (CLAUDE)
+ *  \param l Degree of the associated Legendre function.
+ *  \param m Order of the associated Legendre function (may be negative).
+ *  \param x Argument in [-1, 1].
+ *  \return  The spherical-harmonic-normalized value P_l^m(x). */
 double LegenderSphericalPlm(int l, int m, double x)
 {
 	if (m >= 0)
