@@ -39,8 +39,10 @@ extern std::fstream logfile;
 
 extern size_t Verbosity;
 
+/** \brief Empty placeholder type used as a trivial per-particle payload. (CLAUDE) */
 struct Empty
 {
+	/** \brief Default constructor. (CLAUDE) */
 	Empty()
 	{}
 };
@@ -51,26 +53,65 @@ extern time_t ProgramStart;
 extern time_t TimeLimit;
 
 
+/** \brief Coefficient C_n such that an n-ball of radius R has volume C_n*R^n. (CLAUDE)
+ *  \param n  Space dimension.
+ *  \return   The dimension-dependent unit-ball volume coefficient. */
 double HyperSphere_C(DimensionType n);
+/** \brief Surface area of an n-dimensional sphere of radius R. (CLAUDE)
+ *  \param n  Space dimension.
+ *  \param R  Sphere radius.
+ *  \return   Surface area of the (n-1)-sphere. */
 double HyperSphere_SurfaceArea(DimensionType n, double R);
+/** \brief Volume of an n-dimensional ball of radius R. (CLAUDE)
+ *  \param n  Space dimension.
+ *  \param R  Ball radius.
+ *  \return   Volume of the n-ball. */
 double HyperSphere_Volume(DimensionType n, double R);
 
-//scaled intersection volume of two spheres.
+/** \brief scaled intersection volume of two spheres.
+ *  \param d  Space dimension.
+ *  \param x  Reduced separation r/(2R).
+ *  \return   Scaled intersection volume. */
 double alpha(DimensionType d, double x);
 
 
-//compute the radius of spheres from the reduced covered fraction of spheres
+/** \brief compute the radius of spheres from the reduced covered fraction of spheres
+ *  \param fraction    Reduced covered fraction.
+ *  \param NumDensity  Number density of spheres.
+ *  \param d           Space dimension.
+ *  \return            Sphere radius. */
 double R_from_ReducedFraction(double fraction, double NumDensity, DimensionType d);
-//compute the reduced fraction from the given info
+/** \brief compute the reduced fraction from the given info
+ *  \param r           Sphere radius.
+ *  \param NumDensity  Number density of spheres.
+ *  \param d           Space dimension.
+ *  \return            Reduced covered fraction. */
 double ReducedFraction_from_R(double r, double NumDensity, DimensionType d);
 
 #include <boost/math/special_functions/gamma.hpp>
+/** \brief Volume of a d-dimensional superdisk/superball of deformation exponent p and half-edge L. (CLAUDE)
+ *  \param d  Space dimension (2 or 3).
+ *  \param p  Deformation exponent.
+ *  \param L  Half edge length.
+ *  \return   Superdisk/superball volume. */
 double Superdisk_vol(DimensionType d, double p, double L);
+/** \brief Surface area of a d-dimensional superdisk/superball. (CLAUDE)
+ *  \param d  Space dimension (2 or 3).
+ *  \param p  Deformation exponent.
+ *  \param L  Half edge length.
+ *  \return   Superdisk/superball surface area. */
 double Superdisk_surface_area(DimensionType d, double p, double L);
 
+/** \brief Text-mode progress bar that prints tics to a stream as a count advances. (CLAUDE) */
 class progress_display
 {
 public:
+	/** \brief Construct the bar and draw its scale for the expected total count. (CLAUDE)
+	 *  \param expected_count  Total count corresponding to a full bar.
+	 *  \param os              Output stream to draw on.
+	 *  \param s1              Leading string before the scale.
+	 *  \param s2              Leading string before the ruler.
+	 *  \param s3              Leading string before the tics. */
 	explicit progress_display( unsigned long expected_count,
 		std::ostream & os = (Verbosity>1) ? std::cout : logfile ,
 		const std::string & s1 = "\n", //leading strings
@@ -79,6 +120,8 @@ public:
 		// os is hint; implementation may ignore, particularly in embedded systems
 		: m_os(os), m_s1(s1), m_s2(s2), m_s3(s3) { restart(expected_count); }
 
+	/** \brief Redraw the scale and reset the count for a new expected total. (CLAUDE)
+	 *  \param expected_count  Total count corresponding to a full bar. */
 	void restart( unsigned long expected_count )
 		//  Effects: display appropriate scale
 		//  Postconditions: count()==0, expected_count()==expected_count
@@ -93,6 +136,9 @@ public:
 		if ( !_expected_count ) _expected_count = 1;  // prevent divide by zero
 	} // restart
 
+	/** \brief Advance the count by increment, drawing tics as thresholds are crossed. (CLAUDE)
+	 *  \param increment  Amount to add to the current count.
+	 *  \return           The new count. */
 	unsigned long  operator+=( unsigned long increment )
 		//  Effects: Display appropriate progress tic if needed.
 		//  Postconditions: count()== original count() + increment
@@ -102,9 +148,17 @@ public:
 		return _count;
 	}
 
+	/** \brief Pre-increment the count by one. (CLAUDE)
+	 *  \return  The new count. */
 	unsigned long  operator++()           { return operator+=( 1 ); }
+	/** \brief Post-increment the count by one. (CLAUDE)
+	 *  \return  The count before incrementing. */
 	unsigned long  operator++(int)           { return (operator+=( 1 )-1); }
+	/** \brief Current count. (CLAUDE)
+	 *  \return  The current count. */
 	unsigned long  count() const          { return _count; }
+	/** \brief Expected total count. (CLAUDE)
+	 *  \return  The expected count for a full bar. */
 	unsigned long  expected_count() const { return _expected_count; }
 
 private:
@@ -115,6 +169,7 @@ private:
 
 	unsigned long _count, _expected_count, _next_tic_count;
 	unsigned int  _tic;
+	/** \brief Print the tics required to match the current count and schedule the next. (CLAUDE) */
 	void display_tic()
 	{
 		// use of floating point ensures that both large and small counts
@@ -134,21 +189,24 @@ private:
 };
 
 #include <vector>
-//do a linear fit y=c1*x1+c2*x2+...+cn*xn
-//input y[i] is y of the ith data point
-//      x[j][i] is xj of the ith data point
-//return a vector of <c1, c2, ..., cn>
+/** \brief do a linear fit y=c1*x1+c2*x2+...+cn*xn
+ *  \param y       input y[i] is y of the ith data point.
+ *  \param x       x[j][i] is xj of the ith data point.
+ *  \param pchisq  Optional output for the chi-squared of the fit.
+ *  \param pR2     Optional output for the coefficient of determination.
+ *  \return        a vector of <c1, c2, ..., cn>. */
 std::vector<double> MultiVariableLinearFit(const std::vector<double> & y, const std::vector< std::vector<double> > & x, double * pchisq = nullptr, double * pR2 = nullptr);
 
-//In windows, the return value of this function changes 10,000,000 every second
+/** \brief In windows, the return value of this function changes 10,000,000 every second
+ *  \return  A high-resolution clock value since the epoch. */
 long GetPreciseClock(void);
 
 /** \brief Compute the intersection volume of two spheres.
- *	@param d	Space dimension
- *	@param r1	Radius of sphere1.
- *	@param r2	Radius of sphere2.
- *	@param r	Separation of centers of two spheres.
- *	@return		Intersection volume. */
+ *	\param d	Space dimension
+ *	\param r1	Radius of sphere1.
+ *	\param r2	Radius of sphere2.
+ *	\param r	Separation of centers of two spheres.
+ *	\return		Intersection volume. */
 inline double v2(DimensionType d, double r1, double r2, double r) {
 	if (r1 > 0 && r2 > 0 && r >= 0) {
 		double R2 = std::max(r1, r2);
@@ -179,22 +237,27 @@ inline double v2(DimensionType d, double r1, double r2, double r) {
 
 }
 
-/* simulate binary and other number systems
-unit in each digit can vary
-*/
+/** \brief simulate binary and other number systems; unit in each digit can vary */
 struct n_naryNumber {
 protected:
 	std::vector<unsigned int> digits;
 	std::vector<unsigned int> upperbounds;
 public:
-	/*	generate 0 of numDigits
-	n-th digit: 0 ~ upperbounds[n]-1;
-	*/
+	/** \brief generate 0 of numDigits; n-th digit: 0 ~ upperbounds[n]-1
+	 *  \param numDigits    Number of digits.
+	 *  \param upperbounds  Per-digit upper bounds (size must equal numDigits). */
 	n_naryNumber(unsigned int numDigits, const std::vector<unsigned int> & upperbounds);
+	/** \brief Construct a number of numDigits digits each sharing the same upper bound n. (CLAUDE)
+	 *  \param numDigits  Number of digits.
+	 *  \param n          Common upper bound for every digit. */
 	n_naryNumber(unsigned int numDigits, unsigned int n);
 
+	/** \brief Value of the N-th digit. (CLAUDE)
+	 *  \param N  Digit index.
+	 *  \return   The digit value, or 0 if N is out of range. */
 	int GetNthDigit(size_t N) const;
-	/* increment in the number */
+	/** \brief increment in the number
+	 *  \return  Reference to this number after incrementing. */
 	n_naryNumber& operator++ (int);
 };
 
@@ -204,17 +267,21 @@ public:
 
 /**\brief A sloppy container to deal with pointers of four types (int, size_t, double, string).*/
 struct cont {
+	/** \brief A constructor for a int pointer. */
 	cont(int & _val) : cont() { _int_ptr = &_val; }				//< A constructor for a int pointer.
+	/** \brief A constructor for a double pointer. */
 	cont(double & _val) : cont() { _double_ptr = &_val; }		//< A constructor for a double pointer.
+	/** \brief A constructor for a size_t pointer. */
 	cont(size_t & _val) : cont() { _size_ptr = &_val; }			//< A constructor for a size_t pointer.
+	/** \brief A constructor for a string pointer. */
 	cont(std::string & _val) : cont() { _string_ptr = &_val; }	//< A constructor for a string pointer.
 																/** A copy constructor. */
 	cont(const cont & source) : _int_ptr(source._int_ptr), _double_ptr(source._double_ptr), _size_ptr(source._size_ptr), _string_ptr(source._string_ptr) {
 		Fail = false;
 	}
-	/** @return this->Fail. True = operator >> failed. */
+	/** \return this->Fail. True = operator >> failed. */
 	bool IsFail() { return Fail; }
-	/** @return the type of the non-null pointer. */
+	/** \return the type of the non-null pointer. */
 	std::string GetType();
 
 	friend inline std::istream & operator >> (std::istream & is, cont & a);
@@ -228,6 +295,7 @@ protected:
 
 	bool Fail;	//< True = operator >> failed.
 private:
+	/** \brief A default constructor. */
 	//A default constructor.
 	cont() {
 		_int_ptr = nullptr;	_double_ptr = nullptr;	_size_ptr = nullptr;	_string_ptr = nullptr; Fail = false;
@@ -241,12 +309,14 @@ std::ostream & operator << (std::ostream & os, cont & a);
 
 /** \brief Data structure to help input a set of parameters. */
 struct Parameters {
+	/** \brief A default constructor
+	 *  \param Case_Sensitive  true = parameter names are matched case-sensitively. */
 	//A default constructor
 	Parameters(bool Case_Sensitive = false) { case_insensitive = Case_Sensitive; }
 
 	/** A member function to add one item in the parameter list
-	 * @param param_name	Name of the parameter.
-	 * @param val			A variable into which an input parameter is transferred. 
+	 * \param param_name	Name of the parameter.
+	 * \param val			A variable into which an input parameter is transferred. 
 							The type should be one of int, double, size_t, or std::string.	 */
 	template<typename T> void Insert(const std::string & param_name, T & val) {
 		std::string new_param_name(param_name);
@@ -259,15 +329,15 @@ struct Parameters {
 
 	/** \brief A routine to input parameters.
 	 *	The routine stops when one inputs "Start", "start", or "START".
-	 *	@param ifile	An inputstream. */
+	 *	\param ifile	An inputstream. */
 	void InputRoutine(std::istream & ifile);
 
 	/** \brief Display all parameter names. 
-	 *	@param ofile	An outputstream. */
+	 *	\param ofile	An outputstream. */
 	void ShowAllParameterNames(std::ostream & ofile);
 
 	/** \brief Display all parameter names and their values. 
-	 *	@param ofile	An outputstream. */
+	 *	\param ofile	An outputstream. */
 	void ShowAllParameters(std::ostream & ofile);
 
 protected:

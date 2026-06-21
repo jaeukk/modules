@@ -245,6 +245,7 @@ public:
 
 	friend inline GeometryVector SameDimensionZeroVector(const GeometryVector & src);
 };
+/** \brief Create another GeometryVector with same dimension as src, but the value is zero. */
 //create another GeometryVector with same dimension as src, but the value is zero
 inline GeometryVector SameDimensionZeroVector(const GeometryVector & src)
 {
@@ -257,6 +258,7 @@ inline GeometryVector SameDimensionZeroVector(const GeometryVector & src)
 
 
 
+/** \brief Stream out all MaxDimension coordinates followed by a newline. (CLAUDE) */
 inline std::ostream & operator << (std::ostream & os, const GeometryVector & a)
 {
 	//os<<a.Dimension<<" \t";
@@ -264,6 +266,7 @@ inline std::ostream & operator << (std::ostream & os, const GeometryVector & a)
 	os<<'\n';
 	return os;
 }
+/** \brief Read all MaxDimension coordinates from a stream. (CLAUDE) */
 inline std::istream & operator >> (std::istream & is, GeometryVector & a)
 {
 	//is>>a.Dimension;
@@ -273,39 +276,49 @@ inline std::istream & operator >> (std::istream & is, GeometryVector & a)
 	a.InputCoordinate(is, ::MaxDimension);
 	return is;
 }
+/** \brief Component-wise vector addition. (CLAUDE) */
 inline GeometryVector operator + (const GeometryVector & left, const GeometryVector & right)
 {
 	GeometryVector result(left);
 	result.AddFrom(right);
 	return result;
 }
+/** \brief Component-wise vector subtraction. (CLAUDE) */
 inline GeometryVector operator - (const GeometryVector & left, const GeometryVector & right)
 {
 	GeometryVector result(left);
 	result.MinusFrom(right);
 	return result;
 }
+/** \brief Scale a vector by a scalar on the right. (CLAUDE) */
 inline GeometryVector operator * (const GeometryVector & left, const double & right)
 {
 	GeometryVector result(left);
 	result.MultiplyFrom(right);
 	return result;
 }
+/** \brief Scale a vector by a scalar on the left. (CLAUDE) */
 inline GeometryVector operator * (const double & left, const GeometryVector & right)
 {
 	GeometryVector result(right);
 	result.MultiplyFrom(left);
 	return result;
 }
+/** \brief Exact component-wise equality comparison. (CLAUDE) */
 inline bool operator == (const GeometryVector & left, const GeometryVector & right)
 {
 	return left.IsEqual(right);
 }
+/** \brief Exact component-wise inequality comparison. (CLAUDE) */
 inline bool operator != (const GeometryVector & left, const GeometryVector & right)
 {
 	return !left.IsEqual(right);
 }
 
+/** \brief Fill result with a random vector uniformly distributed in the unit cube [-1,1]^d.
+ *  \param d       Dimension of the vector to generate.
+ *  \param gen     Random number generator to sample from.
+ *  \param result  Output vector to receive the random components. (CLAUDE) */
 //random unitvector in a unit cube
 inline void RandomVector(DimensionType d, RandomGenerator & gen, GeometryVector & result) {
 	result.SetDimension(d);
@@ -314,6 +327,9 @@ inline void RandomVector(DimensionType d, RandomGenerator & gen, GeometryVector 
 	}
 }
 
+/** \brief Fill result with a random vector in the unit cube [-1,1]^d using a fresh generator.
+ *  \param d       Dimension of the vector to generate.
+ *  \param result  Output vector to receive the random components. (CLAUDE) */
 inline void RandomVector(DimensionType d, GeometryVector & result) {
 	result.SetDimension(d);
 	RandomGenerator gen;
@@ -324,29 +340,61 @@ inline void RandomVector(DimensionType d, GeometryVector & result) {
 
 // RandomUnitVector(...) and GetRandomVector(...) moved to RandomGenerator.h
 // (declared there; reachable here because GeometryVector.h includes it).
+/** \brief Volume of the parallelepiped spanned by dimension basis vectors.
+ *  \param vecs       Array of basis vectors (length dimension).
+ *  \param dimension  Number of vectors and space dimension.
+ *  \return           Absolute value of the determinant, or 0 if dimension is 0. (CLAUDE) */
 double Volume (const GeometryVector * vecs, DimensionType dimension);
+/** \brief Volume of the simplex spanned by d basis vectors (parallelepiped volume / d!).
+ *  \param vecs  Array of basis vectors (length d).
+ *  \param d     Number of vectors and space dimension.
+ *  \return      The simplex volume. (CLAUDE) */
 double SimplexVolume (const GeometryVector * vecs, DimensionType d);
+/** \brief Rotate basis vectors into lower-triangular form with descending lengths.
+ *  Sorts so that l1>=l2>=l3..., then QR-rotates so the 1st basis vector is
+ *  (c11,0,0,...), the 2nd is (c21,c22,0,...), etc. (volume is preserved).
+ *  \param bas  Basis vectors to standardize in place (length d).
+ *  \param d    Space dimension. (CLAUDE) */
 void StandardizeOrientation(GeometryVector * bas, DimensionType d);
 
+/** \brief Write a list of vectors to a stream, with optional comment header fields.
+ *  \param result  Vectors to write, one per line (all MaxDimension coordinates).
+ *  \param ofile   Output stream.
+ *  \param fields  Optional field names printed as a leading '#'-commented header. (CLAUDE) */
 void WriteFunction(const std::vector<GeometryVector> & result, std::ostream & ofile, const std::vector<std::string> & fields = std::vector<std::string>());
+/** \brief Write a list of vectors to file OutFilePrefix.txt, with optional header fields.
+ *  \param result         Vectors to write.
+ *  \param OutFilePrefix  Output file path prefix (".txt" is appended).
+ *  \param fields         Optional field names printed as a leading header. (CLAUDE) */
 void WriteFunction(const std::vector<GeometryVector> & result, const std::string & OutFilePrefix, const std::vector<std::string> & fields = std::vector<std::string>());
+/** \brief Read a list of vectors from a stream, ignoring '#'-commented lines.
+ *  \param result      Output container, cleared then filled with the read vectors.
+ *  \param ifile       Input stream.
+ *  \param NumColumns  Number of columns (coordinates) to read per line. (CLAUDE) */
 void ReadFunction(std::vector<GeometryVector> & result, std::istream & ifile, size_t NumColumns);
+/** \brief Read a list of vectors from file InFilePrefix.txt, ignoring commented lines.
+ *  \param result        Output container, cleared then filled with the read vectors.
+ *  \param InFilePrefix  Input file path prefix (".txt" is appended).
+ *  \param NumColumns    Number of columns (coordinates) to read per line. (CLAUDE) */
 void ReadFunction(std::vector<GeometryVector> & result, const std::string & InFilePrefix, size_t NumColumns);
 
 
 //another implementation of vector
 //the difference between GeometryVector and BigVector is that BigVectors can have dimensions exceeding MaxDimension
 //BigVector can be used to represent vectors in configuration space
+/** \brief Heap-allocated vector of arbitrary dimension (may exceed MaxDimension). (CLAUDE) */
 class BigVector
 {
 public:
 	double * x;
 	size_t dim;
+	/** \brief Default-construct an empty (zero-dimensional) vector. (CLAUDE) */
 	BigVector()
 	{
 		this->dim=0;
 		this->x=nullptr;
 	}
+	/** \brief Construct a zero vector of the given dimension. (CLAUDE) */
 	BigVector(size_t dimension)
 	{
 		this->dim=dimension;
@@ -354,12 +402,14 @@ public:
 		for(size_t i=0; i<dimension; i++)
 			this->x[i]=0.0;
 	}
+	/** \brief Copy-construct from another vector (deep copy). (CLAUDE) */
 	BigVector(const BigVector & src)
 	{
 		this->dim=src.dim;
 		this->x=new double[this->dim];
 		std::memcpy(this->x, src.x, sizeof(double)*this->dim);
 	}
+	/** \brief Move-construct from another vector, leaving the source empty. (CLAUDE) */
 	BigVector(BigVector && src)
 	{
 		this->dim=src.dim;
@@ -367,28 +417,33 @@ public:
 		src.dim=0;
 		src.x=nullptr;
 	}
+	/** \brief Destructor; releases the heap-allocated storage. (CLAUDE) */
 	~BigVector()
 	{
 		if(this->x!=nullptr)
 			delete [] this->x;
 	}
+	/** \brief Add components from another vector in-place. (CLAUDE) */
 	void AddFrom(const BigVector & right)
 	{
 		assert(right.dim==this->dim);
 		for(size_t i=0; i<this->dim; i++)
 			this->x[i]+=right.x[i];
 	}
+	/** \brief Subtract components from another vector in-place. (CLAUDE) */
 	void MinusFrom(const BigVector & right)
 	{
 		assert(right.dim==this->dim);
 		for(size_t i=0; i<this->dim; i++)
 			this->x[i]-=right.x[i];
 	}
+	/** \brief Scale all components by a constant. (CLAUDE) */
 	void MultiplyFrom(const double & right)
 	{
 		for(size_t i=0; i<this->dim; i++)
 			this->x[i]*=right;
 	}
+	/** \brief Inner product with another vector. (CLAUDE) */
 	double Dot(const BigVector & src) const
 	{
 		assert(src.dim==this->dim);
@@ -397,21 +452,25 @@ public:
 			result+=this->x[i]*src.x[i];
 		return result;
 	}
+	/** \brief Squared Euclidean norm. (CLAUDE) */
 	double Modulus2(void) const
 	{
 		return this->Dot(*this);
 	}
+	/** \brief Stream out all dim coordinates separated by tabs. (CLAUDE) */
 	void OutputCoordinate(std::ostream & os) const
 	{
 		for(size_t i=0; i< dim; i++)
 			os<<this->x[i]<<" \t";
 	}
+	/** \brief Read dim coordinates from a stream. (CLAUDE) */
 	void InputCoordinate(std::istream & is)
 	{
 		for(size_t i=0; i< dim; i++)
 			is>>this->x[i];
 	}
 };
+/** \brief Component-wise addition of two BigVectors. (CLAUDE) */
 inline BigVector operator + (const BigVector & left, const BigVector & right)
 {
 	BigVector result(left);
@@ -419,6 +478,7 @@ inline BigVector operator + (const BigVector & left, const BigVector & right)
 	return result;
 }
 
+/** \brief Component-wise subtraction of two BigVectors. (CLAUDE) */
 inline BigVector operator - (const BigVector & left, const BigVector & right)
 {
 	BigVector result(left);
@@ -426,6 +486,7 @@ inline BigVector operator - (const BigVector & left, const BigVector & right)
 	return result;
 }
 
+/** \brief Scale a BigVector by a scalar on the right. (CLAUDE) */
 inline BigVector operator * (const BigVector & left, const double & right)
 {
 	BigVector result(left);
@@ -433,6 +494,7 @@ inline BigVector operator * (const BigVector & left, const double & right)
 	return result;
 }
 
+/** \brief Scale a BigVector by a scalar on the left. (CLAUDE) */
 inline BigVector operator * (const double & left, const BigVector & right)
 {
 	return  right*left;

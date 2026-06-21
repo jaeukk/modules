@@ -38,10 +38,7 @@ int RandomGenerator::PoissonRNG(double mean){
 	return dist(this->gen);
 }
 
-/** Give a random unit vector whose direction is "statistically isotropic."
- * @param d		Space dimension.
- * @param gen	A random number generator.
- * @return A GeometryVector object whose magnitude is 1. */
+// RandomUnitVector: documented on the declaration in RandomGenerator.h.
 GeometryVector RandomUnitVector(DimensionType d, RandomGenerator & gen) {
 	GeometryVector result(static_cast<int>(d));
 	double theta = 0;

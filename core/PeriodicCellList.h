@@ -83,6 +83,7 @@ protected:
 	mutable double VicinityLatticesRc2;
 	bool SortedVicinityList;//use sorted vicinity lattice list, which takes some time to sort, but makes iteration more efficient
 
+	/** \brief Recompute Cartesian coordinates of particle a from its relative coordinates. (CLAUDE) */
 	void UpdateCartesianCoordinates(size_t a)
 	{
 		if (!(this->ParticleRelatives[a].x[0] < 1 + ::LengthPrecision) || !(this->ParticleRelatives[a].x[0] >= 0 - ::LengthPrecision))
@@ -94,11 +95,15 @@ protected:
 		for (DimensionType i = 0; i<this->Dimension; i++)
 			this->ParticleCartesians[a].AddFrom((this->BasisVector[i])*(this->ParticleRelatives[a].x[i]));
 	}
+	/** \brief Wrap particle a back into the primary periodic box. (CLAUDE) */
 	void PutToPeriodicBox(size_t a)
 	{
 		for (DimensionType i = 0; i<this->Dimension; i++)
 			this->ParticleRelatives[a].x[i] -= std::floor(this->ParticleRelatives[a].x[i]);
 	}
+	/** \brief Convert a dimensional cell index into a flat 1-dimensional cell index.
+	 *  \param index Per-dimension cell indices.
+	 *  \return      Flattened cell index. */
 	Index ConvertIndex(const signed long * index) const//convert dimensional index to the 1-dimension cell index
 	{
 		Index result = index[0];
@@ -111,6 +116,9 @@ protected:
 		}
 		return result;
 	}
+	/** \brief Compute the per-dimension cell index containing a relative coordinate.
+	 *  \param[out] index               Filled with the dimensional cell index.
+	 *  \param[in]  RelativeCoordinates Point in relative (box) coordinates. (CLAUDE) */
 	void GetFullIndex(signed long * index, const GeometryVector & RelativeCoordinates) const
 	{
 		for (DimensionType i = 0; i<this->Dimension; i++)
@@ -125,6 +133,7 @@ protected:
 	}
 
 
+	/** \brief Get the index of the cell that a should be placed in, the LatticeCoordinates of particle must be in box */
 	Index GetIndex(const size_t a) const //get the index of the cell that a should be placed in, the LatticeCoordinates of particle must be in box
 	{
 		signed long index[::MaxDimension] = {0};
@@ -133,6 +142,7 @@ protected:
 	}
 
 
+	/** \brief Move a to another cell if necessary, from is the cell that a comes from, return true if moved */
 	bool UpdateCellList(std::vector<size_t>::iterator a, std::vector<size_t> & from)//move a to another cell if necessary, from is the cell that a comes from, return true if moved
 	{
 		//calculate new index
@@ -150,6 +160,7 @@ protected:
 	}
 
 
+	/** \brief Recursively enumerate cell-lattice points within a spherical shell into the vicinity list. (CLAUDE) */
 	bool _VicinityLatticeIteration(GeometryVector now, DimensionType DimIDo, GeometryVector nowRelative, GeometryVector * ortho, double Rmax2, double Rmin2) const
 	{
 		const double VicinityLatticeRmin_Tolerance = 1e-10;
@@ -397,6 +408,7 @@ public:
 	}
 
 
+	/** \brief Reduce one basis vector against another to shorten the box, rebuilding the cell list. (CLAUDE) */
 	void TryRefineBasisVectors_inner(int ilongest)
 	{
 		//find the other basis vector
@@ -442,6 +454,7 @@ public:
 	}
 
 
+	/** \brief Attempt to reduce all basis vectors to a more compact (near-orthogonal) box. (CLAUDE) */
 	void TryRefineBasisVectors(void)
 	{
 		if (this->Dimension == 1)
@@ -451,6 +464,7 @@ public:
 	}
 
 
+	/** \brief Return the volume of the fundamental periodic cell. (CLAUDE) */
 	double PeriodicVolume(void) const
 	{
 		//double result = ::Volume(this->BasisVector, this->Dimension);
@@ -578,6 +592,7 @@ public:
 		return this->ParticleCartesians[Num];
 	}
 
+	/** \brief Return the length of the longest diagonal of the simulation box */
 	//return the length of the longest diagonal of the simulation box
 	double MaxDiagonalLength(void) const
 	{
@@ -591,6 +606,7 @@ public:
 		}
 		return std::sqrt(maxdist.Modulus2());
 	}
+	/** \brief Allocate and generate internal cell lists, so that calling IterateThroughNeighbors with the same Rc is thread-safe */
 	//allocate and generate internal cell lists, so that calling IterateThroughNeighbors with the same Rc is thread-safe
 	void PrepareIterateThroughNeighbors(double Rc) const
 	{
@@ -783,6 +799,7 @@ public:
 			}
 		}
 	}
+	/** \brief Move particle Num to a new relative coordinate, updating its cell assignment. (CLAUDE) */
 	void MoveParticle(size_t Num, const GeometryVector & newRelativeCoordinate)
 	{
 		//particle * a=&this->Particles[Num];
@@ -810,6 +827,7 @@ public:
 		this->UpdateCartesianCoordinates(Num);
 		this->UpdateCellList(itera, currentCell);
 	}
+	/** \brief Remove particle Num by swapping it with the last particle and updating cell lists. (CLAUDE) */
 	void DeleteParticle(size_t Num)
 	{
 		//particle * a=&this->Particles[Num];
@@ -867,11 +885,13 @@ public:
 			acurrentCell.pop_back();
 		}
 	}
+	/** \brief Return the i-th basis vector of the periodic box. (CLAUDE) */
 	GeometryVector GetBasisVector(::DimensionType i) const
 	{
 		return this->BasisVector[i];
 	}
-	
+
+	/** \brief Return the i-th reciprocal basis vector, computing and caching it if needed. (CLAUDE) */
 	GeometryVector GetReciprocalBasisVector(::DimensionType i) const
 	{
 		if (this->ReciprocalBasisVectorValid[i])
@@ -905,6 +925,7 @@ public:
 		}
 	}
 
+	/** \brief Obtain indices of cells neighboring the RelativeCoordinates around radius Rc */
 	//obtain indices of cells neighboring the RelativeCoordinates around radius Rc
 	void GetNeighborList(const GeometryVector & RelativeCoordinates, double Rc, std::vector<int> & prt_index_list) const
 	{
@@ -979,6 +1000,7 @@ public:
 				
 	}
 
+	/** \brief Recompute cell ranks from the current basis and reassign all particles to cells. (CLAUDE) */
 	void RefineCellList(void)
 	{
 		this->ClearVicinityLatticeList();
@@ -1000,16 +1022,19 @@ public:
 			this->Cells[this->GetIndex(i)].push_back(i);
 		}
 	}
+	/** \brief Return the target (approximate) linear cell size. (CLAUDE) */
 	double GetCellSize(void)
 	{
 		return this->ApproximateCellSize;
 	}
+	/** \brief Enable or disable use of the sorted vicinity lattice list. (CLAUDE) */
 	void SetSortedCellList(bool SortedCellList)
 	{
 		if (SortedCellList != this->SortedVicinityList)
 			this->ClearVicinityLatticeList();
 		this->SortedVicinityList = SortedCellList;
 	}
+	/** \brief Set the target cell size, refining the cell list if cells become too large or small. (CLAUDE) */
 	void SetCellSize(double CellSize)
 	{
 		this->ApproximateCellSize = CellSize;
@@ -1025,6 +1050,7 @@ public:
 		if (NeedRefine)
 			this->RefineCellList();
 	}
+	/** \brief Replace the box basis vectors, updating Cartesian coordinates and cell list. (CLAUDE) */
 	void ChangeBasisVector(const GeometryVector NewBasisVectors[])
 	{
 		for (DimensionType i = 0; i<this->Dimension; i++)
@@ -1052,6 +1078,7 @@ public:
 		this->vol = -1;
 		this->vol = this->PeriodicVolume();
 	}
+	/** \brief Remove all Particles */
 	void RemoveParticles(void)//remove all Particles
 	{
 		//this->Particles.clear();
@@ -1062,6 +1089,7 @@ public:
 		for (auto iter = this->Cells.begin(); iter != this->Cells.end(); iter++)
 			iter->clear();
 	}
+	/** \brief Scale the box (and cell size) by Factor, isotropically rescaling all particle positions. (CLAUDE) */
 	virtual void Rescale(double Factor)
 	{
 		this->ApproximateCellSize *= Factor;
@@ -1072,11 +1100,13 @@ public:
 		/*reset volume*/
 		this->vol = -1.0;
 	}
+	/** \brief Rescale the box isotropically so its volume becomes NewVolume. (CLAUDE) */
 	virtual void Resize(double NewVolume)
 	{
 		double factor = std::pow(NewVolume / this->PeriodicVolume(), 1.0 / this->Dimension);
 		this->Rescale(factor);
 	}
+	/** \brief Convert Cartesian coordinates to relative (box) coordinates. (CLAUDE) */
 	GeometryVector CartesianCoord2RelativeCoord(const GeometryVector & CartesianCoord) const
 	{
 		GeometryVector result(this->Dimension);
@@ -1085,6 +1115,7 @@ public:
 
 		return result*(0.5 / pi);
 	}
+	/** \brief Convert relative (box) coordinates to Cartesian coordinates. (CLAUDE) */
 	GeometryVector RelativeCoord2CartesianCoord(const GeometryVector & RelativeCoord) const
 	{
 		GeometryVector result(this->Dimension);
@@ -1093,11 +1124,13 @@ public:
 
 		return result;
 	}
+	/** \brief Wrap a relative-coordinate vector into its minimum-image representation in [-0.5, 0.5). (CLAUDE) */
 	void RelativeCoordToMinimumImage(GeometryVector & a) const
 	{
 		for (DimensionType i = 0; i<this->Dimension; i++)
 			a.x[i] -= std::floor(a.x[i]+0.5);
 	}
+	/** \brief Serialize dimension, basis, and particle data to a binary stream. (CLAUDE) */
 	void WriteBinary(std::ostream & ofile) const
 	{
 		ofile.write((char *)(&this->Dimension), sizeof(this->Dimension));
@@ -1112,6 +1145,7 @@ public:
 			ofile.write((char *)(&this->ParticleCharacteristics[i]), sizeof(OtherCharacteristics));
 		}
 	}
+	/** \brief Construct a list by deserializing it from a binary stream (replaces a ReadBinary method). (CLAUDE) */
 	// there is no such thing as void ReadBinary(std::istream & ifile)! Use the following constructor instead!
 	PeriodicCellList(std::istream & ifile, bool UseSortedList = false)
 	{
@@ -1160,6 +1194,7 @@ public:
 		this->vol = ::Volume(this->BasisVector, this->Dimension);
 	}
 
+	/** \brief Rotate the box to a standard lower-triangular orientation with descending basis-vector lengths. (CLAUDE) */
 	//rotate the current structure so that
 	//the 1st basis vector is (c11, 0, 0, ...)
 	//the 2nd basis vector is (c21, c22, 0, ...)
@@ -1170,12 +1205,14 @@ public:
 		::StandardizeOrientation(this->BasisVector, this->Dimension);
 		this->ChangeBasisVector(this->BasisVector);
 	}
+	/** \brief PeriodicCellList< of anything > can be converted to PeriocicCellList<Empty> */
 	//PeriodicCellList< of anything > can be converted to PeriocicCellList<Empty>
 	operator PeriodicCellList<Empty> const () const
 	{
 		return PeriodicCellList<Empty>(*this, Empty());
 	}
 
+	/** \brief Return the distance from fromRelative to the closest particle */
 	//return the distance from fromRelative to the closest particle
 	double NearestParticleDistance(const GeometryVector & fromRelative)
 	{
@@ -1195,6 +1232,7 @@ public:
 		std::partial_sort(neighbors.begin(), neighbors.begin() + 1, neighbors.end(), [](const GeometryVector & left, const GeometryVector & right)->bool{return left.Modulus2() < right.Modulus2(); });
 		return std::sqrt(neighbors[0].Modulus2());
 	}
+	/** \brief Return the distance from particle No. i to the closest particle */
 	//return the distance from particle No. i to the closest particle
 	double NearestParticleDistance(size_t i)
 	{
@@ -1215,6 +1253,7 @@ public:
 		return std::sqrt(neighbors[1].Modulus2());
 	}
 
+	/** \brief Least image displacement : input vector is in relative coordinates */
 	//Least image displacement : input vector is in relative coordinates
 	GeometryVector displacement_periodic_relative (int i, const GeometryVector & r0_Relative) const {
 		if (i < this->NumParticle()) {
@@ -1231,6 +1270,7 @@ public:
 			return GeometryVector(r0_Relative.Dimension);
 		}
 	}
+	/** \brief Least image displacement : input vector is in Cartesian coordinates */
 	//input vector is in Cartesian coordinates
 	GeometryVector displacement_periodic(int i, const GeometryVector & r0) const {
 		if (i < this->NumParticle()) {
@@ -1249,6 +1289,7 @@ public:
 		}
 	}
 
+	/** \brief Return a uniformly random Cartesian position within the periodic box. (CLAUDE) */
 	GeometryVector GetRandomPosition() {
 		RandomGenerator gen;
 		GeometryVector result;
@@ -1258,6 +1299,7 @@ public:
 		return result;
 	}
 
+	/** \brief Return squared distance btw particle i and j */
 	//return squared distance btw particle i and j
 	double distance2(int i, int j) {
 		if (i < this->NumParticle() && j < this->NumParticle()) {
@@ -1274,7 +1316,8 @@ public:
 			return 0;
 		}
 	}
-	//the squared distance between i-th particle and test particle		
+	/** \brief The squared distance between i-th particle and test particle */
+	//the squared distance between i-th particle and test particle
 	double distance2(int i, GeometryVector test) {
 		if (i < this->NumParticle()) {
 			GeometryVector dr = ParticleCartesians[i] - test;
@@ -1292,11 +1335,13 @@ public:
 		}
 	}
 
+	/** \brief Return the distance between particle i and particle j. (CLAUDE) */
 	double distance(int i, int j) {
 		return sqrt(this->distance2(i, j));
 	}
 
 };
+/** \brief Overlap all the configurations in that std::vector; require that all the configurations in the std::vector have the same basis vectors */
 //overlap all the configurations in that std::vector
 //require that all the configurations in the std::vector have the same basis vectors
 template<typename a>PeriodicCellList<a> CombinedList(const std::vector<PeriodicCellList<a> > & components)
@@ -1312,6 +1357,7 @@ template<typename a>PeriodicCellList<a> CombinedList(const std::vector<PeriodicC
 	}
 	return result;
 }
+/** \brief config is a CombinedList of m PeriodicCellLists, extract the nth list */
 //config is a CombinedList of m PeriodicCellLists, extract the nth list
 template<typename a>PeriodicCellList<a> SeparateList(const PeriodicCellList<a> & config, size_t m, size_t n)
 {
@@ -1333,13 +1379,16 @@ template<typename a>PeriodicCellList<a> SeparateList(const PeriodicCellList<a> &
 	return result;
 }
 
+/** \brief Per-particle characteristic holding a short (up to 3-character) atom name. (CLAUDE) */
 struct AtomName
 {
 	char name[4];
+	/** \brief Construct an empty atom name. (CLAUDE) */
 	AtomName()
 	{
 		this->name[0]='\0';
 	}
+	/** \brief Construct from a C-string, truncating to 3 characters. (CLAUDE) */
 	AtomName(const char * n)
 	{
 		std::strncpy(this->name, n, 3);
@@ -1348,22 +1397,28 @@ struct AtomName
 };
 typedef PeriodicCellList<AtomName> Configuration;
 
+/** \brief Write a Configuration to a .pos text file with the given prefix. (CLAUDE) */
 void Output(std::string prefix, const Configuration & List);
+/** \brief Write a Configuration in .pos text format to an output stream. (CLAUDE) */
 void Output(std::ostream & out, const Configuration & List);
+/** \brief Write a Configuration in binary format to an output stream. (CLAUDE) */
 inline void WriteBinary(std::ostream & out, const Configuration & List)
 {
 	List.WriteBinary(out);
 }
+/** \brief Write a Configuration in binary format to a .Config file with the given prefix. (CLAUDE) */
 inline void WriteBinary(std::string prefix, const Configuration & List)
 {
 	prefix+=std::string(".Config");
 	std::fstream ofile(prefix.c_str(), std::fstream::out | std::fstream::binary);
 	WriteBinary(ofile, List);
 }
+/** \brief Read a Configuration in binary format from an input stream. (CLAUDE) */
 inline Configuration ReadBinary(std::istream & ifile)
 {
 	return Configuration(ifile);
 }
+/** \brief Read a Configuration in binary format from a .Config file with the given prefix. (CLAUDE) */
 inline Configuration ReadBinary(std::string prefix)
 {
 	prefix+=std::string(".Config");
@@ -1371,24 +1426,39 @@ inline Configuration ReadBinary(std::string prefix)
 	return ReadBinary(ifile);
 }
 
+/** \brief Read a Configuration from a .pos file with the given prefix. (CLAUDE) */
 Configuration ReadPos(std::string prefix);
+/** \brief Read a Configuration in .pos format from an input stream. (CLAUDE) */
 Configuration ReadPos(std::istream & ifile);
+/** \brief Read a Configuration from a HOOMD XML input stream. (CLAUDE) */
 Configuration ReadHoomdXml(std::istream & ifile);
+/** \brief Read a Configuration from a HOOMD .xml file with the given prefix. (CLAUDE) */
 Configuration ReadHoomdXml(std::string prefix);
+/** \brief Read a Configuration from a stealth-format input stream with the given side length. (CLAUDE) */
 Configuration ReadStealthOutput(std::istream & file, double SideLength);
+/** \brief Read a Configuration from a stealth-format input stream (unit side length). (CLAUDE) */
 Configuration ReadStealthOutput(std::istream & file);
+/** \brief Tile a Configuration NumberInEachSide times along every box direction. (CLAUDE) */
 Configuration MultiplicateStructure(const Configuration & src, size_t NumberInEachSide);
+/** \brief Tile a Configuration with per-direction replication counts. (CLAUDE) */
 Configuration MultiplicateStructure(const Configuration & src, const std::vector<size_t> & NumberInEachSide);
+/** \brief Read a Configuration from a GROMACS .gro input stream. (CLAUDE) */
 Configuration ReadGro(std::istream & file);
+/** \brief Return an empty unit cubic box configuration of dimension d. (CLAUDE) */
 Configuration GetUnitCubicBox(DimensionType d, double CellSize=0.1);
 
+/** \brief Read a Configuration of relative coordinates from an input stream (unit side length). (CLAUDE) */
 Configuration ReadCoordinate(std::istream & file);
+/** \brief Read a Configuration of relative coordinates with the given side length. (CLAUDE) */
 Configuration ReadCoordinate(std::istream & file, double SideLength);
+/** \brief Read a Configuration of Cartesian coordinates from an input stream (unit side length). (CLAUDE) */
 Configuration ReadCartesianCoordinate(std::istream & file);
+/** \brief Read a Configuration of Cartesian coordinates with the given side length. (CLAUDE) */
 Configuration ReadCartesianCoordinate(std::istream & file, double SideLength);
 
 
 
+/** \brief A pack of multiple configurations, recorded in files Prefix.ConfigPack and Prefix.ConfigPackIndex */
 // a pack of multiple configurations, recorded in files Prefix.ConfigPack and Prefix.ConfigPackIndex
 // .ConfigPack file contains configurations in binary format, one by one
 // .ConfigPackIndex has the format:
@@ -1399,52 +1469,67 @@ private:
 	std::string IndexName, PackName;
 	long long NConfig;
 public:
+	/** \brief Construct an empty pack with no associated files. (CLAUDE) */
 	ConfigurationPack()
 	{
 		this->NConfig=0;
 	}
+	/** \brief Construct and open a pack using the given file prefix. (CLAUDE) */
 	ConfigurationPack(const std::string & prefix)
 	{
 		this->Open(prefix);
 	}
+	/** \brief Open (or attach to) the pack files identified by prefix. (CLAUDE) */
 	void Open(const std::string & prefix);
+	/** \brief Return the number of configurations currently in the pack. (CLAUDE) */
 	long long NumConfig(void);
+	/** \brief Append a configuration to the pack files. (CLAUDE) */
 	void AddConfig(const Configuration & c);
+	/** \brief Read and return the i-th configuration from the pack. (CLAUDE) */
 	Configuration GetConfig(long long i);
 
+	/** \brief Discard all configurations that are already in the file */
 	//discard all configurations that are already in the file
 	void Clear(void);
 };
 
 
+/** \brief Polydisperse sphere packing : a periodic point pattern whose per-particle characteristic is a sphere radius */
 //polydisperse sphere packing
 class SpherePacking : public PeriodicCellList<double>
 {
 public:
+	/** \brief Construct an empty sphere packing. (CLAUDE) */
 	SpherePacking() : PeriodicCellList()//, MaxRadius(0.0)
 	{
 	}
+	/** \brief Construct an empty sphere packing for a given box geometry. (CLAUDE) */
 	SpherePacking(DimensionType Dimension, GeometryVector * BasisVectors, double CellSize, bool UseSortedList=false);
+	/** \brief Construct from another list, assigning a uniform sphere radius to every particle. (CLAUDE) */
 	template<typename add> SpherePacking(const PeriodicCellList<add> & source, const double & radius) : PeriodicCellList(source, radius)
 	{
 		this->MaxRadius=radius;
 	}
+	/** \brief Access the mutable radius of sphere Num. (CLAUDE) */
 	virtual double & GetCharacteristics(size_t Num)
 	{
 		//this->MaxRadius = 0.0;
 		return this->ParticleCharacteristics[Num];
 	}
+	/** \brief Access the const radius of sphere Num. (CLAUDE) */
 	virtual const double & GetCharacteristics(size_t Num) const
 	{
 		return this->ParticleCharacteristics[Num];
 	}
 
+	/** \brief Construct a sphere packing by deserializing it from a binary stream. (CLAUDE) */
 	SpherePacking(std::istream & ifile, bool UseSortedList=false) : PeriodicCellList<double>(ifile, UseSortedList)
 	{
 		this->MaxRadius=0.0;
 		for(size_t i=0; i<this->NumParticle(); i++)
 			this->MaxRadius=std::max(this->MaxRadius, this->GetCharacteristics(i));
 	}
+	/** \brief Recompute the cached maximum sphere radius if it is currently invalid. (CLAUDE) */
 	void UpdateMaxRadius(void) const
 	{
 		if (this->MaxRadius == 0.0)
@@ -1453,33 +1538,40 @@ public:
 				this->MaxRadius = std::max(this->MaxRadius, this->ParticleCharacteristics[i]);
 		}
 	}
+	/** \brief Return the largest sphere radius in the packing. (CLAUDE) */
 	double GetMaxRadius(void) const
 	{
 		UpdateMaxRadius();
 		return this->MaxRadius;
 	}
+	/** \brief Insert a sphere of the given radius at a relative coordinate. (CLAUDE) */
 	virtual void Insert(double radius, const GeometryVector & RelativeCoordinate);
 
+	/** \brief Check if the voxel is COMPLETELY occupied */
 	//check if the voxel is COMPLETELY occupied
 	//no need to distinguish partial availability and full availability
-	//relative coord and halfsize 
+	//relative coord and halfsize
 	//Radius : cartesian radius of the upcoming sphere
 	bool CheckVoxelOverlap(const GeometryVector & cr, double halfsize, double Radius) const;
 
+	/** \brief Returns 0 if voxel is completely empty, 2 if voxel is fully occupied, 1 otherwise */
 	//returns 0 if voxel is completely empty
 	//2 if voxel is fully occupied
 	//1 otherwise
-	//relative coord and halfsize 
+	//relative coord and halfsize
 	//Radius : cartesian radius of the upcoming sphere
 	int CheckVoxelOverlap2(const GeometryVector & cr, double halfsize, double Radius) const;
 
 
+	/** \brief Check whether a sphere of the given radius placed at cr overlaps any existing sphere. (CLAUDE) */
 	//relative coord
 	//Radius : cartesian radius of the upcoming sphere
 	bool CheckOverlap(const GeometryVector & cr, double Radius) const;
 
+	/** \brief Check if there are overlapping spheres.
+	 *  \return false = no overlapping. */
 	//check if there are overlapping spheres
-	/* @return false = no overlapping. */
+	/* \return false = no overlapping. */
 	bool CheckOverlap(void) const
 	{
 		UpdateMaxRadius();
@@ -1503,6 +1595,7 @@ public:
 		return false;
 	}
 
+	/** \brief Return the packing fraction (total sphere volume divided by box volume). (CLAUDE) */
 	double PackingFraction(void) const
 	{
 		double v1=0.0;
@@ -1512,6 +1605,7 @@ public:
 		return v1/this->PeriodicVolume();
 	}
 
+	/** \brief Rescale system box and particle sizes.... */
 	//-----rescale system box and particle sizes....
 	virtual void Rescale(double Factor)
 	{
@@ -1528,11 +1622,13 @@ public:
 		/* inform that the volume is updated. */
 		this->vol = -1.0;
 	}
+	/** \brief Rescale the box and spheres isotropically so the box volume becomes NewVolume. (CLAUDE) */
 	virtual void Resize(double NewVolume)
 	{
 		double factor = std::pow(NewVolume / this->PeriodicVolume(), 1.0 / this->Dimension);
 		this->Rescale(factor);
 	}
+	/** \brief Rescale particle sizes only */
 	//Rescale particle sizes only
 	void Rescale_prtOnly(double factor) {
 		for (size_t i = 0; i < this->NumParticle(); i++) {
@@ -1541,6 +1637,7 @@ public:
 		this->MaxRadius *= factor;
 	}
 
+	/** \brief Set the radius of sphere index to newRadius, updating the cached maximum radius. (CLAUDE) */
 	void UpdateCharacteristics(double newRadius, int index) {
 		this->ParticleCharacteristics[index] = newRadius;
 		this->MaxRadius = std::max(this->MaxRadius, newRadius);
@@ -1549,72 +1646,90 @@ public:
 	// Newly defined for First-passage time simulations
 
 		/** Check whether a test point is inside a particle of this Dispersion class. 
-	 * @param[in] RelativeCoordinate 	The position of a test point in the relative coordinates.	 
-	 * @return Particle ID, if the point is inside of a particle. -1, otherwise. */
+	 * \param[in] RelativeCoordinate 	The position of a test point in the relative coordinates.	 
+	 * \return Particle ID, if the point is inside of a particle. -1, otherwise. */
 	int IsInsideParticle(const GeometryVector & RelativeCoordinate) const;
 
 	/** Find the three nearest neighbors. 
-	 * @param[in] RelativeCoordinate	The position of a test point in the relative coordinates.
-	 * @param[out] list	A list of some nearest interfaces. list[i] = GeometryVector(distance, side ID, particle ID)
-	 * @param[out] x0_Relative	The point on the interface closest to RelativeCoordinate. 	
-	 * @param[out] n2host	The unit outward normal vector at x0. 	*/
+	 * \param[in] RelativeCoordinate	The position of a test point in the relative coordinates.
+	 * \param[out] list	A list of some nearest interfaces. list[i] = GeometryVector(distance, side ID, particle ID)
+	 * \param[out] x0_Relative	The point on the interface closest to RelativeCoordinate. 	
+	 * \param[out] n2host	The unit outward normal vector at x0. 	*/
 	void FindNearestNeighbors (const GeometryVector & RelativeCoordinate, std::vector<GeometryVector> & list, GeometryVector & x0_Relative, GeometryVector & n2host) const;
 
 };
 
 
+/** \brief Read a SpherePacking from a Torquato-Jiao (TJ) format input stream. (CLAUDE) */
 SpherePacking ReadTJOutput(std::istream & inFile);
+/** \brief Read a SpherePacking from a TJ-format .dat file with the given prefix. (CLAUDE) */
 SpherePacking ReadTJOutput(const std::string & prefix);
 
 
+/** \brief Write a SpherePacking in TJ format to an output file stream. (CLAUDE) */
 void WriteTJOutput(std::fstream & ofile, const SpherePacking & pk);
+/** \brief Write a SpherePacking in TJ format to a .dat file with the given prefix. (CLAUDE) */
 void WriteTJOutput(const std::string & prefix, const SpherePacking & pk);
 
+/** \brief A SpherePacking counterpart of ConfigurationPack, using .SpherePack and .SpherePackIndex files */
 /*	 a SpherePacking counterpart of ConfigurationPack
 *.SpherePack files and .SpherePackIndex
 */
-class SpherePackingPack 
+class SpherePackingPack
 {
 private:
 	std::string IndexName, PackName;
 	long long NConfig;
 public:
+	/** \brief Construct an empty pack with no associated files. (CLAUDE) */
 	SpherePackingPack() { this->NConfig = 0; }
+	/** \brief Construct and open a pack using the given file prefix. (CLAUDE) */
 	SpherePackingPack(const std::string & prefix) {
 		this->Open(prefix);
 	}
+	/** \brief Open (or attach to) the pack files identified by prefix. (CLAUDE) */
 	void Open(const std::string &prefix);
+	/** \brief Return the number of sphere packings currently in the pack. (CLAUDE) */
 	long long NumConfig(void);
+	/** \brief Append a sphere packing to the pack files. (CLAUDE) */
 	void AddConfig(const SpherePacking &c);
+	/** \brief Read and return the i-th sphere packing from the pack. (CLAUDE) */
 	SpherePacking GetConfig(long long i);
+	/** \brief Discard all sphere packings currently stored in the files. (CLAUDE) */
 	void Clear(void);
 };
 
 //VoxelType should be either char or bool. Char is faster, while bool can work with smaller memory.
 typedef char VoxelType;
+/** \brief Pixelizing the configuration to MeshSide pixes in each side */
 //pixelizing the configuration to MeshSide pixes in each side
 void DigitizeConfiguration(const Configuration & c, double radius, size_t MeshSide, std::vector<VoxelType> & result);
+/** \brief Pixelize the configuration and return the resulting occupancy grid. (CLAUDE) */
 inline std::vector<VoxelType> DigitizeConfiguration(const Configuration & c, double radius, size_t MeshSide)
 {
 	std::vector<VoxelType> result;
 	DigitizeConfiguration(c, radius, MeshSide, result);
 	return result;
 }
+/** \brief Calculate volume fraction if each particle is replaced with a hypersphere of certain radius; do this by pixelizing the configuration to MeshSide pixes in each side */
 //calculate volume fraction if each particle is replaced with a hypersphere of certain radius
 //do this by pixelizing the configuration to MeshSide pixes in each side
 double Volume(const Configuration & c, double radius, size_t MeshSide, std::vector<VoxelType> * pbuffer = nullptr);
 
 
+/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particles a and b will be connected. */
 //return the minimum D such that if each particle is replaced with a sphere with diameter D, particles a and b will be connected.
 double MinConnectDiameter(const Configuration & c, size_t a, size_t b);
-//return the minimum D such that if each particle is replaced with a sphere with diameter D, 
+/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particle n will connect to its periodic image in direction dir. */
+//return the minimum D such that if each particle is replaced with a sphere with diameter D,
 //particle n will connect to its periodic image in direction dir.
 double PercolationDiameter(const Configuration & c, size_t n, DimensionType dir);
 
 
+/** \brief Replace each particle in c with a hypersphere with radius, what's the cluster size InitParticle is in? FoundPeriodicImages: whether or not found more than 1 periodic images of a particle, which means the cluster size is actually infinite rather than the returned value. */
 //Replace each particle in c with a hypersphere with radius,
 //what's the cluster size InitParticle is in?
-//FoundPeriodicImages: whether or not found more than 1 periodic images of a particle, 
+//FoundPeriodicImages: whether or not found more than 1 periodic images of a particle,
 //which means the cluster size is actually infinite rather than the returned value.
 size_t ClusterSize(const Configuration & c, size_t InitParticle, double radius, bool & FoundPeriodicImages);
 
@@ -1622,6 +1737,7 @@ size_t ClusterSize(const Configuration & c, size_t InitParticle, double radius, 
 
 #include <complex>
 
+/** \brief Incrementally merges particles of a PeriodicCellList into clusters as a connection distance grows */
 //This class initializes by assigining each particle in a PeriodicCellList to its own cluster
 //Then, as the user call member function Proceed(double r), particles within distance r are merged to a single cluster
 //The user can then query various member objects of this class for various aspects of clusters:
@@ -1632,6 +1748,7 @@ class ClusterMerger
 protected:
 	typedef std::list<size_t> cluster;
 private:
+	/** \brief Forbid copy */
 	//forbid copy
 	ClusterMerger(const ClusterMerger & src);
 	struct Bond
@@ -1657,6 +1774,7 @@ public:
 
 
 public:
+	/** \brief Build the bond list of a configuration, placing each particle in its own cluster. (CLAUDE) */
 	ClusterMerger(const PeriodicCellList<Empty> & c, double Rmax)
 	{
 		_N = c.NumParticle();
@@ -1688,6 +1806,7 @@ public:
 		_LargestClusterSize = 1;
 		next = vBond.begin();
 	}
+	/** \brief Merge _clusters until distances of any cluster is larger than r */
 	//merge _clusters until distances of any cluster is larger than r
 	void Proceed(double r)
 	{
@@ -1717,21 +1836,26 @@ public:
 
 
 //uncomfortably added functions
+/** \brief Output Cartesian coordinates of particles with the dimension and basis vectors */
 //output Cartesian coordinates of particles with the dimension and basis vectors
 void WriteConfiguration(const Configuration & conf, const std::string & OutputName);
+/** \brief Write a SpherePacking (dimension, basis vectors, coordinates and radii) to a .txt file. (CLAUDE) */
 void WriteConfiguration(const SpherePacking & conf, const std::string & OutputName);
+/** \brief Write a generic PeriodicCellList (dimension, basis vectors, coordinates) to a .txt file. (CLAUDE) */
 template<typename T> void WriteConfiguration(const PeriodicCellList<T> & conf, const std::string & OutputName);
+/** \brief Read a Configuration from a .txt file written by WriteConfiguration. (CLAUDE) */
 void ReadConfiguration(Configuration & conf, const std::string & InputName);
+/** \brief Read a SpherePacking from a .txt file written by WriteConfiguration. (CLAUDE) */
 void ReadConfiguration(SpherePacking & conf, const std::string & InputName);
 
 
 /** Find all reciprocal lattice vectors (wavevectors) of a given periodic simulation box.
  *  It is modified to deal with errors.
- *	@param tempList	A periodic simulation box.
- *	@param (CircularKMax, LinearKMax)	Find all reciprocal lattice vectors (excluding parity pairs) whose magnitude is smaller than CircularKMax but greater than CircularKMin, and then fina all integral multiples of the aforementioned vectors whose magnitudes are smaller than LinearKMax.
- *	@param SampleProbability	When <1, randomly choose wavevectors within CircularKMax by the prescribed probability.
- *	@param use_iteratethrough	True = use IterateThrough() function, which may surge memory use. 
- *	@param CircularKMin			0 by default.  
+ *	\param tempList	A periodic simulation box.
+ *	\param (CircularKMax, LinearKMax)	Find all reciprocal lattice vectors (excluding parity pairs) whose magnitude is smaller than CircularKMax but greater than CircularKMin, and then fina all integral multiples of the aforementioned vectors whose magnitudes are smaller than LinearKMax.
+ *	\param SampleProbability	When <1, randomly choose wavevectors within CircularKMax by the prescribed probability.
+ *	\param use_iteratethrough	True = use IterateThrough() function, which may surge memory use. 
+ *	\param CircularKMin			0 by default.  
  */
 
 std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, double CircularKMax, double LinearKMax, double SampleProbability = 1.0, bool use_iteratethrough = true, double CircularKMin = 0.0);

@@ -1,6 +1,6 @@
 /**
- * @file smoke.cpp
- * @brief Minimal self-contained smoke test / usage example for the `core` module.
+ * \file smoke.cpp
+ * \brief Minimal self-contained smoke test / usage example for the `core` module.
  *
  * Demonstrates the three foundational types every other module builds on:
  *   - GeometryVector       : a point/vector in up to MaxDimension Euclidean dims
@@ -17,6 +17,8 @@
 #include "PeriodicCellList.h"
 #include "RandomGenerator.h"
 
+/** \brief Smoke-test entry point: build a periodic point pattern and count neighbours. (CLAUDE)
+ *  \return  0 on success. */
 int main()
 {
     const DimensionType dim = 3;
