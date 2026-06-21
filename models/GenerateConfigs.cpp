@@ -10,6 +10,11 @@
 #include "GenerateConfigs.h"
 
 
+/** \brief Read a value from an input stream and echo it to an output stream. (CLAUDE)
+ *  \tparam T        Type of the value to read and echo.
+ *  \param ifile     Input stream to read from.
+ *  \param ofile     Output stream to echo to.
+ *  \param variable  Receives the value read from ifile. */
 template<typename T> inline void Echo(std::istream & ifile, std::ostream & ofile, T & variable) {
 	ifile >> variable;	ofile << variable << "\n";
 }
@@ -162,8 +167,8 @@ void GetPredefinedCrystals(const std::string & crystalName, std::vector<Geometry
 	LatticeGen: Constructors
 ***********************************/
 
-/** Construct a LatticeGen object by lattice name. 
- *	@param name (case-insenstive)	1D:	Integer
+/** \brief Construct a LatticeGen object by lattice name.
+ *	\param Name (case-insenstive)	1D:	Integer
 									2D: Square, Triangular (triangle), Honeycomb, Kagome
 									3D: Cubic, BCC_cubic, FCC, FCC_cubic, BCC_symmetric, Diamond */
 LatticeGen::LatticeGen(const std::string & Name) {
@@ -190,9 +195,9 @@ LatticeGen::LatticeGen(const std::string & Name) {
 	this->Set2MaxPhi();
 }
 
-/** Construct a LatticeGen object by an input stream. 
- *	@param[in] ifile	An input stream.
- *	@param[out] ofile	An output stream.
+/** \brief Construct a LatticeGen object by an input stream.
+ *	\param[in] ifile	An input stream.
+ *	\param[out] ofile	An output stream.
  */
 LatticeGen::LatticeGen(std::istream & ifile, std::ostream &ofile) {
 	char temp[300] = {};
@@ -291,8 +296,8 @@ LatticeGen::LatticeGen(std::istream & ifile, std::ostream &ofile) {
 	LatticeGen: Member functions
 ***********************************/
 
-/** Generate a periodic sphere packing.
- * @param[out] c	A periodic SpherePacking */
+/** \brief Generate a periodic sphere packing.
+ *  \param[out] c	A periodic SpherePacking */
 void LatticeGen::GenerateP(SpherePacking & c) {
 	size_t NumCells = 1;
 	for (int i = 0; i < this->d; i++)
@@ -349,10 +354,10 @@ void LatticeGen::Set2MaxPhi() {
 
 }
 
-/** Add a spherical particle in the fundamental cell.
- * If the added particle is overlapping with other particles, particle radii are adjusted.
- * @param relativePosition	Relative coordinates at which a spherical particle is added.
- * @param radius			Radius of an added particle. */
+/** \brief Add a spherical particle in the fundamental cell.
+ *  If the added particle is overlapping with other particles, particle radii are adjusted.
+ *  \param relativePosition	Relative coordinates at which a spherical particle is added.
+ *  \param radius			Radius of an added particle. */
 void LatticeGen::AddPrt(const GeometryVector & relativePosition, double radius) {
 	this->numPrts++;
 	this->F_Cell.Insert(radius, relativePosition);

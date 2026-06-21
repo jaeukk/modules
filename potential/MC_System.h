@@ -38,19 +38,20 @@ public:
 	static bool StopSignal;
 	std::function<void(Configuration & List, Potential & pot, double Pressure, int Switch, double MinDistance)> RelaxStructureFunction;
 
-	/** A constructor from a random initial condition.
-	 *	@param (Dimension, NumParticle, InitialDensity)	Parameters for an initial point configuration.
-														A random packing with a radius "MinDistance" is generated and stored in this->pList
-	 *	@param RandomSeed	A seed for a random generator.
-	 *	@param Pressure		Pressure under which an isobaric simulation is performed. Set it to 0 for a constant volume.
-	 *	@param pot			A reference of a Potential object, which defines the interaction in this system.
-	 *	@param output		An outputstream
-	 *	@param CoolingScheduleRescale	>1: slower cooling, <1: faster cooling.
-	 *	@param MinDistance		Exclusion diameter in the initial configuraiton.
-	 *	@param AlgorithmLevel	0:  Structure Optimization.
+	/** \brief A constructor from a random initial condition.
+	 *	\param Dimension		Spatial dimension of the initial point configuration.
+	 *	\param NumParticle		Number of particles in the initial point configuration.
+	 *	\param InitialDensity	Number density of the initial point configuration; a random packing with a radius "MinDistance" is generated and stored in this->pList.
+	 *	\param RandomSeed	A seed for a random generator.
+	 *	\param Pressure		Pressure under which an isobaric simulation is performed. Set it to 0 for a constant volume.
+	 *	\param pot			A reference of a Potential object, which defines the interaction in this system.
+	 *	\param output		An outputstream
+	 *	\param CoolingScheduleRescale	>1: slower cooling, <1: faster cooling.
+	 *	\param MinDistance		Exclusion diameter in the initial configuraiton.
+	 *	\param AlgorithmLevel	0:  Structure Optimization.
 								1:  Monte Carlo simulation.
 								>1: Parallel tempering with this number of copy.
-	 *	@param UsedSortedList
+	 *	\param UseSortedList	TODO(CLAUDE): unclear - review
 	 */
 	ParticleSimulatedAnnealing(DimensionType Dimension, size_t NumParticle, double InitialDensity, 
 		int RandomSeed, double Pressure, Potential & pot, std::ostream * output = nullptr, 
@@ -58,26 +59,29 @@ public:
 	
 	//AlgorithmLevel : 0:Structure Optimization, 1:Monte Carlo, >1:Parallel Tempering with n copies
 	
-	/** A constrcutor from an initial configuration. 
-	 *	@param pInitConfig	An initial point configuraiton. It is copied into this->pList.
-	 *	@param RandomSeed	A seed for a random generator.
-	 *	@param pot			A reference of a Potential object, which defines the interaction in this system.
-	 *	@param output		An outputstream
-	 *	@param CoolingScheduleRescale	>1: slower cooling, <1: faster cooling.
-	 *	@param MinDistance		Exclusion diameter in the initial configuraiton.
-	 *	@param AlgorithmLevel	0:  Structure Optimization.
+	/** \brief A constrcutor from an initial configuration.
+	 *	\param pInitConfig	An initial point configuraiton. It is copied into this->pList.
+	 *	\param RandomSeed	A seed for a random generator.
+	 *	\param Pressure		Pressure under which an isobaric simulation is performed. Set it to 0 for a constant volume. (CLAUDE)
+	 *	\param pot			A reference of a Potential object, which defines the interaction in this system.
+	 *	\param output		An outputstream
+	 *	\param CoolingScheduleRescale	>1: slower cooling, <1: faster cooling.
+	 *	\param MinDistance		Exclusion diameter in the initial configuraiton.
+	 *	\param AlgorithmLevel	0:  Structure Optimization.
 								1:  Monte Carlo simulation.
 								>1: Parallel tempering with this number of copy.
-	 *	@param UsedSortedList
+	 *	\param UseSortedList	TODO(CLAUDE): unclear - review
 	 */
 	ParticleSimulatedAnnealing(const Configuration & pInitConfig, 
 		int RandomSeed, double Pressure, Potential & pot, std::ostream * output = nullptr, 
 		double CoolingScheduleRescale = 1, double MinDistance=0, int AlgorithmLevel = 1, bool UseSortedList=false);
 	
 	
+	/** \brief Run the simulated-annealing (or optimization / parallel-tempering) procedure. (CLAUDE)
+	 *	\param pot  Potential defining the interaction; drives the energy/force evaluations. */
 	void Anneal(Potential & pot);
 
-	/** A destructor. */
+	/** \brief A destructor. */
 	~ParticleSimulatedAnnealing()
 	{
 		if(this->pList!=nullptr)

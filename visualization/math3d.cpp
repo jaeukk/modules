@@ -106,6 +106,10 @@ void m3dMatrixMultiply44(M3DMatrix44f product, const M3DMatrix44f a, const M3DMa
 }
 
 // Ditto above, but for doubles
+/** \brief Multiply two 4x4 double matrices: product = a * b. (CLAUDE)
+ *  \param product  Destination 4x4 matrix receiving the product.
+ *  \param a        Left 4x4 matrix.
+ *  \param b        Right 4x4 matrix. */
 void m3dMatrixMultiply(M3DMatrix44d product, const M3DMatrix44d a, const M3DMatrix44d b )
 {
 	for (int i = 0; i < 4; i++) {
@@ -138,6 +142,10 @@ void m3dMatrixMultiply33(M3DMatrix33f product, const M3DMatrix33f a, const M3DMa
 }
 
 // Ditto above, but for doubles
+/** \brief Multiply two 3x3 double matrices: product = a * b. (CLAUDE)
+ *  \param product  Destination 3x3 matrix receiving the product.
+ *  \param a        Left 3x3 matrix.
+ *  \param b        Right 3x3 matrix. */
 void m3dMatrixMultiply44(M3DMatrix33d product, const M3DMatrix33d a, const M3DMatrix33d b )
 {
 	for (int i = 0; i < 3; i++) {
@@ -624,6 +632,12 @@ bool m3dInvertMatrix44(M3DMatrix44d dst, const M3DMatrix44d src)
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // Get Window coordinates, discard Z...
+/** \brief Project a 3D point to 2D window coordinates, discarding Z. (CLAUDE)
+ *  \param mModelView   Model-view matrix.
+ *  \param mProjection  Projection matrix.
+ *  \param iViewPort    Viewport as (x, y, width, height).
+ *  \param vPointIn     Source 3D point in object space.
+ *  \param vPointOut    Destination 2D window coordinates. */
 void m3dProjectXY(const M3DMatrix44f mModelView, const M3DMatrix44f mProjection, const int iViewPort[4], const M3DVector3f vPointIn, M3DVector2f vPointOut)
 	{
     M3DVector4f vBack, vForth;
@@ -651,6 +665,12 @@ void m3dProjectXY(const M3DMatrix44f mModelView, const M3DMatrix44f mProjection,
     
 ///////////////////////////////////////////////////////////////////////////////////////
 // Get window coordinates, we also want Z....
+/** \brief Project a 3D point to 3D window coordinates, keeping Z. (CLAUDE)
+ *  \param mModelView   Model-view matrix.
+ *  \param mProjection  Projection matrix.
+ *  \param iViewPort    Viewport as (x, y, width, height).
+ *  \param vPointIn     Source 3D point in object space.
+ *  \param vPointOut    Destination 3D window coordinates. */
 void m3dProjectXYZ(const M3DMatrix44f mModelView, const M3DMatrix44f mProjection, const int iViewPort[4], const M3DVector3f vPointIn, M3DVector3f vPointOut)
 	{
     M3DVector4f vBack, vForth;
@@ -787,6 +807,13 @@ void m3dGetPlaneEquation(M3DVector4d planeEq, const M3DVector3d p1, const M3DVec
 // floating point number between 0.0 and 1.0. The curve is interpolated between the middle two points.
 // Coded by RSW
 // http://www.mvps.org/directx/articles/catmull/
+/** \brief Catmull-Rom curve interpolation in 3D between vP1 and vP2. (CLAUDE)
+ *  \param vOut  Destination 3D vector receiving the interpolated point.
+ *  \param vP0   Control point before the segment.
+ *  \param vP1   Start point of the interpolated segment.
+ *  \param vP2   End point of the interpolated segment.
+ *  \param vP3   Control point after the segment.
+ *  \param t     Interpolation parameter in [0, 1]. */
 void m3dCatmullRom3(M3DVector3f vOut, M3DVector3f vP0, M3DVector3f vP1, M3DVector3f vP2, M3DVector3f vP3, float t)
     {
     // Unrolled loop to speed things up a little bit...
@@ -817,6 +844,13 @@ void m3dCatmullRom3(M3DVector3f vOut, M3DVector3f vP0, M3DVector3f vP1, M3DVecto
 // floating point number between 0.0 and 1.0. The curve is interpolated between the middle two points.
 // Coded by RSW
 // http://www.mvps.org/directx/articles/catmull/
+/** \brief Catmull-Rom curve interpolation in 3D between vP1 and vP2. (CLAUDE)
+ *  \param vOut  Destination 3D vector receiving the interpolated point.
+ *  \param vP0   Control point before the segment.
+ *  \param vP1   Start point of the interpolated segment.
+ *  \param vP2   End point of the interpolated segment.
+ *  \param vP3   Control point after the segment.
+ *  \param t     Interpolation parameter in [0, 1]. */
 void m3dCatmullRom3(M3DVector3d vOut, M3DVector3d vP0, M3DVector3d vP1, M3DVector3d vP2, M3DVector3d vP3, double t)
     {
     // Unrolled loop to speed things up a little bit...

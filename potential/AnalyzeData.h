@@ -5,6 +5,11 @@
 
 const double SampleAutocorrelationLimit=0.01;//when calculating the error, we need to integrate autocorrelation, when abs(autocorrelation) is smaller than this value, cutoff the integral
 
+/** \brief Compute the mean, statistical error, and integrated autocorrelation time of a data series. (CLAUDE)
+ *  \param data      Input sample series (e.g. a time series of a measured observable).
+ *  \param average   Output: sample mean of the data.
+ *  \param error     Output: statistical error of the mean, corrected for autocorrelation.
+ *  \param corrtime  Output: integrated autocorrelation time of the series. */
 inline void AnalyzeData(const std::vector<double> & data, double & average, double & error, double & corrtime)
 {
 	//calculate <data> and <data^2>

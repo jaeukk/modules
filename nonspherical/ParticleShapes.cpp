@@ -601,7 +601,7 @@ Polygon ReadPolygon(std::istream & ifile)
 }
 
 /** Check whether a given point is inside this Polygon object. 
- * @return true = pos is inside this Polygon. */
+ * \return true = pos is inside this Polygon. */
 bool Polygon::IsPtInside(const GeometryVector & pos) {
 	//Make sure the position vector is in 2D.
 	assert(pos.Dimension == 2);	
@@ -656,16 +656,21 @@ bool Polygon::IsPtInside(const GeometryVector & pos) {
 	}
 }
 
+/** Comparator that orders two GeometryVectors by their first component. (CLAUDE)
+ * Used to sort a list of (distance, parameter) pairs in ascending distance.
+ * \param a	The left GeometryVector.
+ * \param b	The right GeometryVector.
+ * \return true if a.x[0] < b.x[0]. */
 bool compare_temp(GeometryVector a, GeometryVector b) {
 	assert(a.Dimension == b.Dimension);
 	return a.x[0] < b.x[0];
 }
 
 /**	Compute the closest distance from a given point to the side of this polygon.
- * @param pos	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
- * @param[out] list_dist	A list of distances in the ascending order.
- * @param[out] n_outward	The unit outward normal vector at x0. 
- * @return distance.	 */
+ * \param pos	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+ * \param[out] list_dist	A list of distances in the ascending order.
+ * \param[out] n_outward	The unit outward normal vector at x0. 
+ * \return distance.	 */
 double Polygon::GetDistance2Boundary(const GeometryVector & pos, std::vector<GeometryVector> & list_dist, GeometryVector & x0, GeometryVector & n_outward) const{
 	double distance = this->GetMaxRadius();
 	list_dist.resize(0);
@@ -729,9 +734,9 @@ double Polygon::GetDistance2Boundary(const GeometryVector & pos, std::vector<Geo
 }
 
 /**	Compute the closest distance from a given point to the side of this polygon.
- * @param pos	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
- * @param[out] list_dist	A list of distances in the ascending order.
- * @return distance.	 */
+ * \param pos	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+ * \param[out] list_dist	A list of distances in the ascending order.
+ * \return distance.	 */
 double Polygon::GetDistance2Boundary(const GeometryVector & pos) const{
 	std::vector<GeometryVector> dump;
 	GeometryVector x0, n;
@@ -1113,8 +1118,8 @@ bool Polyhedron::IsPtInside(const GeometryVector & pos) {
 
 /**	Compute the closest distance from a given point to the facets of this polygon.
  * TODO: implement it!
- * @param pos	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
- * @return distance.	 */
+ * \param pos	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+ * \return distance.	 */
 double Polyhedron::GetDistance2Boundary(const GeometryVector & pos, std::vector<GeometryVector> & list_dist, GeometryVector & x0, GeometryVector & n_outward) const
 {
 	std::cout<<"Please implement!!\n";

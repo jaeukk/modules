@@ -542,9 +542,11 @@ ParticleMDAnnealing::ParticleMDAnnealing(const Configuration & InitConfig, int R
 
 
 #include "MonteCarlo.h"
+/** \brief Exception-like marker thrown to terminate the annealing loop early. (CLAUDE) */
 class StopMDAnnealing
 {
 public:
+	/** \brief Construct the stop marker. (CLAUDE) */
 	StopMDAnnealing()
 	{}
 };

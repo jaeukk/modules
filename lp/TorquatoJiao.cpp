@@ -44,11 +44,18 @@ void TJJammer::TimerClass::Display()
 class LPClass 
 {
 public:
+	/** \brief Construct the LP helper bound to a parent jammer. (CLAUDE)
+	 *  \param src  Parent TJJammer whose state this helper reads and updates. */
 	LPClass(TJJammer & src)
 	{
 		this->pTJJammer=&src;
 	}
+	/** \brief The solve function from Version0.0 (for comparison of results).
+	 *  \param maxSize  Maximum number of constraints to allocate for. */
 	int  SolveLP_V00(int maxSize); //The solve function from Version0.0 (for comparison of results)
+	/** \brief Calls the whole process of generating, importing, solving, exporting, and cleaning up.
+	 *  \param lpIters  Current LP iteration index.
+	 *  \param maxSize  Maximum number of constraints to allocate for. */
 	void LPRoutine(int lpIters,
 		int maxSize);    //Calls the whole process of generating, importing, solving, exporting, and cleaning up
 
@@ -98,54 +105,100 @@ private:
 	//Functions:
 
 	//Initialize the variables to starting values:
+	/** \brief Initialize the variables to starting values. */
 	void Initialize();
 
 	//Generating constraints:
+	/** \brief Generates the LP constraints and imports them into the solver of choice.
+	 *  \param maxSize  Maximum number of constraints. */
 	void Generate(int maxSize); //Generates the LP constraints and imports them into the solver of choice (maxSize is the maximum number of constraints)
+	/** \brief If there's a near-neighbor list to use.
+	 *  \param maxSize  Maximum number of constraints. */
 	void Generate_NNL(int maxSize);    //If there's a near-neighbor list to use
+	/** \brief No near-neighbor list.
+	 *  \param maxSize  Maximum number of constraints (recomputed internally). */
 	void Generate_NoNNL(int maxSize);  //No near-neighbor list.
+	/** \brief Prevents volume-increasing strains (to 1st order). */
 	void ApplyBulkStrainConstraint();  //Prevents volume-increasing strains (to 1st order)
 
 	//Importing the problem into a solver:
+	/** \brief Import the generated constraints into the configured LP solver. (CLAUDE) */
 	void Import();
+	/** \brief Build the GLPK problem object, variables, and constraint bounds. (CLAUDE) */
 	void Import_GLPK();
 	//void Import_HOPDM();
 	//void Import_BPMPD();
+	/** \brief Build the Gurobi environment, model, variables, and constraints. (CLAUDE) */
 	void   Import_Gurobi();
+	/** \brief Configure Gurobi tolerances, method, threads, and presolve settings. (CLAUDE) */
 	void   SetupEnvironment_Gurobi();
+	/** \brief Functions for adding variables to gVar (strain component variable). (CLAUDE)
+	 *  \param i         First strain-matrix index.
+	 *  \param l         Second strain-matrix index.
+	 *  \param varIndex  Slot in the gVar array to store the new variable. */
 	void   AddEpsilon_Gurobi(int i,
 		int l,
 		int varIndex); //Functions for adding variables to gVar
+	/** \brief Add one sphere-displacement variable to the Gurobi model. (CLAUDE)
+	 *  \param InternalDeltaIndex  One-based number used to name the variable.
+	 *  \param varIndex            Slot in the gVar array to store the new variable. */
 	void   AddDelta_Gurobi(int InternalDeltaIndex,
 		int varIndex);
+	/** \brief Add all nonoverlap (and strain-trace) constraints to the Gurobi model. (CLAUDE) */
 	void   AddConstrs_Gurobi();
+	/** \brief Build and add a single linear constraint to the Gurobi model. (CLAUDE)
+	 *  \param constrIndex  Index of the constraint being added.
+	 *  \param numTerms     Number of coefficient terms in this constraint.
+	 *  \param offset       Starting offset into the ia/ja/ar coefficient arrays.
+	 *  \return             Offset at which the next constraint's terms begin. */
 	double AddConstr_Gurobi(int constrIndex,
 		int numTerms,
 		int offset);
 	//Solving using the LP software:
+	/** \brief Solve the LP using the configured solver. (CLAUDE) */
 	void Solve();
+	/** \brief Load and solve the problem with the GLPK simplex method. (CLAUDE) */
 	void Solve_GLPK();
 	//int Solve_HOPDM();
 	//int Solve_BPMPD();
+	/** \brief Optimize the Gurobi model, handling infeasible/unbounded/precision cases. (CLAUDE) */
 	void Solve_Gurobi();
 
 	//Exporting the solve's results:
+	/** \brief Update the packing with the results of the LP solve.
+	 *  \param lpIters  Current LP iteration index. */
 	void Export(int lpIters);
+	/** \brief Read the optimal strain matrix (I + epsilon) from the GLPK solution. (CLAUDE) */
 	void ExportStrain_GLPK();
 	//void ExportStrain_HOPDM();
 	//void ExportStrain_BPMPD();
+	/** \brief Read the optimal strain matrix (I + epsilon) from the Gurobi solution. (CLAUDE) */
 	void ExportStrain_Gurobi();
+	/** \brief Apply the solved strain to the lattice matrix lambdas. (CLAUDE) */
 	void ApplyStrain();
+	/** \brief Apply the solved sphere displacements, updating coordinates and lattice. (CLAUDE)
+	 *  Also keeps track of which particle moved farthest (relative to the total packing
+	 *  displacement) if termCriterion is "maxDisp". */
 	void ExportMovements();
+	/** \brief if the SLP termination criterion is maxDisp, this is called.
+	 *  \param globalTotDisp  Accumulator for the packing's net (center-of-mass) displacement.
+	 *  \param globalDisp     Per-sphere displacement vectors in global coordinates. */
 	void GetMaxDisp(gsl_matrix  *globalTotDisp,
 		gsl_matrix **globalDisp); //if the SLP termination criterion is maxDisp, this is called
+	/** \brief To see if any variables hit limits (especially if the non-positive trace constraint is being invoked!). */
 	void ReviewResults(); //To see if any variables hit limits (especially if the non-positive trace constraint is being invoked!)
+	/** \brief Export the Lp's solution to file. */
 	void ExportLP_Gurobi(); //Export the Lp's solution to file
+	/** \brief Write the interesting qwuantities to file.
+	 *  \param lpIters      Current LP iteration index.
+	 *  \param strainTrace  Trace of the applied strain matrix.
+	 *  \param freeSpheres  Fraction of spheres whose translation hit the move limit. */
 	void UpdateLPFile(int lpIters,
 		double strainTrace,
 		double freeSpheres);  //Write the interesting qwuantities to file
 
 	//Cleanup: deallocation of arrays, etc.
+	/** \brief Cleanup: deallocation of arrays, etc. */
 	void Cleanup();
 
 };
@@ -166,6 +219,9 @@ double TJJammer::getGlobalLength(double *inputVec)
   // returns
   return dist;
 }
+/** \brief Compute the inverse of a square matrix via GSL LU decomposition. (CLAUDE)
+ *  \param matrixToInvert  Square matrix to invert (must be non-singular).
+ *  \return                Newly allocated matrix holding the inverse. */
 gsl_matrix *getInverse(gsl_matrix *matrixToInvert) {
   // check to see if matrix is square
   if (matrixToInvert->size1 != matrixToInvert->size2) {

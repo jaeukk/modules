@@ -8,6 +8,16 @@
 
 double LowestFrequencySquared;//use it to broadcast calculation results to other functions
 
+/** \brief Render the phonon dispersion curves to a figure file via MathGL. (CLAUDE)
+ *  Does nothing useful unless USE_MATHGL is defined.
+ *  \param results          Flattened squared frequencies, ordered as NumX blocks of NumCurves.
+ *  \param NumCurves        Number of phonon branches (curves) to plot.
+ *  \param NumX             Number of sampled k points along the path.
+ *  \param NumKPointsPerLine Number of sampled k points per path segment (sets the x scale).
+ *  \param Labels           High-symmetry point labels placed as x-axis ticks.
+ *  \param Prefix           Filename prefix for the output figure files.
+ *  \param Biggest          Upper bound of the omega^2 plotting range.
+ *  \param Smallest         Lower bound of the omega^2 plotting range. */
 void PlotPhononFrequencies_GenerateFigure(const std::vector<double> & results, size_t NumCurves, size_t NumX, size_t NumKPointsPerLine, std::vector<char *> & Labels, char * Prefix, double Biggest, double Smallest)
 {
 	#ifndef USE_MATHGL

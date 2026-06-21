@@ -33,22 +33,37 @@ class Computation
 public:
 	int num_threads = 1;
 
+	/** \brief Run the computation over an ensemble of configurations. (CLAUDE)
+	 *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
+	 *  \param NumConfig           The number of configurations to process. */
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig) =0;
+	/** \brief Write the computed result to a file with the given output prefix. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name. */
 	virtual void Write(const std::string OutputPrefix) =0;
+	/** \brief Plot the computed result in Grace format. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name.
+	 *  \param Title         Title of the plot. */
 	virtual void Plot(const std::string OutputPrefix, const std::string & Title) =0;
 
 	//some computations allow additional options
 	//any command not understood by PairStatisticsCLI() is passed to here
+	/** \brief Process an additional, computation-specific command. By default no additional option is accepted. (CLAUDE)
+	 *  \param option  The command keyword.
+	 *  \param input   Stream from which the command's arguments are read.
+	 *  \param output  Stream to which messages are written. */
 	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output)
 	{
 		//by default, accept no additional option.
 		output << "Unrecognized command!\n";
 	}
 
+	/** \brief Destructor. (CLAUDE) */
 	virtual ~Computation()
 	{
 	}
 
+	/** \brief Set the number of OpenMP threads used by the computation. (CLAUDE)
+	 *  \param n  The number of threads. */
 	void SetNumThreads(int n){
 		this->num_threads = n;
 	}
@@ -62,7 +77,10 @@ public:
 	double g2rmax;
 	double resolution;
 	HistogramGenerator * pHGen;
-	
+
+	/** \brief Construct a g2 computation, reading the maximal radius g2rmax from the input stream. (CLAUDE)
+	 *  \param ifile  Input stream supplying parameters.
+	 *  \param ofile  Output stream for prompts. */
 	g2Computation(std::istream & ifile, std::ostream & ofile)
 	{
 		ofile<<"g2 R_max=";
@@ -71,11 +89,24 @@ public:
 		pHGen = nullptr;
 	}
 
+	/** \brief Compute the isotropic g2(r) over the ensemble of configurations. (CLAUDE)
+	 *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
+	 *  \param NumConfig           The number of configurations to process. */
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	/** \brief Write the g2(r) result to "<OutputPrefix>_gofr". (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name. */
 	virtual void Write(const std::string OutputPrefix);
+	/** \brief Plot the g2(r) result in Grace format. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name.
+	 *  \param Title         Title of the plot. */
 	virtual void Plot(const std::string OutputPrefix, const std::string & Title);
+	/** \brief Process g2-specific options (ResolutionPreference, ManualBins). (CLAUDE)
+	 *  \param option  The command keyword.
+	 *  \param input   Stream from which the command's arguments are read.
+	 *  \param output  Stream to which messages are written. */
 	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output);
 
+	/** \brief Destructor; releases the optional histogram generator. (CLAUDE) */
 	virtual ~g2Computation()
 	{
 		if (pHGen != nullptr)
@@ -91,6 +122,9 @@ public:
 	size_t NumThetaBins;
 	std::vector< std::vector<GeometryVector> > results;
 
+	/** \brief Construct a directional g2 computation, reading g2rmax and the number of angular bins. (CLAUDE)
+	 *  \param ifile  Input stream supplying parameters.
+	 *  \param ofile  Output stream for prompts. */
 	Directionalg2Computation(std::istream & ifile, std::ostream & ofile)
 	{
 		ofile<<"g2 R_max=";
@@ -99,8 +133,16 @@ public:
 		ifile>>NumThetaBins;
 	}
 
+	/** \brief Compute the directional g2(r, theta) over the ensemble of configurations. (CLAUDE)
+	 *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
+	 *  \param NumConfig           The number of configurations to process. */
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	/** \brief Write the directional g2 result to "<OutputPrefix>_x/_y/_g2" text files. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file names. */
 	virtual void Write(const std::string OutputPrefix);
+	/** \brief Plotting is not implemented for the directional g2 computation. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name (unused).
+	 *  \param Title         Title of the plot (unused). */
 	virtual void Plot(const std::string OutputPrefix, const std::string & Title)
 	{
 		std::cerr<<"Directionalg2Computation::Plot is not implemented!\n";
@@ -116,6 +158,9 @@ public:
 	double SampleProbability;
 	size_t average_option = 0;
 	
+	/** \brief Construct an S(k) computation, reading the circular and linear K maxima and the binning width. (CLAUDE)
+	 *  \param ifile  Input stream supplying parameters.
+	 *  \param ofile  Output stream for prompts. */
 	SkComputation(std::istream & ifile, std::ostream & ofile)
 	{
 		ofile<<"circular K_max=";
@@ -128,9 +173,21 @@ public:
 		SampleProbability = 1.0;
 	}
 
+	/** \brief Compute the isotropic structure factor S(k) over the ensemble of configurations. (CLAUDE)
+	 *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
+	 *  \param NumConfig           The number of configurations to process. */
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	/** \brief Write the S(k) result to "<OutputPrefix>_Sofk". (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name. */
 	virtual void Write(const std::string OutputPrefix);
+	/** \brief Plot the S(k) result in Grace format. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name.
+	 *  \param Title         Title of the plot. */
 	virtual void Plot(const std::string OutputPrefix, const std::string & Title);
+	/** \brief Process S(k)-specific options (SampleProbability, AverageOver*, BraggPeaks, CircularKMin). (CLAUDE)
+	 *  \param option  The command keyword.
+	 *  \param input   Stream from which the command's arguments are read.
+	 *  \param output  Stream to which messages are written. */
 	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output);
 };
 
@@ -147,16 +204,31 @@ public:
 	bool logscale_bin = false;
 	bool Output_AllMinPairDistances = false;
 	
+	/** \brief Construct a nearest-neighbor statistics computation, reading the sample distance size used to build bins. (CLAUDE)
+	 *  \param ifile  Input stream supplying parameters.
+	 *  \param ofile  Output stream for prompts. */
 	NearestNeighbors(std::istream & ifile, std::ostream & ofile)
 	{
 		ofile << "Sample distance sizes (to generate bins) ";
 		ifile >> SampleDistanceSize;
-		resolution=1.0;	
+		resolution=1.0;
 	}
 
+	/** \brief Compute the nearest-neighbor distribution and the distribution of minimal nearest-neighbor distances. (CLAUDE)
+	 *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
+	 *  \param NumConfig           The number of configurations to process. */
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	/** \brief Write the nearest-neighbor results (and optionally all minimal pair distances) to file. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file names. */
 	virtual void Write(const std::string OutputPrefix);
+	/** \brief Plot the nearest-neighbor distributions in Grace format. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file names.
+	 *  \param Title         Title of the plot. */
 	virtual void Plot(const std::string OutputPrefix, const std::string & Title);
+	/** \brief Process nearest-neighbor-specific options (ResolutionPreference, LogScale, PrintAll). (CLAUDE)
+	 *  \param option  The command keyword.
+	 *  \param input   Stream from which the command's arguments are read.
+	 *  \param output  Stream to which messages are written. */
 	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output);
 };
 
@@ -169,6 +241,9 @@ public:
 	double rmin, rmax;
 	int bins;
 	
+	/** \brief Construct a coordination-number computation, reading rmin, rmax, and the number of bins. (CLAUDE)
+	 *  \param ifile  Input stream supplying parameters.
+	 *  \param ofile  Output stream for prompts. */
 	CoordinationNumberComputation(std::istream & ifile, std::ostream & ofile)
 	{
 		ofile<<"Coordination numbers between rmin and rmax = ";
@@ -178,11 +253,24 @@ public:
 		ifile>>bins;
 	}
 
+	/** \brief Compute the distribution of coordination numbers between rmin and rmax. (CLAUDE)
+	 *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
+	 *  \param NumConfig           The number of configurations to process. */
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	/** \brief Write the coordination-number distribution to "<OutputPrefix>_Z". (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name. */
 	virtual void Write(const std::string OutputPrefix);
+	/** \brief Plot the coordination-number distribution in Grace format. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name.
+	 *  \param Title         Title of the plot. */
 	virtual void Plot(const std::string OutputPrefix, const std::string & Title);
+	/** \brief Process additional options; this computation accepts none. (CLAUDE)
+	 *  \param option  The command keyword.
+	 *  \param input   Stream from which the command's arguments are read.
+	 *  \param output  Stream to which messages are written. */
 	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output);
 
+	/** \brief Destructor. (CLAUDE) */
 	virtual ~CoordinationNumberComputation()
 	{}
 };
@@ -194,6 +282,9 @@ public:
 	double rmin, rmax, dr;
 	bool logscale = false;
 	
+	/** \brief Construct a cumulative coordination-number computation, reading rmin, rmax, and dr. (CLAUDE)
+	 *  \param ifile  Input stream supplying parameters.
+	 *  \param ofile  Output stream for prompts. */
 	CumulativeCoordinationNumberComputation(std::istream & ifile, std::ostream & ofile)
 	{
 		ofile<<"Cumulative Coordination numbers between rmin and rmax = ";
@@ -203,11 +294,24 @@ public:
 		ifile>>dr;
 	}
 
+	/** \brief Compute the cumulative coordination number Z(r) between rmin and rmax. (CLAUDE)
+	 *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
+	 *  \param NumConfig           The number of configurations to process. */
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	/** \brief Write the cumulative coordination number Z(r) to "<OutputPrefix>_Zofr". (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name. */
 	virtual void Write(const std::string OutputPrefix);
+	/** \brief Plot the cumulative coordination number Z(r) in Grace format. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name.
+	 *  \param Title         Title of the plot. */
 	virtual void Plot(const std::string OutputPrefix, const std::string & Title);
+	/** \brief Process cumulative coordination-number options (logscale). (CLAUDE)
+	 *  \param option  The command keyword.
+	 *  \param input   Stream from which the command's arguments are read.
+	 *  \param output  Stream to which messages are written. */
 	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output);
 
+	/** \brief Destructor. (CLAUDE) */
 	virtual ~CumulativeCoordinationNumberComputation()
 	{}
 };
@@ -222,6 +326,9 @@ public:
 	size_t num_samp_centers, seed;
 	RandomGenerator rng;
 	bool use_prt_centers = false;
+	/** \brief Construct a local number variance computation, reading Rmax, dR, the number of random sampling centers, and the random seed. (CLAUDE)
+	 *  \param ifile  Input stream supplying parameters.
+	 *  \param ofile  Output stream for prompts. */
 	LocalNumberVariance(std::istream & ifile, std::ostream & ofile)
 	{
 		ofile << "Rmax = ";
@@ -235,9 +342,21 @@ public:
 		rng.seed(seed);
 	}
 
+	/** \brief Compute the local number variance via Monte Carlo sampling over the ensemble. (CLAUDE)
+	 *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
+	 *  \param NumConfig           The number of configurations to process. */
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	/** \brief Write the local number variance to "<OutputPrefix>_nv" (or "_nv_self" when particle centers are used). (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name. */
 	virtual void Write(const std::string OutputPrefix);
+	/** \brief Plot the local number variance in Grace format. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name.
+	 *  \param Title         Title of the plot. */
 	virtual void Plot(const std::string OutputPrefix, const std::string & Title);
+	/** \brief Process local number variance options (UseParticleCenters). (CLAUDE)
+	 *  \param option  The command keyword.
+	 *  \param input   Stream from which the command's arguments are read.
+	 *  \param output  Stream to which messages are written. */
 	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output);
 };
 
@@ -251,6 +370,9 @@ public:
 	int seed;
 	std::string prefix;
 	double PercolationRadius;//a particle has been found to connect to its periodic image at this radius, therefore calculation for higher radii is futile
+	/** \brief Construct an average cluster size computation, reading the min/increment/max radii, sample size, and random seed. (CLAUDE)
+	 *  \param ifile  Input stream supplying parameters.
+	 *  \param ofile  Output stream for prompts. */
 	AverageClusterSizeComputation(std::istream & ifile, std::ostream & ofile)
 	{
 		ofile << "Enter min, increment, and radius:";
@@ -271,8 +393,16 @@ public:
 		prefix = ss.str();
 		PercolationRadius = ::MaxDistance;
 	}
+	/** \brief Compute the average cluster size at each radius until a particle connects to its periodic image. (CLAUDE)
+	 *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
+	 *  \param NumConfig           The number of configurations to process. */
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	/** \brief Write the average cluster size result to "<OutputPrefix>_AverageClusterSize". (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name. */
 	virtual void Write(const std::string OutputPrefix);
+	/** \brief Plot the average cluster size result in Grace format. (CLAUDE)
+	 *  \param OutputPrefix  Prefix of the output file name.
+	 *  \param Title         Title of the plot. */
 	virtual void Plot(const std::string OutputPrefix, const std::string & Title);
 };
 

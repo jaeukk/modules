@@ -23,16 +23,16 @@ const double c			= 1e-10;	/// \var	When k < c, a series expansion formula (Polyh
 const double MachinePrecision = 1e-16;	/// \var	Define a machine precision.
 
 /** Sinc function. 
- * @param x a real number
- * @return a value of sinc function */
+ * \param x a real number
+ * \return a value of sinc function */
 inline double sinc(double x) {
 	return ((x == 0.0) ? 1.0 : sin(x) / x);
 }
 
 /** \brief	Compute the form factor via an analytic expression. 
  * Fourier transform by exp(-i k x).
- * @param k	A wavevector in 2D or 3D.
- * @return A complex form factor of this PlanarFigure.	
+ * \param k	A wavevector in 2D or 3D.
+ * \return A complex form factor of this PlanarFigure.	
  */
 std::complex<double> PlanarFigure::FormFactor_analytic(const GeometryVector &k)
 {
@@ -66,8 +66,8 @@ std::complex<double> PlanarFigure::FormFactor_analytic(const GeometryVector &k)
 
 /** \brief	Compute the form factor via a series expasion formula.
 * It is accurate and easy to compute when |k| is very small, but not implemented here.
-* @param k	A wavevector in 2D or 3D.
-* @return A complex form factor of this PlanarFigure.
+* \param k	A wavevector in 2D or 3D.
+* \return A complex form factor of this PlanarFigure.
 */
 std::complex<double> PlanarFigure::FormFactor_series(const GeometryVector & k)
 {
@@ -77,8 +77,8 @@ std::complex<double> PlanarFigure::FormFactor_series(const GeometryVector & k)
 }
 
 /** \brief	Compute the form factor.
-* @param k	A wavevector in 2D or 3D.
-* @return A complex form factor of this PlanarFigure.
+* \param k	A wavevector in 2D or 3D.
+* \return A complex form factor of this PlanarFigure.
 */
 std::complex<double> PlanarFigure::GetFormFactor(const GeometryVector & k){
 	std::complex<double> result;
@@ -106,8 +106,8 @@ std::complex<double> PlanarFigure::GetFormFactor(const GeometryVector & k){
 }
 
 /** \brief	Compute the form factor of this Polyhedron with respect to its centroid.
-* @param k	A wavevector in 3D.
-* @return A complex form factor of this Polyhedron.
+* \param k	A wavevector in 3D.
+* \return A complex form factor of this Polyhedron.
 */
 std::complex<double> Polyhedron::GetFormFactor(const GeometryVector &k) {
 	std::complex<double> result;
@@ -126,8 +126,8 @@ std::complex<double> Polyhedron::GetFormFactor(const GeometryVector &k) {
 }
 
 /** \brief	Compute the form factor of this Polyhedron via an analytic expression.
-* @param k	A wavevector in 3D.
-* @return A complex form factor of this Polyhedron.
+* \param k	A wavevector in 3D.
+* \return A complex form factor of this Polyhedron.
 */
 std::complex<double> Polyhedron::FormFactor_analytic(const GeometryVector & k)
 {
@@ -144,8 +144,8 @@ std::complex<double> Polyhedron::FormFactor_analytic(const GeometryVector & k)
 
 /** \brief	Compute the form factor of this Polyhedron via a series expansion formula.
 * It is accurate and easy to compute when |k| is small, but not implemented here. 
-* @param k	A wavevector in 3D.
-* @return A complex form factor of this Polyhedron.
+* \param k	A wavevector in 3D.
+* \return A complex form factor of this Polyhedron.
 */
 std::complex<double> Polyhedron::FormFactor_series(const GeometryVector & k)
 {

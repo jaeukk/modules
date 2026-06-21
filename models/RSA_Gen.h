@@ -14,9 +14,9 @@
 #include "RandomSequentialAddition.h"
 #include <GenerateConfigs.h>
 
-/** Packing fractions of saturated RSA packings.
- * @param	d	Space dimension.
- * @return	the saturated packing fraction. 
+/** \brief Packing fractions of saturated RSA packings.
+ *  \param	d	Space dimension.
+ *  \return	the saturated packing fraction.
  */
 inline double PhiC(size_t d) {
 	/* Reference: 
@@ -49,24 +49,41 @@ private:
 	size_t numMax;
 public:
 
+	/** \brief Default constructor: build an RSA generator with default parameters. (CLAUDE) */
 	RSA_Gen() : ConfigGen::ConfigGen() {};
 
-	//set numberdensity = -1 if you don't want to rescale the system.
+	/** \brief Construct an RSA generator for a target packing fraction.
+	 *  set numberdensity = -1 if you don't want to rescale the system.
+	 *  \param dimension        Spatial dimension.
+	 *  \param numPrts          Target number of particles.
+	 *  \param packingFraction  Target packing fraction.
+	 *  \param numberdensity    Number density to rescale to (-1 to skip rescaling). */
 	RSA_Gen(int dimension, int numPrts, double packingFraction, double numberdensity);
 
-	//Saturated RSA
+	/** \brief Construct an RSA generator that produces a saturated packing.
+	 *  \param dimension     Spatial dimension.
+	 *  \param numPrts       Target number of particles.
+	 *  \param numberdensity Number density to rescale to (-1 to skip rescaling). */
 	RSA_Gen(int dimension, int numPrts, double numberdensity);
 
-	//CLI form
+	/** \brief Construct an RSA generator interactively (CLI form).
+	 *  \param ifile  Input stream supplying the parameters.
+	 *  \param ofile  Output stream for prompts and echoes. */
 	RSA_Gen(std::istream & ifile, std::ostream & ofile);
 
+	/** \brief Set the target number of particles and update the working count. (CLAUDE)
+	 *  \param n  New target number of particles. */
 	virtual void SetNumPrts(int n) {
 		this->numMax = (int)round(n / this->numPrts);
 		this->numPrts = n;
 	};
+	/** \brief Set the number density used to rescale the generated packing. (CLAUDE)
+	 *  \param numberdensity  New number density. */
 	virtual void SetRho(double numberdensity) {
 		this->rho = numberdensity;
 	}
+	/** \brief Set the target packing fraction and update the saturation flag and working count. (CLAUDE)
+	 *  \param phi  New target packing fraction. */
 	virtual void SetPackingFraction(double phi) {
 		this->targetPhi = phi;
 		this->saturated = (this->targetPhi >= 0.99*PhiC(this->d)) ? true : false;
@@ -75,9 +92,11 @@ public:
 		else
 			this->numMax = (int)round(PhiC(this->d) / phi * this->numPrts);
 	}
-	//generate a point configuration/sphere packing
-	//system will be rescaled to a given number density
+	/** \brief generate a point configuration; system will be rescaled to a given number density.
+	 *  \param[out] c  Generated point configuration. */
 	virtual void GenerateC(Configuration &c);
+	/** \brief generate a sphere packing; system will be rescaled to a given number density.
+	 *  \param[out] c  Generated sphere packing. */
 	virtual void GenerateP(SpherePacking &c);
 };
 

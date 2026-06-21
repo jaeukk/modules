@@ -9,8 +9,8 @@
 #include "Dispersions.h"
 
  /** Give a particle shape.
-  * @param i	The particle index.
-  * @return A constant shared pointer of the particle shape of particle i. */
+  * \param i	The particle index.
+  * \return A constant shared pointer of the particle shape of particle i. */
  /*	virtual Shape_ & GetCharacteristics(size_t i) const {
  if (i >= this->NumParticle())
  throw std::out_of_range("Dispersion::GetCharacteristics(size_t)");
@@ -22,8 +22,8 @@
  return prt;
  }*/
  /** Give a particle shape.
- * @param i The particle index.
- * @return A shared pointer of the particle shape of particle i. */
+ * \param i The particle index.
+ * \return A shared pointer of the particle shape of particle i. */
  /*	virtual Shape_ & GetCharacteristics(size_t i) {
  if (i >= this->NumParticle())
  throw std::out_of_range("Dispersion::GetCharacteristics(size_t)");
@@ -33,7 +33,7 @@
  }*/
 
 
-/** @return Ratio of all particle volumes to the volume of simulation box. */
+/** \return Ratio of all particle volumes to the volume of simulation box. */
 double Dispersion::PackingFraction() const {
 	double prtVol = 0.0;
 	for (int i = 0; i < this->NumParticle(); i++) {

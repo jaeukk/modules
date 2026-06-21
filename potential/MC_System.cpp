@@ -145,9 +145,11 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(const Configuration & pIn
 	};
 }
 
+/** \brief Exception-like marker thrown to terminate the annealing loop early. (CLAUDE) */
 class StopMCAnnealing
 {
 public:
+	/** \brief Construct the stop marker. (CLAUDE) */
 	StopMCAnnealing()
 	{}
 };

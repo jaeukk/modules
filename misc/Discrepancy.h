@@ -7,11 +7,18 @@
 #include <PeriodicCellList.h>
 #include <etc.h>
 
+/** \brief Sort the values in stack in ascending order. (CLAUDE)
+ *  \param stack  Data to sort in place. */
 void MergeSort(std::vector<double> &stack);
-//sorts data in stack in the ascending order according to std_col-th component.
+/** \brief Sort data in stack in the ascending order according to std_col-th component.
+ *  \param stack    Vectors to sort in place.
+ *  \param std_col  Component index used as the sort key. */
 void MergeSort(std::vector<GeometryVector> & stack, int std_col);
 
-//sorts index of particles in the ascending order according to std_col-th components of relative coordinates.
+/** \brief Sort index of particles in the ascending order according to std_col-th components of relative coordinates.
+ *  \tparam T       Per-particle characteristics type stored in the cell list.
+ *  \param stack    Point configuration to reorder in place.
+ *  \param std_col  Relative-coordinate component used as the sort key. */
 template<typename T> void Merge_Sort(PeriodicCellList<T> & stack, int std_col) {
 	if (stack.GetDimension() < std_col + 1) {
 		std::cout << "Discrepancy::MergeSort - wrong standard column \n";	return;
@@ -69,9 +76,13 @@ template<typename T> void Merge_Sort(PeriodicCellList<T> & stack, int std_col) {
 }
 
 
-//For a given point configuration, indices of particles satifying w(x-x0)<r are returned.
-//w(x) : argument x is in Cartesian coordinates (not relative coordinates)
-//x0 : Cartesian coordinates
+/** \brief For a given point configuration, indices of particles satifying w(x-x0)<r are returned.
+ *  \tparam T      Per-particle characteristics type stored in the cell list.
+ *  \param config  Point configuration to crop.
+ *  \param w       Window indicator function; argument x is in Cartesian coordinates (not relative coordinates).
+ *  \param x0      Window center, in Cartesian coordinates.
+ *  \param r       Window threshold; a particle is kept when w(x-x0)<r.
+ *  \return        Indices of the particles lying inside the window. */
 template<typename T> 
 std::vector<size_t> Crop(const PeriodicCellList<T> &config, const std::function<double(const GeometryVector &)> w, const GeometryVector &x0, double r) {
 	double prefactor = config.GetDimension();
@@ -95,9 +106,14 @@ std::vector<size_t> Crop(const PeriodicCellList<T> &config, const std::function<
 		return result;
 }
 
-//Using the window rotated by R (rotation matrix),
-//return Cartesian coordinates of points satisfying w(R(x-x0))<r with respect to the rotated coordinates systems.
-//x0 : in Cartesian coordinates
+/** \brief Using the window rotated by R (rotation matrix), return Cartesian coordinates of points satisfying w(R(x-x0))<r with respect to the rotated coordinates systems.
+ *  \tparam T      Per-particle characteristics type stored in the cell list.
+ *  \param config  Point configuration to crop.
+ *  \param w       Window indicator function evaluated in the rotated frame.
+ *  \param x0      Window center, in Cartesian coordinates.
+ *  \param r       Window threshold; a particle is kept when w(R(x-x0))<r.
+ *  \param R       Rows of the rotation matrix, one GeometryVector per axis.
+ *  \return        Coordinates of the kept points expressed in the rotated coordinate system. */
 template<typename T>
 std::vector<GeometryVector> Crop(const PeriodicCellList<T> &config, const std::function<double(const GeometryVector &)> w, const GeometryVector & x0, double r, std::vector<GeometryVector> R) {
 	if (R.size() == 0) { //check empty R
@@ -148,27 +164,48 @@ std::vector<GeometryVector> Crop(const PeriodicCellList<T> &config, const std::f
 
 }
 
+/** \brief Compute the n-th term of the one-dimensional van der Corput sequence in the given basis. (CLAUDE)
+ *  \param n      Sequence index (numbering).
+ *  \param basis  Radix (base) of the sequence.
+ *  \return       The n-th van der Corput value in [0,1). */
 double vanDerCorputSequence(int n, int basis);
 
-//Compute d-dimensional van der Corput sequence
-//n = numbering
-//basis[0] = Max;
-//basis[i] = basis for i-th coordinates
+/** \brief Compute d-dimensional van der Corput sequence.
+ *  \param n      Sequence index (numbering).
+ *  \param basis  Per-coordinate radix; basis[0] = Max, basis[i] = basis for i-th coordinates.
+ *  \return       The n-th point of the multi-dimensional sequence. */
 GeometryVector vanDerCorputSequence(int n, const std::vector<int> &basis);
 
-//compute a set of van der Corput points (n points)
+/** \brief compute a set of van der Corput points (n points)
+ *  \param n      Number of points to generate.
+ *  \param basis  Per-coordinate radix; basis[0] = Max, basis[i] = basis for i-th coordinates.
+ *  \return       The first n van der Corput points. */
 std::vector<GeometryVector> vanDerCorputPts(int n, const std::vector<int> &basis);
 
 
-//Compute the star discrepancy
+/** \brief Compute the star discrepancy
+ *  \tparam T        Per-particle characteristics type stored in the cell list.
+ *  \param config    Point configuration to evaluate.
+ *  \param std_col   Coordinate component used as the sort key.
+ *  \param isSorted  True if config is already sorted along std_col, so sorting can be skipped.
+ *  \return          The star discrepancy of the configuration. */
 template<typename T>
 double Star_discrepancy(const PeriodicCellList<T> & config, int std_col = 0, bool isSorted = true);
 
-//measure the maximum discrepancy with a cubic window
+/** \brief measure the maximum discrepancy with a cubic window
+ *  \tparam T        Per-particle characteristics type stored in the cell list.
+ *  \param config    Point configuration to evaluate.
+ *  \param std_col   Coordinate component used as the sort key.
+ *  \param isSorted  True if config is already sorted along std_col, so sorting can be skipped.
+ *  \return          The maximum discrepancy over cubic windows. */
 template<typename T>
 double max_discrepnacy(const PeriodicCellList<T> & config, int std_col = 0, bool isSorted = true);
 
-//measure the maximum discrepancy with a arbitrary shaped window
+/** \brief measure the maximum discrepancy with a arbitrary shaped window
+ *  \tparam T      Per-particle characteristics type stored in the cell list.
+ *  \param config  Point configuration to evaluate.
+ *  \param w       Window indicator function defining the arbitrary window shape.
+ *  \return        The maximum discrepancy over the given window family. */
 template<typename T>
 double max_discrepancy(const PeriodicCellList<T> & config, const std::function<double(const GeometryVector &)> w);
 

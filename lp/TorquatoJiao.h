@@ -20,7 +20,11 @@ public:
 	{
 	public:
 		std::string message;
+		/** \brief Construct the exception with a message string. (CLAUDE)
+		 *  \param a  Null-terminated description of the error. */
 		error(const char * a): message(a){}
+		/** \brief Return the stored error message. (CLAUDE)
+		 *  \return  C-string with the error description. */
 		virtual const char* what() const throw()
 		{
 			return message.c_str();
@@ -89,6 +93,7 @@ public:
 	int    GRB_Presolve  ;   //How much presolving to do (-1,0,1,2) = (auto,none,standard,aggresive)
 	int    grbThreads ;      //Limit how many threads Gurobi can use at once
 
+	/** \brief Construct a jammer and set all parameters to their defaults. (CLAUDE) */
 	TJJammer();
 
 protected:
@@ -98,8 +103,11 @@ protected:
 	public:
 		double timePassed;
 
+		/** \brief Record the current time as the timer start. (CLAUDE) */
 		void Start();
+		/** \brief Record the current time and store the elapsed interval. (CLAUDE) */
 		void End();
+		/** \brief Print the elapsed time to standard output. (CLAUDE) */
 		void Display();
 	private:
 		time_t startTime;
@@ -111,6 +119,7 @@ protected:
 		NeighborNode *next;
 		int index;
 
+		/** \brief Recursively delete the rest of the linked neighbor list. (CLAUDE) */
 		~NeighborNode() 
 		{
 			if (next != 0) 
@@ -138,32 +147,74 @@ protected:
 	int lpIters  ;//The number of LP iterations that have gone by
 	double maxSingleMove ;
 	double biggestRad ;
+	/** \brief Euclidean length of a local-coordinate vector mapped to global coordinates. (CLAUDE)
+	 *  \param inputVec  Displacement in lattice (local) coordinates.
+	 *  \return          Length of Lambda*inputVec in global Cartesian coordinates. */
 	double getGlobalLength(double *inputVec) ;
+	/** \brief Volume of the fundamental cell (|det Lambda|). (CLAUDE)
+	 *  \return  Absolute value of the lattice determinant. */
 	double getVol();
+	/** \brief Rescale the lattice to remove any sphere overlaps, optionally jittering positions. (CLAUDE)
+	 *  \param randOver  If true, leave a small gap and apply random stochastic moves after resizing.
+	 *  \return          1 if a resize was performed, 0 otherwise. */
 	int resizeIfOverlap(bool randOver) ;
+	/** \brief Total volume occupied by all spheres. (CLAUDE)
+	 *  \return  Sum of the d-dimensional volumes of every sphere. */
 	double getSphereVol();
+	/** \brief Scale lattice and coordinates by rescaleIC to "rewind" a packing. (CLAUDE) */
 	void RescalePacking();
+	/** \brief Free and reset both near-neighbor lists. (CLAUDE) */
 	void DeleteOldNNL();
+	/** \brief Rebuild the influence-sphere and overlap near-neighbor lists. (CLAUDE)
+	 *  \return  Total number of neighbor contacts (counted once per pair). */
 	int calcNNLs() ;
 	double InternalTransMax  ;     //The maximum translation of a sphere in a single LP step (lattice vectors?)
 	double InternalCompMax  ;      //The maximum bulk (compressive) strain in a single step
 	double InternalShearMax  ;    //The maximum shear              strain in a single step
 	double InternalDelta;
 	double InternalNNLextraDist;
+	/** \brief Uniformly grow all radii until the first contact is made. (CLAUDE) */
 	void MaximizeRadii();
+	/** \brief Adapt the MC trial-move displacement limit toward a target acceptance rate. (CLAUDE)
+	 *  \param accRate  Measured acceptance rate of the last MC sweep. */
 	void MC_AdjustDispLimit(double accRate);
+	/** \brief Attempt a single random Monte Carlo move of one sphere, rejecting overlaps. (CLAUDE)
+	 *  \param i  Index of the sphere to move.
+	 *  \return   Magnitude of the accepted displacement, or 0 if the move was rejected. */
 	double MC_Move(int i);
+	/** \brief Perform a sweep of Monte Carlo moves and adapt the displacement limit. (CLAUDE)
+	 *  \param numTries  Number of trial moves to attempt.
+	 *  \return          Largest accepted displacement during the sweep. */
 	double MC_Sweep(int numTries);
+	/** \brief Initialize the Monte Carlo displacement limit. (CLAUDE) */
 	void MC_Init();
+	/** \brief Write the current packing to a .dat file in Alek's format. (CLAUDE)
+	 *  \param thisOutputFilename  Output path without extension (".dat" is appended).
+	 *  \param addIterNum          If true, append the LP iteration number to the filename.
+	 *  \return                    1 on success, 0 if the file could not be created. */
 	int printPacking(std::string thisOutputFilename, bool addIterNum);
+	/** \brief Decide whether the SLP iterations should stop. (CLAUDE)
+	 *  \param lastLastVol  Lattice volume two iterations ago (for the latticeVol criterion).
+	 *  \param latVol       Current lattice volume.
+	 *  \param phi          Current packing fraction.
+	 *  \return             true if a termination criterion is met, false otherwise. */
 	bool CheckTermination(double lastLastVol, double latVol, double phi);
+	/** \brief Append the timer's elapsed time to TIMEFILE.txt. (CLAUDE)
+	 *  \param timer  Timer whose elapsed time is written. */
 	void PrintTime(TimerClass timer);
+	/** \brief Delete the temporary auto-save directory and its contents. (CLAUDE) */
 	void ClearSaveData();
+	/** \brief Save the current packing and an iteration log to the temporary folder. (CLAUDE) */
 	void SaveProgress();
 	SpherePacking result;
 public:
+	/** \brief Run the sequential-linear-programming jamming iterations until a stop criterion is met. (CLAUDE) */
 	void TJIterations(void);//run iterations until stop criteria is met
+	/** \brief Load an initial sphere packing into the jammer's internal state. (CLAUDE)
+	 *  \param p  Sphere packing to use as the initial configuration. */
 	void SetPacking(const SpherePacking & p);
+	/** \brief Return the jammed packing produced by the iterations. (CLAUDE)
+	 *  \return  The resulting sphere packing. */
 	SpherePacking GetPacking(void);
 	friend class LPClass;
 };
@@ -171,6 +222,10 @@ public:
 //find if a sphere is a ratteler or not given it has these contacts to non-ratteler spheres
 //need to loop through all spheres until no extra rattler are found
 //This function used GLPK, which is NOT thread-safe
+/** \brief Determine whether a sphere is a rattler given its contacts to non-rattlers. (CLAUDE)
+ *  \param dim       Spatial dimension.
+ *  \param contacts  Contact vectors from the sphere to its non-rattler neighbors.
+ *  \return          true if the sphere is a rattler (under-constrained), false otherwise. */
 bool IsRattler_LP(DimensionType dim, const std::vector<GeometryVector> & contacts);
 
 #else
@@ -240,6 +295,7 @@ public:
 	int    GRB_Presolve  ;   //How much presolving to do (-1,0,1,2) = (auto,none,standard,aggresive)
 	int    grbThreads ;      //Limit how many threads Gurobi can use at once
 
+	/** \brief Stub constructor that reports TJ is disabled. (CLAUDE) */
 	TJJammer()
 	{
 		std::cerr<<"Error in TJJammer : TJ is not enabled!\n";
@@ -247,20 +303,29 @@ public:
 
 protected:
 public:
+	/** \brief Stub: TJ is disabled; reports an error. (CLAUDE) */
 	void TJIterations(void)//run iterations until stop criteria is met
 	{
 		std::cerr<<"Error in TJJammer : TJ is not enabled!\n";
 	}
+	/** \brief Stub: TJ is disabled; reports an error. (CLAUDE)
+	 *  \param p  Ignored sphere packing. */
 	void SetPacking(const SpherePacking & p)
 	{
 		std::cerr<<"Error in TJJammer : TJ is not enabled!\n";
 	}
+	/** \brief Stub: TJ is disabled; reports an error and returns an empty packing. (CLAUDE)
+	 *  \return  An empty SpherePacking. */
 	SpherePacking GetPacking(void)
 	{
 		std::cerr<<"Error in TJJammer : TJ is not enabled!\n";
 		return SpherePacking();
 	}
 };
+/** \brief Stub: TJ is disabled; reports an error and returns false. (CLAUDE)
+ *  \param dim       Ignored spatial dimension.
+ *  \param contacts  Ignored contact vectors.
+ *  \return          Always false. */
 inline bool IsRattler_LP(DimensionType dim, const std::vector<GeometryVector> & contacts)
 {
 	std::cerr << "Error in IsRattler_LP : TJ is not enabled!\n"; 

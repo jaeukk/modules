@@ -77,7 +77,7 @@ public:
 	/* Basic interfaces */
 	
 	/** A member function to return space dimension.
-	 * @return space dimension of this particle.	 */
+	 * \return space dimension of this particle.	 */
 	inline size_t GetDimension() const { return this->Dimension; };
 	//virtual void GetVertices(std::vector<GeometryVector> & vertices) const = 0;
 
@@ -85,7 +85,7 @@ public:
 	void Print() const { Print(std::cout); };
 	
 	/** A pure virtual function to print information of this particle through ofile.
-	 * @param ofile	 output stream. 	 */
+	 * \param ofile	 output stream. 	 */
 	virtual void Print(std::ostream & ofile) const = 0;
 
 	/** A pure virtual member function to move particles by x.  */
@@ -93,8 +93,8 @@ public:
 
 	/** A member function to return the volume of this particle.
 	 * It asks to compute the volume of this particle, only when it hasn't been computed yet.
-	 * @see UpdateVolume()
-	 * @return particle volume (in 3D) or the area (in 2D).	 */
+	 * \see UpdateVolume()
+	 * \return particle volume (in 3D) or the area (in 2D).	 */
 	inline double GetVolume() {
 		if (this->volume < 0)
 			this->UpdateVolume();
@@ -103,13 +103,13 @@ public:
 	}
 
 	/** A member function to return the volume of this particle.
-	 * @see GetVolume(); */
+	 * \see GetVolume(); */
 	inline double GetVolume() const { return this->volume; };
 
 	/** A member function to return the surface area of this particle.
 	 * It asks to compute the surface area of this particle, only when it hasn't been computed yet.
-	 * @see UpdateSurfaceArea()
-	 * @return the surface area (in 3D) or the boundary length (in 2D).	 */
+	 * \see UpdateSurfaceArea()
+	 * \return the surface area (in 3D) or the boundary length (in 2D).	 */
 	inline double GetSurfaceArea() {
 		if (this->area < 0)
 			this->UpdateSurfaceArea();
@@ -118,13 +118,13 @@ public:
 	};
 
 	/** A member function to return the surface area of this particle.
-	 * @see GetSurfaceArea()	 */
+	 * \see GetSurfaceArea()	 */
 	inline double GetSurfaceArea() const { return this->area; };
 
 	/** A member function to return the radius of the sphere that circumscribes this particle.
 	 * It asks to compute the surface area of this particle, only when it hasn't been computed yet.
-	 * @see UpdateR();
-	 * @return the maximal distance from the centroid.	 */
+	 * \see UpdateR();
+	 * \return the maximal distance from the centroid.	 */
 	inline double GetMaxRadius() {
 		if (this->R_circum < 0) {
 			this->UpdateR();
@@ -134,8 +134,8 @@ public:
 
 	/** A member function to return the radius of the sphere that inscribes this particle.
 	 * It asks to compute the surface area of this particle, only when it hasn't been computed yet.
-	 * @see UpdateR();
-	 * @return the least distance from the centroid to its boundary.	 */
+	 * \see UpdateR();
+	 * \return the least distance from the centroid to its boundary.	 */
 	inline double GetInscrRadius() {
 		if (this->R_inscr < 0) {
 			this->UpdateR();
@@ -144,8 +144,8 @@ public:
 	};
 
 	/** A member function to return the radius of the sphere that circumscribes this particle.
-	 * @return the radius = 0 if it is not updated.
-	 * @see GetMaxRadius()	 */
+	 * \return the radius = 0 if it is not updated.
+	 * \see GetMaxRadius()	 */
 	inline double GetMaxRadius() const {
 		if (this->R_circum > 0)
 			return this->R_circum;
@@ -154,6 +154,9 @@ public:
 		}
 	};
 
+	/** A member function to return the radius of the sphere that inscribes this particle. (CLAUDE)
+	 * \return the radius = 0 if it is not updated.
+	 * \see GetInscrRadius()	 */
 	inline double GetInscrRadius() const {
 		if (this->R_inscr > 0)
 			return this->R_inscr;
@@ -163,32 +166,32 @@ public:
 	};
 	
 	/** A pure virtual member function to compute the center of mass (centroid) of a Shape object. 
-	 * @return The centroid.	*/
+	 * \return The centroid.	*/
 	virtual GeometryVector GetCenterOfMass() = 0;
 
 
 	/**	A pure virtual member function to check whether a given point is inside this shape.
-	 * @param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
-	 * @return True = pos is inside this Shape.	 */
+	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+	 * \return True = pos is inside this Shape.	 */
 	virtual bool IsPtInside(const GeometryVector & pos_wrt_centroid) { 
 		std::cout << "Shape::IsPtInside is not implemented. Please write an implementation in each class." << std::endl; 
 		return false;
 	}
 
 	/**	A pure virtual member function to compute the closest distance from a given point to the boundary of the shape.
-	 * @param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
-	 * @param[out] list_dist	A list of distances to sides. list_dist[i] = {ith shortest distance, parameter}.
-	 * @param[out] x0	The point on the particle closest to pos_wrt_centroid. 
- 	 * @param[out] n_outward	The unit outward normal vector at x0. 
-	 * @return distance.	 */
+	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+	 * \param[out] list_dist	A list of distances to sides. list_dist[i] = {ith shortest distance, parameter}.
+	 * \param[out] x0	The point on the particle closest to pos_wrt_centroid. 
+ 	 * \param[out] n_outward	The unit outward normal vector at x0. 
+	 * \return distance.	 */
 	virtual double GetDistance2Boundary(const GeometryVector & pos_wrt_centroid, std::vector<GeometryVector> & list_dist, GeometryVector & x0, GeometryVector & n_outward ) const { 
 		std::cout << "Shape::GetDistance2Boundary is not implemented. Please write an implementation in each class." << std::endl; 
 		return 0.0;
 	}
 	
 	/**	A pure virtual member function to compute the closest distance from a given point to the boundary of the shape.
-	 * @param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
-	 * @return distance.	 */
+	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+	 * \return distance.	 */
 	virtual double GetDistance2Boundary(const GeometryVector & pos_wrt_centroid) const { 
 		std::cout << "Shape::GetDistance2Boundary is not implemented. Please write an implementation in each class." << std::endl; 
 		return 0.0;
@@ -196,7 +199,7 @@ public:
 
 	/** A pure virtual member function to copy this Shape class.
 	 * It will be useful when the object is stored in a pointer. 
-	 * @return A shared pointer of this Shape object, which includes identical information.
+	 * \return A shared pointer of this Shape object, which includes identical information.
 				Since this is a "copy," we don't need to worry about security. */
 	virtual std::shared_ptr<Shape> clone() = 0;
 
@@ -215,41 +218,41 @@ public:
 */
 	/**	A pure virtual member function to rotate this particle.
 	 * It rotates Cartesian coordinates to from the basis (1,0,0), (0,1,0), (0,0,1) to a new basis  
-	 * @param newbasis	Orthonormal basis vectors of a new Cartesian Coordinates.	 */
+	 * \param newbasis	Orthonormal basis vectors of a new Cartesian Coordinates.	 */
 	virtual void Rotate(const std::vector<GeometryVector> & newbasis) = 0;
 
 	/** A member function to rotate this particle into a random orientation.
-	 * @param rng A random generator to make random orthonormal basis vectors
-	 * @see Rotate(const std::vector<GeometryVector> & newbasis);	 */
+	 * \param rng A random generator to make random orthonormal basis vectors
+	 * \see Rotate(const std::vector<GeometryVector> & newbasis);	 */
 	void Rotate(RandomGenerator & rng);
 	
 	/** A member function to resize this particle to a prescribe volume.
-	 * @param newVolume	Desired volume of this particle.	 */
+	 * \param newVolume	Desired volume of this particle.	 */
 	void Scale2Vol(double newVolume);
 
 	/** A member function to resize this particle at a linear scale.
-	 * @param factor	The linear scale factor at which this particle is resized.
-	 * @see Scale2Vol(double newVolume)	 */
+	 * \param factor	The linear scale factor at which this particle is resized.
+	 * \see Scale2Vol(double newVolume)	 */
 	virtual void Scale(double factor);
 	
 	/** A pure virtual member function to compute a Fourier transform of this particle.
 	 * Fourier transform is computed by the following convention: \int \d{\vect{r}} e^{i k r} f(r).
 	 * Form factor is computed with respect to the centroid of this particle.
-	 * @param k	A wavevector at which the form factor (Fourier transform) is computed.
-	 * @return Complex Fourier transform of this particle	 */
+	 * \param k	A wavevector at which the form factor (Fourier transform) is computed.
+	 * \return Complex Fourier transform of this particle	 */
 	virtual std::complex<double> GetFormFactor(const GeometryVector & k) = 0;
 };
 /** 
  * A function to check the orthonormality of a given basis vectors.
- * @param dimension	Space dimension
- * @param newbasis	d GeometryVectors in d dimensions
- * @return true = basis vectors are orthonormal.
+ * \param dimension	Space dimension
+ * \param newbasis	d GeometryVectors in d dimensions
+ * \return true = basis vectors are orthonormal.
  */
 bool CheckNewCoordinates(int dimension, const std::vector<GeometryVector> & newbasis);
 
 /** A shift operator << for the Shape classes. 
- * @param os	An output stream.
- * @param shape	A Shape object. */
+ * \param os	An output stream.
+ * \param shape	A Shape object. */
 inline std::ostream & operator << (std::ostream & os, const Shape & shape) {
 	shape.Print(os);
 	return os;
@@ -258,7 +261,7 @@ inline std::ostream & operator << (std::ostream & os, const Shape & shape) {
 /** \brief A child struct from the Shape struct to define a planar figure in 3D.
  * This is a polygonal plane in 3D Euclidean space and thus have orientations.
  * This is an auxiliary struct to define a 2D polygon and facets of a 3D polyhedron. However, we seldom use this struct alone. 
- * @see Shape
+ * \see Shape
  */
 struct PlanarFigure : public Shape {
 	friend struct Polygon;
@@ -281,19 +284,19 @@ protected:
 	
 	/** 
 	 * A member function to overwite this->volume with the area of this facet.
-	 * @see Shape::UpdateVolume()
+	 * \see Shape::UpdateVolume()
 	 */
 	void UpdateVolume();
 
 	/** 
 	 * A member function to overwrite this->area with the total side length of this facet.
-	 * @see Shape::UpdateSurfaceArea();
+	 * \see Shape::UpdateSurfaceArea();
 	 */
 	void UpdateSurfaceArea();
 
 	/** A member function to overwrite this->R_circum with the maximal distance from the origin to vertcies.
 	 * It doesn't udpate this->R_inscr.
-	 * @see Shape::UpdateR()
+	 * \see Shape::UpdateR()
 	 */
 	void UpdateR();	
 
@@ -316,29 +319,29 @@ public:
 	PlanarFigure() : Shape() { this->r_perp = 0.0; };
 	
 	/** A constructor when all points are on this facet.
-	 *  @param V	pointers of GeometryVectors of vertices in d dimensions
-	 *	@param num_vertices	The number of vertices.
+	 *  \param V	pointers of GeometryVectors of vertices in d dimensions
+	 *	\param num_vertices	The number of vertices.
   	 */
 	PlanarFigure(GeometryVector * V, size_t num_vertices);			
 	
 	/** A constructor when a portion of points forms this facet 
-	 * @param V	pointers of GeometryVectors of vertices in d dimension.
-	 * @param vert_idx	Index of vertices that form this facet. V[vert_idx[0]], ... V[vert_idx[n-1]] should form a cyclic chain of vertices on a plane.
+	 * \param V	pointers of GeometryVectors of vertices in d dimension.
+	 * \param vert_idx	Index of vertices that form this facet. V[vert_idx[0]], ... V[vert_idx[n-1]] should form a cyclic chain of vertices on a plane.
 	 */
 	PlanarFigure(GeometryVector * V, std::vector<size_t> vert_idx);	
 
 	/* Basic Interfaces */
-	void Print(std::ostream & ofile) const;	///< @see Shape::Print(std::ostream & ofile)
+	void Print(std::ostream & ofile) const;	///< \see Shape::Print(std::ostream & ofile)
 
 	/**
 	 *	A member function to obtain Cartesian coordinates of vertices that form this facet.
-	 * @param[out]	Verts	Verts[i] = a GeometryVector of ith vertex of this facet.
+	 * \param[out]	Verts	Verts[i] = a GeometryVector of ith vertex of this facet.
 	 */
 	void GetVertices(std::vector<GeometryVector> & Verts) const;
 	
 	/** 
 	 * A member function to compute the centor of mass of this facet with respect to the origin
-	 * @return the center of mass of this facet.
+	 * \return the center of mass of this facet.
 	 */
 	GeometryVector GetCenterOfMass();
 
@@ -350,13 +353,13 @@ public:
 
 	/** A member function to resize this facet at a linear scale
 	 * This DO NOT rescale vertices.
-	 * @param factor	the linear factor
+	 * \param factor	the linear factor
 	 */
 	void Scale(double factor);		
 
 	/** A member function to compute the Form factor of this facet.
-	 * @param k	A wavevector at which the form factor is computed
-	 * @return A complex Fourier component at k.
+	 * \param k	A wavevector at which the form factor is computed
+	 * \return A complex Fourier component at k.
 	*/
 	std::complex<double> GetFormFactor(const GeometryVector & k);
 
@@ -374,18 +377,18 @@ private:
 	/** 
 	 * A member function to compute the form factor of this facet.
 	 * It uses an analytic expression, which can badly behave at small wavevectors.
-	 * @see GetFormFactor(const GeometryVector & k)
-	 * @param k	A wavevector at which the form factor is computed
-	 * @return A complex Fourier component at k.
+	 * \see GetFormFactor(const GeometryVector & k)
+	 * \param k	A wavevector at which the form factor is computed
+	 * \return A complex Fourier component at k.
 	 */
 	std::complex<double> FormFactor_analytic(const GeometryVector &k);
 
 	/** 
 	 * A member function to compute the form factor of this facet.
 	 * It uses a series expansion formula, which can well behave at small wavevectors.
-	 * @see GetFormFactor(const GeometryVector & k)
-	 * @param k	A wavevector at which the form factor is computed
-	 * @return A complex Fourier component at k.
+	 * \see GetFormFactor(const GeometryVector & k)
+	 * \param k	A wavevector at which the form factor is computed
+	 * \return A complex Fourier component at k.
 	 */
 	std::complex<double> FormFactor_series(const GeometryVector &k);
 };
@@ -421,23 +424,23 @@ public:
 	Polygon(const Polygon & source);
 
 	/** A constructor by vertices that form this facet.
-	 * @see Polygon(const GeometryVector *, size_t);
-	 * @param vertices	GeometryVectors in the cyclic order	 */
+	 * \see Polygon(const GeometryVector *, size_t);
+	 * \param vertices	GeometryVectors in the cyclic order	 */
 	Polygon(const std::vector<GeometryVector> & vertices);
 	
 	/** A constructor by vertices that form this facet.
 	 * Vertices are automatically translated in such a way that the origin coincides with the center of the polygon.
-	 * @param vertices	An array of GeometryVectors that will form this facet. They should be a cyclic order
-	 * @oaram num_vertices	The number of vertices 	 */
+	 * \param vertices	An array of GeometryVectors that will form this facet. They should be a cyclic order
+	 * \param num_vertices	The number of vertices 	 */
 	Polygon(const GeometryVector * vertices, size_t num_vertices);
 	
 	/** A constructor by string input stream. 
-	 * @param ifile string input stream.*/
+	 * \param ifile string input stream.*/
 	Polygon(std::istream & ifile);
 
 
 	/** A member function to print the number of vertices and Cartessian coordinates of vertices.
-	 * @see Shape::Print(std::ostream &)	 */
+	 * \see Shape::Print(std::ostream &)	 */
 	void Print(std::ostream & ofile) const {
 		ofile << "[" << name << "]\n";
 		std::vector<GeometryVector> vs;
@@ -452,59 +455,62 @@ public:
 	void SetPositiveOrientation();
 
 	/// A member function = Print(std::cout) 
-	/// @see Polygon::Print(std::ostream)
+	/// \see Polygon::Print(std::ostream)
 	void Print() const { this->Print(std::cout); };
 
 	/** A member function to get all vertices of this polygon
-	 * @param[out]	vertices	GeometryVectors of all vertices.	 */
+	 * \param[out]	vertices	GeometryVectors of all vertices.	 */
 	void GetVertices(std::vector<GeometryVector> & vertices) const;
 
 	/**	A member function to compute the center of mass of this polygon
-	 * @return the centroid.	 */
+	 * \return the centroid.	 */
 	GeometryVector GetCenterOfMass();
 
 	/**	A virtual member function to check whether a given point is inside this Polygon.
-	 * @param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
-	 * @return True = pos is inside this Shape.	 */
+	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+	 * \return True = pos is inside this Shape.	 */
 	virtual bool IsPtInside(const GeometryVector & pos_wrt_centroid);
 
 	/**	A member function to compute the closest distance from a given point to the side of this polygon.
-	 * @param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
-	 * @return distance.	 */
+	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+	 * \return distance.	 */
 	virtual double GetDistance2Boundary(const GeometryVector & pos_wrt_centroid) const;
 
 	/**	A member function to compute the closest distance from a given point to the side of this polygon.
-	 * @param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
-	 * @param[out] list_dist	A list of distances in the ascending order.
- 	 * @param[out] x0	The point on the particle closest to pos_wrt_centroid. 
- 	 * @param[out] n_outward	The unit outward normal vector at x0. 
-	 * @return distance.	 */
+	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+	 * \param[out] list_dist	A list of distances in the ascending order.
+ 	 * \param[out] x0	The point on the particle closest to pos_wrt_centroid. 
+ 	 * \param[out] n_outward	The unit outward normal vector at x0. 
+	 * \return distance.	 */
 	virtual double GetDistance2Boundary(const GeometryVector & pos_wrt_centroid, std::vector<GeometryVector> & list_dist, GeometryVector & x0, GeometryVector & n_outward) const;
 
-	/** @return A shared pointer of an identical copy of this Polygon object. */
+	/** \return A shared pointer of an identical copy of this Polygon object. */
 	virtual std::shared_ptr<Shape> clone() {
 		return std::shared_ptr<Shape>(new Polygon(*this));
 	}
 
 	/** A member function to move all vertices by x.
 	 * E and R vectors in this->Gamma are also updated.
-	 * @param x	A GeometryVector by which all vertices are translated.	 */
+	 * \param x	A GeometryVector by which all vertices are translated.	 */
 	void ShiftBy(const GeometryVector & x);
 
-	/// @see Shape::Rotate(RandomGenerator)
+	/// \see Shape::Rotate(RandomGenerator)
 	void Rotate(RandomGenerator & rng) { Shape::Rotate(rng); };
-	/// @see Shape::Rotate(RandomGenerator)
+	/// \see Shape::Rotate(RandomGenerator)
 	void Rotate(const std::vector<GeometryVector> & newbasis);
-	/// @see Shape::Scale(double)
+	/// \see Shape::Scale(double)
 	virtual void Scale(double factor);
 
 	/** A member function to compute the form factor of this 2D polygon with respect to its centroid at a wavevector k.
 	 * Currently, it directly recalls the form factor of an object Gamma. 
-	 * @param k	A wavevector at which we compute the form factor
-	 * @return a complex form factor.	 */
+	 * \param k	A wavevector at which we compute the form factor
+	 * \return a complex form factor.	 */
 	inline std::complex<double> GetFormFactor(const GeometryVector & k) { return this->Gamma.GetFormFactor(k); }
 };
 
+/** Read a Polygon from a string input stream. (CLAUDE)
+ * \param ifile	A string input stream holding the number of vertices and their coordinates.
+ * \return The Polygon reconstructed from the stream. */
 Polygon ReadPolygon(std::istream & ifile);
 
 /** \brief A struct to define 3D general polyhedron.
@@ -528,12 +534,12 @@ protected:
 	void UpdateSurfaceArea();
 
 	/**	A member function to check whether this object satisfies the Euler identity.
-	 * @return true = satisfied.	 */
+	 * \return true = satisfied.	 */
 	bool CheckEulerIdentity() const;
 
 	/** A member function to check whether this object is enclosed.
 	 *	It adds the normal vectors of all facets, which is supposed to be zero for an enclosed polyhedron.
-	 * @return true = Summation of all normal vectors = 0.	 */
+	 * \return true = Summation of all normal vectors = 0.	 */
 	bool CheckClosedSuface();
 
 	/** A member function to check whether all normal vectors outwards.
@@ -548,7 +554,7 @@ public:
 
 	/** A copy constructor for a Polyhedron.
 	 *  It blidnly copies the source.
-	 * @param source	A Polyhedron obejct. */
+	 * \param source	A Polyhedron obejct. */
 	Polyhedron(const Polyhedron & source) : Polyhedron::Polyhedron(source.Vertices, source.Vertex_idx) {
 		this->volume = source.volume;	this->area = source.area;	this->R_circum = source.R_circum; this->R_inscr = source.R_inscr;
 		//this->Centroid = GeometryVector((int)0);
@@ -556,13 +562,13 @@ public:
 
 	/** A constructor of a Polyhedron object by vertices and vertex indices that form each facet.
 	 *	This constructor checks that this polyhedron can be exactly constructed.
-	 * @param vertices	Cartesian coordinates of all vertices.
-	 * @param idx	vertices[idx[i][j]] = the jth vertex of the ith facet of this Polyhedron. */
+	 * \param vertices	Cartesian coordinates of all vertices.
+	 * \param idx	vertices[idx[i][j]] = the jth vertex of the ith facet of this Polyhedron. */
 	Polyhedron(const std::vector<GeometryVector> & vertices, 
 		const std::vector<std::vector<size_t>> & idx);
 
 	/** A constructor by a string input stream. 
-	 * @param ifile string input stream.*/
+	 * \param ifile string input stream.*/
 	Polyhedron(std::istream & ifile);
 
 	/* Can we determine faces only with vertices?? */
@@ -578,8 +584,8 @@ public:
 	 *  0	1	2	3
 	 *	0	1	...
 
-	 *	@param ofile	output stream
-	 *	@see Shape::Print(std::ostream &)
+	 *	\param ofile	output stream
+	 *	\see Shape::Print(std::ostream &)
 	 */
 	void Print(std::ostream & ofile) const;
 
@@ -588,71 +594,72 @@ public:
 	void Print() const { this->Print(std::cout); };
 
 	/** A member function to obtain cartesian coordinates fo all vertices, and vertex indices that can reconstruct this Polyhedron.
-	 *	@param[out]	vertices	Cartesian coordinates of all vertices.
-	 *	@param[out]	idx[i][j]	The jth vertex index that forms the ith face.	 */
+	 *	\param[out]	vertices	Cartesian coordinates of all vertices.
+	 *	\param[out]	idx[i][j]	The jth vertex index that forms the ith face.	 */
 	void GetVertices(std::vector<GeometryVector> & vertices, 
 		std::vector<std::vector<size_t>> & idx) const;
 
 	/** A member function to compute the center of mass.
-	 *	@return Cartesian coordinates of the centroid with respect to the origin. */
+	 *	\return Cartesian coordinates of the centroid with respect to the origin. */
 	GeometryVector GetCenterOfMass();
 
 	/** A member function to randomly rotate this Polyhedron
-	 * @param rng	A random generator to construct a new set of basis vectors.	 */
+	 * \param rng	A random generator to construct a new set of basis vectors.	 */
 	void Rotate(RandomGenerator & rng) { Shape::Rotate(rng); };
 
 	/** A member function to rotate this Polyhedron to a new cartesian coordiantes.
-	 *	@param newbasis	A new set of basis vectors in cartesian coordinates.	 */
+	 *	\param newbasis	A new set of basis vectors in cartesian coordinates.	 */
 	void Rotate(const std::vector<GeometryVector> & newbasis);
 
 	/** A member function to resize this Polyhedron at a linear scale "factor".
-	 * @param factor	A linear factor at which this Polyhedron is rescaled.	 */
+	 * \param factor	A linear factor at which this Polyhedron is rescaled.	 */
 	virtual void Scale(double factor);
 
 	/** A member function to translate all cartesian coordinates of vertices and associated E and R vectors by x.	 
-	 * @param x	A GeometryVector by which this Polyhedron is translated. */
+	 * \param x	A GeometryVector by which this Polyhedron is translated. */
 	void ShiftBy(const GeometryVector & x);
 
 	/**	A virtual member function to check whether a given point is inside this Polygon.
-	 * @param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
-	 * @return True = pos is inside this Shape.	 */
+	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+	 * \return True = pos is inside this Shape.	 */
 	virtual bool IsPtInside(const GeometryVector & pos_wrt_centroid);
 
 	/**	A pure virtual member function to compute the closest distance from a given point to the facets of this polygon.
-	 * @param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
-	 * @return distance.	 */
+	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+	 * \return distance.	 */
 	virtual double GetDistance2Boundary(const GeometryVector & pos_wrt_centroid) const;
 
 	/**	A pure virtual member function to compute the closest distance from a given point to the facets of this polygon.
-	 * @param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
-	 * @param[out] list_dist	A list of distances to the point in the ascending order.
-	 * @param[out] x0	The point on the particle closest to pos_wrt_centroid. 
- 	 * @param[out] n_outward	The unit outward normal vector at x0. 
-	 * @return distance.	 */
+	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
+	 * \param[out] list_dist	A list of distances to the point in the ascending order.
+	 * \param[out] x0	The point on the particle closest to pos_wrt_centroid. 
+ 	 * \param[out] n_outward	The unit outward normal vector at x0. 
+	 * \return distance.	 */
 	virtual double GetDistance2Boundary(const GeometryVector & pos_wrt_centroid, std::vector<GeometryVector> & list_dist, GeometryVector & x0, GeometryVector & n_outward) const;
 
+	/** \return A shared pointer of an identical copy of this Polyhedron object. (CLAUDE) */
 	virtual std::shared_ptr<Shape> clone() {
 		return std::shared_ptr<Shape>( new Polyhedron (*this));
 	}
 
 	/** A member function to compute the form factor of this 3D polyhedron at a wavevector k.
   	 * Currently, it directly recalls the form factor.
-	 * @param k	A wavevector at which we compute the form factor
-	 * @return a complex form factor	 */
+	 * \param k	A wavevector at which we compute the form factor
+	 * \return a complex form factor	 */
 	std::complex<double> GetFormFactor(const GeometryVector & k);
 private:
 
 	/** A member function to compute the form factor of this 3D polyherdon at a wavevector k.
 	 *	It uses an analytic formula, which may give incorrect results for small wavevectors due to the singularity at the origin.
-	 * @param k	A wavevector at which we compute the form factor
-	 * @return a complex form factor	 */
+	 * \param k	A wavevector at which we compute the form factor
+	 * \return a complex form factor	 */
 	std::complex<double> FormFactor_analytic(const GeometryVector &k);
 
 	/**	A member function to compute the form factor of this 3D polyherdon at a wavevector k.
 	 *	It uses a series expansion of the form factor which becomes expensive at large wavevectors.
 	 *	It is not implemented yet.
-	 * @param k	A wavevector at which we compute the form factor
-	 * @return a complex form factor	 */
+	 * \param k	A wavevector at which we compute the form factor
+	 * \return a complex form factor	 */
 	std::complex<double> FormFactor_series(const GeometryVector &k);
 };
 

@@ -37,22 +37,24 @@ template <typename System, typename AdditionalInfo>
 class MCMove
 {
 public:
-	/** \brief Generate a random move, return Energy difference. the PreFactor is also set if it is not 1. 
-	 	@param sys	Define current state of a system.
-		@param add	Define interaction
-		@param gen	Random number generator.
-		@param Prefactor
-		@param LockStepSize
-		@param CurrentEnergy	Energy of the current state.	*/
-	virtual double DeltaEnergy(System & sys, AdditionalInfo add, RandomGenerator & gen, 
+	/** \brief Generate a random move, return Energy difference. the PreFactor is also set if it is not 1.
+	 	\param sys	Define current state of a system.
+		\param add	Define interaction
+		\param gen	Random number generator.
+		\param PreFactor	Acceptance prefactor; set when it differs from 1. (CLAUDE)
+		\param LockStepSize	If true, do not auto-adjust the trial-move step size. (CLAUDE)
+		\param CurrentEnergy	Energy of the current state.
+		\return Change in energy from the trial move. (CLAUDE) */
+	virtual double DeltaEnergy(System & sys, AdditionalInfo add, RandomGenerator & gen,
 		double & PreFactor, bool LockStepSize, double CurrentEnergy) =0;
 
-	/** \brief A pure virtual function to determine whether a random trial is accepted or not. 
-		@param sys	Define the current system state.
-		@param add	Define interaction. */
+	/** \brief A pure virtual function to determine whether a random trial is accepted or not.
+		\param sys	Define the current system state.
+		\param add	Define interaction. */
 	virtual void Accept(System & sys, AdditionalInfo add) =0;
 
-	/** */
+	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
+		\return A new clone of this move. */
 	virtual MCMove<System, AdditionalInfo> * clone() =0;
 };
 
@@ -72,7 +74,7 @@ public:
 
 	double MinDistance;			//< abandon this move immediately if particles are within this distance
 	
-	/** A default constructor. */
+	/** \brief A default constructor. */
 	AtomMove()
 	{
 		this->sigma=0.1;
@@ -84,12 +86,12 @@ public:
 
 	//calculate the delta E for a given move
 	//move is : move the particle (this->moved) so that its new relative coordinate is newcoord
-	/** /brief Calculate the change in energy when the newcoord is accepted.
-		@param list	Define the current state.
-		@param pot	Define interaction.	This object can be one of three classes: PairPotential, forMCPotential, and CombinedPotential.
-		@param newcoord	A trial move in relative coordiantes.
-		@param CurrentEnergy	energy of the current state.
-		@return Change in energy. */
+	/** \brief Calculate the change in energy when the newcoord is accepted.
+		\param list	Define the current state.
+		\param pot	Define interaction.	This object can be one of three classes: PairPotential, forMCPotential, and CombinedPotential.
+		\param newcoord	A trial move in relative coordiantes.
+		\param CurrentEnergy	energy of the current state.
+		\return Change in energy. */
 	double CalculateDeltaEnergy(Configuration & list, Potential * pot, const GeometryVector & newcoord, double CurrentEnergy)
 	{
 		//Determine which class pot belongs to. 
@@ -139,8 +141,15 @@ public:
 		}
 	}
 
-	/** */
-	virtual double DeltaEnergy(Configuration & list, Potential * pot, RandomGenerator & gen, 
+	/** \brief Generate a random single-particle displacement and return the energy difference. (CLAUDE)
+		\param list	Current point configuration.
+		\param pot	Interaction potential.
+		\param gen	Random number generator.
+		\param[out] PreFactor	Acceptance prefactor; set when it differs from 1.
+		\param LockStepSize	If true, do not auto-adjust the displacement step size.
+		\param CurrentEnergy	Energy of the current state.
+		\return Change in energy from the trial displacement (MaxEnergy if a too-near neighbor is found). */
+	virtual double DeltaEnergy(Configuration & list, Potential * pot, RandomGenerator & gen,
 		double & PreFactor, bool LockStepSize, double CurrentEnergy)//Generate a random move, return Energy difference
 	{
 		if(this->TrialCount>=::AcceptanceSampleSize )
@@ -195,6 +204,8 @@ public:
 	}
 
 	//check if the potential needs specific operation for accepting the move
+	/** \brief Notify the potential (recursing into combined potentials) that the move was accepted. (CLAUDE)
+		\param pot  Interaction potential to update on acceptance. */
 	void AcceptCheck(Potential * pot)
 	{
 		forMCPotential * pForMCPotential = dynamic_cast<forMCPotential *>(pot);
@@ -207,6 +218,9 @@ public:
 			this->AcceptCheck(pComb->p2);
 		}
 	}
+	/** \brief Accept the last trial displacement, applying it to the configuration. (CLAUDE)
+		\param list  Configuration to update with the accepted move.
+		\param pot   Interaction potential to notify of the acceptance. */
 	virtual void Accept(Configuration & list, Potential * pot)
 	{
 		this->AcceptCount++;
@@ -215,12 +229,15 @@ public:
 
 		this->AcceptCheck(pot);
 	}
+	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
+		\return A new clone of this AtomMove. */
 	virtual MCMove<Configuration, Potential *> * clone()
 	{
 		return new AtomMove(*this);
 	}
 };
 
+/** \brief A MCMove that proposes changes to the simulation-cell basis vectors (isobaric ensemble). (CLAUDE) */
 class CellMove : public MCMove<Configuration, Potential *>
 {
 private:
@@ -231,6 +248,7 @@ private:
 public:
 	double sigma;
 	double MinDistance;//abandon this move immediately if particles are within this distance
+	/** \brief A default constructor (zero pressure). (CLAUDE) */
 	CellMove()
 	{
 		this->sigma=3e-2;
@@ -239,6 +257,8 @@ public:
 		this->Pressure=0;
 		this->MinDistance=0;
 	}
+	/** \brief Construct a cell move at a given pressure. (CLAUDE)
+		\param pressure  Pressure used to form the enthalpy in the acceptance criterion. */
 	CellMove(double pressure)
 	{
 		this->sigma=3e-2;
@@ -247,6 +267,14 @@ public:
 		this->Pressure=pressure;
 		this->MinDistance=0;
 	}
+	/** \brief Generate a random change of the cell basis vectors and return the enthalpy difference. (CLAUDE)
+		\param list	Current point configuration.
+		\param pot	Interaction potential.
+		\param gen	Random number generator.
+		\param[out] PreFactor	Acceptance prefactor accounting for the volume change.
+		\param LockStepSize	If true, do not auto-adjust the cell step size.
+		\param CurrentEnergy	Current enthalpy of the state.
+		\return Change in enthalpy from the trial cell move (MaxEnergy if the move is rejected outright). */
 	virtual double DeltaEnergy(Configuration & list, Potential * pot, RandomGenerator & gen, double & PreFactor, bool LockStepSize, double CurrentEnergy)//Generate a random move, return Energy difference
 	{
 		if(this->TrialCount>=::AcceptanceSampleSize && LockStepSize==false)
@@ -358,12 +386,17 @@ public:
 		//std::cout <<" \t"<< PreFactor << " \t" << DeltaE << '\n';
 		return DeltaE;
 	}
+	/** \brief Accept the last trial cell move, applying the new basis vectors. (CLAUDE)
+		\param list  Configuration to update with the accepted basis vectors.
+		\param pot   Interaction potential (unused here). */
 	virtual void Accept(Configuration & list, Potential * pot)
 	{
 		list.ChangeBasisVector(newvec);
 		list.TryRefineBasisVectors();
 		this->AcceptCount++;
 	}
+	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
+		\return A new clone of this CellMove. */
 	virtual MCMove<Configuration, Potential *> * clone()
 	{
 		return new CellMove(*this);
@@ -371,6 +404,7 @@ public:
 };
 
 
+/** \brief A MCMove that randomly selects between two sub-moves with a fixed probability. (CLAUDE) */
 template <typename System, typename AdditionalInfo>
 class CombinedMove : public MCMove<System, AdditionalInfo>
 {
@@ -381,16 +415,30 @@ class CombinedMove : public MCMove<System, AdditionalInfo>
 	bool IsMoving1;
 
 public:
+	/** \brief Construct from two moves and the probability of choosing the first. (CLAUDE)
+		\param m1               First sub-move; cloned and owned by this object.
+		\param m2               Second sub-move; cloned and owned by this object.
+		\param Move1Probability  Probability in [0,1] of attempting the first move.
+		\param RandomSeed       Seed for the internal random number generator. */
 	CombinedMove(MCMove<System, AdditionalInfo> & m1, MCMove<System, AdditionalInfo> & m2, double Move1Probability, int RandomSeed) : m1(m1.clone()), m2(m2.clone()), Move1Probability(Move1Probability), gen(RandomSeed)
 	{
 		assert(Move1Probability>=0);
 		assert(Move1Probability<=1);
 	}
+	/** \brief Destructor; frees the two owned sub-moves. (CLAUDE) */
 	~CombinedMove()
 	{
 		delete this->m1;
 		delete this->m2;
 	}
+	/** \brief Randomly select one sub-move, perform it, and return the energy difference. (CLAUDE)
+		\param sys	Current system state.
+		\param add	Additional information (e.g. the interaction potential).
+		\param gen	Random number generator (unused; the internal generator selects the sub-move).
+		\param[out] PreFactor	Acceptance prefactor set by the selected sub-move.
+		\param LockStepSize	If true, do not auto-adjust step sizes.
+		\param CurrentEnergy	Energy of the current state.
+		\return Change in energy from the selected sub-move. */
 	virtual double DeltaEnergy(System & sys, AdditionalInfo add, RandomGenerator & gen, double & PreFactor, bool LockStepSize, double CurrentEnergy)//Generate a random move, return Energy difference
 	{
 		if(gen.RandomDouble()<this->Move1Probability)
@@ -404,6 +452,9 @@ public:
 			return m2->DeltaEnergy(sys, add, gen, PreFactor, LockStepSize, CurrentEnergy);
 		}
 	}
+	/** \brief Accept the most recently selected sub-move. (CLAUDE)
+		\param sys  System to update.
+		\param add  Additional information (e.g. the interaction potential). */
 	virtual void Accept(System & sys, AdditionalInfo add)
 	{
 		if(this->IsMoving1==true)
@@ -411,6 +462,8 @@ public:
 		else
 			this->m2->Accept(sys, add);
 	}
+	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
+		\return A new clone of this CombinedMove. */
 	virtual MCMove<System, AdditionalInfo> * clone()
 	{
 		return new CombinedMove(*this->m1, *this->m2, this->Move1Probability, this->gen.RandomDouble()*10000);

@@ -8,6 +8,13 @@
 #endif
 
 #ifdef USE_MATHGL
+/** \brief Draw the outline of a circle on a MathGL graph. (CLAUDE)
+ *  \param graph            Target MathGL graph.
+ *  \param x                X coordinate of the circle center.
+ *  \param y                Y coordinate of the circle center.
+ *  \param r                Circle radius.
+ *  \param MGLOptions       MathGL plot style/colour options.
+ *  \param NumLineSegments  Number of line segments approximating the circle. */
 void PlotCircle2D(mglGraph & graph, double x, double y, double r, const char * MGLOptions, size_t NumLineSegments=100)
 {
 	mglData xc(NumLineSegments+1), yc(NumLineSegments+1);
@@ -20,6 +27,13 @@ void PlotCircle2D(mglGraph & graph, double x, double y, double r, const char * M
 	yc.a[NumLineSegments]=y;
 	graph.Plot(xc, yc, MGLOptions);
 }
+/** \brief Draw a filled disk on a MathGL graph. (CLAUDE)
+ *  \param graph            Target MathGL graph.
+ *  \param x                X coordinate of the disk center.
+ *  \param y                Y coordinate of the disk center.
+ *  \param r                Disk radius.
+ *  \param MGLOptions       MathGL fill style/colour options.
+ *  \param NumLineSegments  Number of line segments approximating the disk boundary. */
 void PlotDisk2D(mglGraph & graph, double x, double y, double r, const char * MGLOptions, size_t NumLineSegments=200)
 {
 	size_t HalfNumLineSegments=NumLineSegments/2+1;

@@ -6,14 +6,26 @@
 #include <Plots.h>
 #include <DisplaySpheres.h>
 
+/** \brief Run the inverse statistical-mechanics command-line interface. (CLAUDE)
+ *  \return  Exit status code. */
 int InvStatMechCLI();
+/** \brief Run the pair-statistics command-line interface. (CLAUDE)
+ *  \return  Exit status code. */
 int PairStatisticsCLI();
+/** \brief Run the collective-coordinate command-line interface. (CLAUDE)
+ *  \return  Exit status code. */
 int CollectiveCoordinateCLI();
+/** \brief Run the tiling-problem command-line interface. (CLAUDE)
+ *  \return  Exit status code. */
 int TilingProblemCLI();
+/** \brief Run the first collective-coordinate inversion problem. (CLAUDE)
+ *  \param  TODO(CLAUDE): unclear - review */
 void CCInversionProblem1(bool );
 
 //defined in debug.cpp
 //int Debug();
+/** \brief Run the simple debug routine. (CLAUDE)
+ *  \return  Exit status code. */
 int DebugSimple();
 //defined in debug.cpp
 //int CalculateTau(void);
@@ -24,24 +36,36 @@ template<typename T> class InputParameters {
 	T parameter;
 	std::string question, response, keyword;
 
+	/** \brief Construct an input-parameter binding from a keyword, prompt, and response template. (CLAUDE)
+	 *  \param PARAMETER  Initial value of the bound parameter.
+	 *  \param KEYWORD    Keyword that selects this parameter on the command line.
+	 *  \param QUESTION   Prompt text shown when requesting the value.
+	 *  \param RESPONSE   Response/echo text associated with the parameter. */
 	InputParameters(T & PARAMETER, const std::string & KEYWORD, const std::string & QUESTION, const std::string & RESPONSE) {
 		keyword = std::string(KEYWORD);
 		response = std::string(RESPONSE);
 		question = std::string(QUESTION);
 		parameter = PARAMETER;
 	}
-	
+
+	/** \brief Test whether the given keyword matches this parameter's keyword. (CLAUDE)
+	 *  \param KEYWORD  Keyword to compare against.
+	 *  \return         True if the keywords are equal. */
 	bool CompareKeyword(const std::string & KEYWORD) { 
 		//return strcmp(this->keyword, KEYWORD) == 0; 
 		return KEYWORD.compare(this->keyword) == 0;
 		}
-	//Input variables
+	/** \brief Input variables
+	 *  \param ifile  Input stream to read the parameter value from.
+	 *  \param ofile  Output stream for echoing prompts/responses. */
 	void Input(std::istream & ifile, std::ofstream & ofile) { 
-		
+
 	}
 };
 
 
+/** \brief Read commands from standard input and dispatch them to the program subsystems. (CLAUDE)
+ *  \return  Exit status code returned by the selected command or 0 on "Exit". */
 inline int cli()
 {
 	char tempstring[1000] = {};

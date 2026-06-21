@@ -461,10 +461,15 @@ class RSA_II_TempClass
 {
 public:
 	RandomGenerator * g;
+	/** \brief Wrap a random number generator for use as a shuffle index generator. (CLAUDE)
+	 *  \param gen  Random number generator to wrap (stored by address). */
 	RSA_II_TempClass(RandomGenerator & gen)
 	{
 		this->g= & gen;
 	}
+	/** \brief Return a random index in [0, max) for std::random_shuffle. (CLAUDE)
+	 *  \param max  Exclusive upper bound on the returned index.
+	 *  \return     A random index in [0, max). */
 	ptrdiff_t operator() (ptrdiff_t max)
 	{
 		return static_cast<ptrdiff_t>(this->g->RandomDouble()*max);
