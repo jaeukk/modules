@@ -2,8 +2,8 @@
 #define PARAMETERSET_INCLUDED
 
 #include <iostream>
-#include "Potential.h"
-#include "RandomGenerator.h"
+#include <Potential.h>
+#include <RandomGenerator.h>
 
 class ParameterSet
 {

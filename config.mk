@@ -38,6 +38,11 @@ viz          := $(MODS)/viz
 #   visualization : Plots, DisplaySpheres (declarations; impls need MathGL/OpenGL)
 misc          := $(MODS)/misc
 visualization := $(MODS)/visualization
+# Leaf library modules migrated from the top-level legacy tree:
+#   phonons : PhononFrequency (+ PlotPhononFrequencies); core + potential + GSL
+#   lp      : TorquatoJiao linear-programming jamming; needs glpk + Gurobi (USE_TJ)
+phonons       := $(MODS)/phonons
+lp            := $(MODS)/lp
 
 #----- Library prefix auto-detection ------------------------------------------
 # First candidate whose include/gsl/gsl_matrix.h exists wins.

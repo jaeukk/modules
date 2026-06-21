@@ -2,9 +2,9 @@
 #define INTERFACES_INCLUDED
 #include <iostream>
 #include <string>
-#include "PeriodicCellList.h"
-#include "Plots.h"
-#include "DisplaySpheres.h"
+#include <PeriodicCellList.h>
+#include <Plots.h>
+#include <DisplaySpheres.h>
 
 int InvStatMechCLI();
 int PairStatisticsCLI();

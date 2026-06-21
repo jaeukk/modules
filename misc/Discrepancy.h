@@ -3,9 +3,9 @@
 
 #include <vector>
 #include <functional>
-#include "GeometryVector.h"
-#include "PeriodicCellList.h"
-#include "etc.h"
+#include <GeometryVector.h>
+#include <PeriodicCellList.h>
+#include <etc.h>
 
 void MergeSort(std::vector<double> &stack);
 //sorts data in stack in the ascending order according to std_col-th component.
