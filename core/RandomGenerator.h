@@ -5,6 +5,9 @@
 #include <boost/random/normal_distribution.hpp>
 #include <random>
 #include <functional>
+#include "etc.h"          // DimensionType
+
+class GeometryVector;     // forward decl: returned by value by RandomUnitVector below
 
 /** \brief Random-number utilities for uniform, Gaussian, and Poisson draws. */
 class RandomGenerator
@@ -44,10 +47,21 @@ public:
 	inline int RandomInt(void) {return this->gen();}
 };
 
-/** \brief Generate a random unit vector in a given dimension. 
- *  \param Dimension Dimension of the target space. 
- *  \param gen Random number generator to sample from. 
- *  \param result Output buffer to receive the unit-vector components. */
+/** \brief Random unit vector whose direction is statistically isotropic.
+ *  Exact per-dimension sampling (closed-form for d=1,2,3; Gaussian-normalised
+ *  otherwise).
+ *  \param d Space dimension.  \param gen Random number generator. */
+GeometryVector RandomUnitVector(DimensionType d, RandomGenerator & gen);
+GeometryVector RandomUnitVector(DimensionType d);
+
+/** \brief Random unit vector written into a raw buffer (rejection sampling).
+ *  Unlike RandomUnitVector (which returns a GeometryVector via exact per-
+ *  dimension sampling), this fills result[0..Dimension-1] in place by drawing
+ *  uniformly in the cube, rejecting points outside the unit ball, then
+ *  normalising.
+ *  \param Dimension Dimension of the target space.
+ *  \param gen Random number generator to sample from.
+ *  \param result Output buffer (length Dimension) to receive the components. */
 void GetRandomVector(int Dimension, RandomGenerator & gen, double * result);
 
 

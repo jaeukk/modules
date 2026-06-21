@@ -1249,8 +1249,7 @@ public:
 		}
 	}
 
-
-	GeometryVector GetRandomVector() {
+	GeometryVector GetRandomPosition() {
 		RandomGenerator gen;
 		GeometryVector result;
 		for (int i = 0; i < MaxDimension; i++) {

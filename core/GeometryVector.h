@@ -322,8 +322,8 @@ inline void RandomVector(DimensionType d, GeometryVector & result) {
 	}
 }
 
-GeometryVector RandomUnitVector(DimensionType d);
-GeometryVector RandomUnitVector(DimensionType d, RandomGenerator & gen);
+// RandomUnitVector(...) and GetRandomVector(...) moved to RandomGenerator.h
+// (declared there; reachable here because GeometryVector.h includes it).
 double Volume (const GeometryVector * vecs, DimensionType dimension);
 double SimplexVolume (const GeometryVector * vecs, DimensionType d);
 void StandardizeOrientation(GeometryVector * bas, DimensionType d);
