@@ -4,6 +4,6 @@ obj/
 *.out
 *.a
 *.so
-
+*.txt
 # Runtime-generated logs
 DetailedLog.txt
