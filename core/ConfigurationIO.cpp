@@ -5,7 +5,7 @@
 #include "ConfigurationIO.h"
 #include <exception>
 
-/** \brief Write a Configuration to a .pos text file with the given prefix. (CLAUDE)
+/** \brief Write a Configuration to a .pos text file with the given prefix. 
  *  \param prefix File name prefix (".pos" is appended).
  *  \param List   Configuration to write. */
 void Output(std::string prefix, const Configuration & List)
@@ -17,7 +17,7 @@ void Output(std::string prefix, const Configuration & List)
 	Output(out, List);
 }
 
-/** \brief Write a Configuration in .pos text format to an output stream. (CLAUDE)
+/** \brief Write a Configuration in .pos text format to an output stream. 
  *  \param out  Output stream to write to.
  *  \param List Configuration to write. */
 void Output(std::ostream & out, const Configuration & List)
@@ -83,7 +83,8 @@ void Output(std::ostream & out, const Configuration & List)
 		out<<'\n';
 	}
 }
-/** \brief Read a Configuration from a .pos file with the given prefix. (CLAUDE)
+
+/** \brief Read a Configuration from a .pos file with the given prefix. 
  *  \param prefix File name prefix (".pos" is appended).
  *  \return       The Configuration read from file. */
 Configuration ReadPos(std::string prefix)
@@ -92,7 +93,8 @@ Configuration ReadPos(std::string prefix)
 	std::fstream file(name.c_str(), std::fstream::in);
 	return ReadPos(file);
 }
-/** \brief Read a Configuration in .pos format from an input stream. (CLAUDE)
+
+/** \brief Read a Configuration in .pos format from an input stream.
  *  \param ifile Input stream in .pos format.
  *  \return      The Configuration read from the stream. */
 Configuration ReadPos(std::istream & ifile)
@@ -189,7 +191,8 @@ Configuration ReadPos(std::istream & ifile)
 	}
 	return result;
 }
-/** \brief Read a Configuration from a HOOMD .xml file with the given prefix. (CLAUDE)
+
+/** \brief Read a Configuration from a HOOMD .xml file with the given prefix. 
  *  \param prefix File name prefix (".xml" is appended).
  *  \return       The Configuration read from file. */
 Configuration ReadHoomdXml(std::string prefix)
@@ -198,7 +201,8 @@ Configuration ReadHoomdXml(std::string prefix)
 	std::fstream ifile(prefix.c_str());
 	return ReadHoomdXml(ifile);
 }
-/** \brief Read a Configuration from a HOOMD XML input stream. (CLAUDE)
+
+/** \brief Read a Configuration from a HOOMD XML input stream. 
  *  \param ifile Input stream in HOOMD XML format.
  *  \return      The Configuration read from the stream. */
 Configuration ReadHoomdXml(std::istream & ifile)
@@ -322,14 +326,16 @@ Configuration ReadHoomdXml(std::istream & ifile)
 
 	return result;
 }
-/** \brief Read a Configuration of relative coordinates from an input stream (unit side length). (CLAUDE)
+
+/** \brief Read a Configuration of relative coordinates from an input stream (unit side length). 
  *  \param file Input stream of relative coordinates.
  *  \return     The Configuration read from the stream. */
 Configuration ReadCoordinate(std::istream & file)
 {
 	return ReadCoordinate(file, 1.0);
 }
-/** \brief Read a Configuration of relative coordinates with the given side length. (CLAUDE)
+
+/** \brief Read a Configuration of relative coordinates with the given side length. 
  *  \param file       Input stream of relative coordinates.
  *  \param SideLength Side length used for the (cubic) box basis vectors.
  *  \return           The Configuration read from the stream. */
@@ -381,14 +387,16 @@ Configuration ReadCoordinate(std::istream & file, double SideLength)
 
 	return result;
 }
-/** \brief Read a Configuration of Cartesian coordinates from an input stream (unit side length). (CLAUDE)
+
+/** \brief Read a Configuration of Cartesian coordinates from an input stream (unit side length). 
  *  \param file Input stream of Cartesian coordinates.
  *  \return     The Configuration read from the stream. */
 Configuration ReadCartesianCoordinate(std::istream & file)
 {
 	return ReadCartesianCoordinate(file, 1.0);
 }
-/** \brief Read a Configuration of Cartesian coordinates with the given side length. (CLAUDE)
+
+/** \brief Read a Configuration of Cartesian coordinates with the given side length. 
  *  \param file       Input stream of Cartesian coordinates.
  *  \param SideLength Side length used for the (cubic) box basis vectors.
  *  \return           The Configuration read from the stream. */
@@ -442,7 +450,7 @@ Configuration ReadCartesianCoordinate(std::istream & file, double SideLength)
 	return result;
 }
 
-/** \brief Read a Configuration from a GROMACS .gro input stream (reads only atoms named 'O'). (CLAUDE)
+/** \brief Read a Configuration from a GROMACS .gro input stream (reads only atoms named 'O'). 
  *  \param file Input stream in GROMACS .gro format.
  *  \return     The Configuration read from the stream. */
 Configuration ReadGro(std::istream & file)
@@ -498,7 +506,7 @@ Configuration ReadGro(std::istream & file)
 
 	return result;
 }
-/** \brief Read a Configuration from a stealth-format input stream with the given side length. (CLAUDE)
+/** \brief Read a Configuration from a stealth-format input stream with the given side length. 
  *  \param file       Input stream in stealth format.
  *  \param SideLength Side length used for the (cubic) box basis vectors.
  *  \return           The Configuration read from the stream. */
@@ -566,7 +574,7 @@ Configuration ReadStealthOutput(std::istream & file, double SideLength)
 
 	return result;
 }
-/** \brief Read a Configuration from a stealth-format input stream (unit side length). (CLAUDE)
+/** \brief Read a Configuration from a stealth-format input stream (unit side length). 
  *  \param file Input stream in stealth format.
  *  \return     The Configuration read from the stream. */
 Configuration ReadStealthOutput(std::istream & file)
@@ -574,7 +582,7 @@ Configuration ReadStealthOutput(std::istream & file)
 	return ReadStealthOutput(file, 1.0);
 }
 
-/** \brief Read a SpherePacking from a Torquato-Jiao (TJ) format input stream. (CLAUDE)
+/** \brief Read a SpherePacking from a Torquato-Jiao (TJ) format input stream. 
  *  \param inFile Input stream in TJ format.
  *  \return       The SpherePacking read from the stream. */
 SpherePacking ReadTJOutput(std::istream & inFile)
@@ -645,7 +653,7 @@ SpherePacking ReadTJOutput(std::istream & inFile)
 	return packing; //Got a packing!
 
 }
-/** \brief Read a SpherePacking from a TJ-format .dat file with the given prefix. (CLAUDE)
+/** \brief Read a SpherePacking from a TJ-format .dat file with the given prefix. 
  *  \param prefix File name prefix (".dat" is appended).
  *  \return       The SpherePacking read from file. */
 SpherePacking ReadTJOutput(const std::string & prefix)
@@ -654,7 +662,8 @@ SpherePacking ReadTJOutput(const std::string & prefix)
 	std::fstream ifile(name.c_str(), std::fstream::in);
 	return ReadTJOutput(ifile);
 }
-/** \brief Write a SpherePacking in TJ format to an output file stream. (CLAUDE)
+
+/** \brief Write a SpherePacking in TJ format to an output file stream. 
  *  \param ofile Output file stream to write to.
  *  \param pk    SpherePacking to write. */
 void WriteTJOutput(std::fstream & ofile, const SpherePacking & pk)
@@ -701,7 +710,8 @@ void WriteTJOutput(std::fstream & ofile, const SpherePacking & pk)
 			ofile << pk.GetCharacteristics(n);
 	}
 }
-/** \brief Write a SpherePacking in TJ format to a .dat file with the given prefix. (CLAUDE)
+
+/** \brief Write a SpherePacking in TJ format to a .dat file with the given prefix. 
  *  \param prefix File name prefix (".dat" is appended).
  *  \param pk     SpherePacking to write. */
 void WriteTJOutput(const std::string & prefix, const SpherePacking & pk)
@@ -713,7 +723,7 @@ void WriteTJOutput(const std::string & prefix, const SpherePacking & pk)
 
 
 
-/** \brief Write a Configuration (dimension, basis vectors, Cartesian coordinates) to a .txt file. (CLAUDE)
+/** \brief Write a Configuration (dimension, basis vectors, Cartesian coordinates) to a .txt file. 
  *  \param conf       Configuration to write.
  *  \param OutputName File name prefix (".txt" is appended). */
 void WriteConfiguration(const Configuration & conf, const std::string & OutputName)
@@ -735,7 +745,7 @@ void WriteConfiguration(const Configuration & conf, const std::string & OutputNa
 	output.close();
 }
 
-/** \brief Write a SpherePacking (dimension, basis vectors, coordinates and radii) to a .txt file. (CLAUDE)
+/** \brief Write a SpherePacking (dimension, basis vectors, coordinates and radii) to a .txt file. 
  *  \param conf       SpherePacking to write.
  *  \param OutputName File name prefix (".txt" is appended). */
 void WriteConfiguration(const SpherePacking & conf, const std::string & OutputName)
@@ -762,7 +772,7 @@ void WriteConfiguration(const SpherePacking & conf, const std::string & OutputNa
 	ofile.close();
 }
 
-/** \brief Write a generic PeriodicCellList (dimension, basis vectors, coordinates) to a .txt file. (CLAUDE)
+/** \brief Write a generic PeriodicCellList (dimension, basis vectors, coordinates) to a .txt file. 
  *  \param conf       PeriodicCellList to write.
  *  \param OutputName File name prefix (".txt" is appended). */
 template<typename T> void WriteConfiguration(const PeriodicCellList<T> & conf, const std::string & OutputName)
@@ -782,7 +792,7 @@ template<typename T> void WriteConfiguration(const PeriodicCellList<T> & conf, c
 	}
 	ofile.close();
 }
-/** \brief Read a Configuration from a .txt file written by WriteConfiguration (assume # columns = 4). (CLAUDE)
+/** \brief Read a Configuration from a .txt file written by WriteConfiguration (assume # columns = 4).
  *  \param conf      Configuration to populate.
  *  \param InputName File name prefix (".txt" is appended). */
 //assume # columns = 4
@@ -836,7 +846,7 @@ void ReadConfiguration(Configuration & conf, const std::string & InputName) {
 
 }
 
-/** \brief Read a SpherePacking from a .txt file written by WriteConfiguration (assume # of columns is 5). (CLAUDE)
+/** \brief Read a SpherePacking from a .txt file written by WriteConfiguration (assume # of columns is 5).
  *  \param conf      SpherePacking to populate.
  *  \param InputName File name prefix (".txt" is appended). */
 //assume # of columns is 5

@@ -16,7 +16,7 @@ TARGET := smoke.out
 
 # Public translation units of this module.
 SRCS := GeometryVector.cpp PeriodicCellList.cpp SpherePacking.cpp \
-        ConfigurationIO.cpp RandomGenerator.cpp etc.cpp
+        ConfigurationIO.cpp RandomGenerator.cpp etc.cpp ParameterInput.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 # This module only needs its own headers on the include path.

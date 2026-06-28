@@ -15,7 +15,7 @@ class RandomGenerator
 private:
 	boost::mt19937 gen;
 	boost::mt19937::result_type min, max;
-	/** \brief Cache the engine's min and max output values. (CLAUDE) */
+	/** \brief Cache the engine's min and max output values. */
 	void initialize(void);
 public:
 	/** \brief Seed the underlying generator with a specific integer.

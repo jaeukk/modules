@@ -7,7 +7,7 @@
 
 // Implementations of member functions of the SpherePacking class
 // for First-Passage-Time simulations
-/** \brief Return the ID of the particle containing the given relative coordinate, or -1 if none. (CLAUDE)
+/** \brief Return the ID of the particle containing the given relative coordinate, or -1 if none.
  *  \param RelativeCoordinate Test point in relative (box) coordinates.
  *  \return                   ID of the containing particle, or -1 if the point is outside every sphere. */
 int SpherePacking::IsInsideParticle(const GeometryVector & RelativeCoordinate) const
@@ -31,7 +31,7 @@ int SpherePacking::IsInsideParticle(const GeometryVector & RelativeCoordinate) c
 	return idx;
 }
 
-/** \brief Find the nearest sphere interfaces to a test point and the closest interface point and normal. (CLAUDE)
+/** \brief Find the nearest sphere interfaces to a test point and the closest interface point and normal. 
  *  \param[in]  RelativeCoordinate Test point in relative (box) coordinates.
  *  \param[out] list               Nearest interfaces, each as GeometryVector(distance, side ID, particle ID).
  *  \param[out] x0_Relative        Interface point closest to the test point, in relative coordinates.
@@ -196,7 +196,7 @@ void SpherePackingPack::Clear(void)
 	this->NConfig = 0;
 }
 
-/** \brief Construct an empty sphere packing for a given box geometry. (CLAUDE)
+/** \brief Construct an empty sphere packing for a given box geometry. 
  *  \param Dimension    Spatial dimension.
  *  \param BasisVectors Basis vectors defining the periodic box.
  *  \param CellSize     Target linear cell size.
@@ -208,7 +208,7 @@ SpherePacking::SpherePacking(DimensionType Dimension, GeometryVector * BasisVect
 	MaxRadius=0;
 }
 
-/** \brief Insert a sphere of the given radius at a relative coordinate. (CLAUDE)
+/** \brief Insert a sphere of the given radius at a relative coordinate.
  *  \param radius            Radius of the sphere to insert.
  *  \param RelativeCoordinate Position of the sphere center in relative (box) coordinates. */
 void SpherePacking::Insert(double radius, const GeometryVector & RelativeCoordinate)
@@ -231,7 +231,7 @@ void SpherePacking::Insert(double radius, const GeometryVector & RelativeCoordin
 	if(this->MaxRadius<radius)
 		this->MaxRadius=radius;
 }
-/** \brief Check whether the voxel at cr (with given halfsize) is completely covered by existing spheres. (CLAUDE)
+/** \brief Check whether the voxel at cr (with given halfsize) is completely covered by existing spheres.  (mainly used in RandomSequentialAddition.{h,cpp})
  *  \param cr       Voxel center in relative (box) coordinates.
  *  \param halfsize Half the voxel side length (in relative units).
  *  \param Radius   Cartesian radius of the upcoming sphere.
@@ -262,7 +262,7 @@ bool SpherePacking::CheckVoxelOverlap(const GeometryVector & cr, double halfsize
 	return Overlap;
 }
 
-/** \brief Returns 0 if voxel is completely empty, 2 if voxel is fully occupied, 1 otherwise. (CLAUDE)
+/** \brief Returns 0 if voxel is completely empty, 2 if voxel is fully occupied, 1 otherwise. (mainly used in RandomSequentialAddition.{h,cpp})
  *  \param cr       Voxel center in relative (box) coordinates.
  *  \param halfsize Half the voxel side length (in relative units).
  *  \param Radius   Cartesian radius of the upcoming sphere.
@@ -306,7 +306,7 @@ int SpherePacking::CheckVoxelOverlap2(const GeometryVector & cr, double halfsize
 }
 
 
-/** \brief Check whether a sphere of the given radius placed at cr overlaps any existing sphere. (CLAUDE)
+/** \brief Check whether a sphere of the given radius placed at cr overlaps any existing sphere. 
  *  \param cr     Sphere center in relative (box) coordinates.
  *  \param Radius Cartesian radius of the upcoming sphere.
  *  \return       True if the new sphere overlaps any existing sphere. */

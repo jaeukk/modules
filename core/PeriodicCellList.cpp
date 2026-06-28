@@ -4,7 +4,7 @@
 
 
 
-/** \brief Tile a Configuration NumberInEachSide times along every box direction. (CLAUDE)
+/** \brief Tile a Configuration NumberInEachSide times along every box direction. 
  *  \param src             Source configuration to tile.
  *  \param NumberInEachSide Number of replicas along each box direction.
  *  \return                The tiled configuration. */
@@ -47,7 +47,7 @@ Configuration MultiplicateStructure(const Configuration & src, size_t NumberInEa
 	}
 	return result;
 }
-/** \brief Tile a Configuration with per-direction replication counts. (CLAUDE)
+/** \brief Tile a Configuration with per-direction replication counts. 
  *  \param src             Source configuration to tile.
  *  \param NumberInEachSide Per-direction number of replicas.
  *  \return                The tiled configuration. */
@@ -97,7 +97,7 @@ Configuration MultiplicateStructure(const Configuration & src, const std::vector
 	}
 	return result;
 }
-/** \brief Return an empty unit cubic box configuration of dimension d. (CLAUDE)
+/** \brief Return an empty unit cubic box configuration of dimension d. 
  *  \param d        Spatial dimension of the box.
  *  \param CellSize Target linear cell size.
  *  \return         An empty unit cubic box configuration. */
@@ -117,7 +117,7 @@ Configuration GetUnitCubicBox(DimensionType d, double CellSize)
 
 
 
-/** \brief Open (or attach to) the pack files identified by prefix. (CLAUDE)
+/** \brief Open (or attach to) the pack file identified by prefix. 
  *  \param prefix File name prefix identifying the pack files. */
 void ConfigurationPack::Open(const std::string & prefix)
 {
@@ -133,12 +133,12 @@ void ConfigurationPack::Open(const std::string & prefix)
 	else
 		NConfig = 0;
 }
-/** \brief Return the number of configurations currently in the pack. (CLAUDE) */
+/** \brief Return the number of configurations currently in the pack. */
 long long ConfigurationPack::NumConfig(void)
 {
 	return NConfig;
 }
-/** \brief Append a configuration to the pack files. (CLAUDE)
+/** \brief Append a configuration to the pack files. 
  *  \param c Configuration to append. */
 void ConfigurationPack::AddConfig(const Configuration & c)
 {
@@ -172,7 +172,8 @@ void ConfigurationPack::AddConfig(const Configuration & c)
 	if (packFile.fail())
 		std::cerr << "Warning in ConfigurationPack::AddConfig : Pack file failing!\n";
 }
-/** \brief Read and return the i-th configuration from the pack. (CLAUDE)
+
+/** \brief Read and return the i-th configuration from the pack. 
  *  \param i Index of the configuration to read.
  *  \return  The i-th configuration in the pack. */
 Configuration ConfigurationPack::GetConfig(long long i)
@@ -190,7 +191,8 @@ Configuration ConfigurationPack::GetConfig(long long i)
 	packFile.seekg(std::streampos(loc));
 	return packFile.good() ? Configuration(packFile) : Configuration();
 }
-/** \brief Discard all configurations that are already in the file. (CLAUDE) */
+
+/** \brief Discard all configurations that are already in the file. */
 void ConfigurationPack::Clear(void)
 {
 	std::fstream indexFile(IndexName.c_str(), std::fstream::out | std::fstream::binary);
@@ -198,7 +200,7 @@ void ConfigurationPack::Clear(void)
 	this->NConfig = 0;
 }
 
-/** \brief Pixelizing the configuration to MeshSide pixes in each side. (CLAUDE)
+/** \brief Pixelizing the configuration to MeshSide pixes in each side. 
  *  \param[in]  c        Configuration to pixelize.
  *  \param[in]  radius   Sphere radius placed on each particle.
  *  \param[in]  MeshSide Number of pixels along each box direction.
@@ -254,7 +256,8 @@ void DigitizeConfiguration(const Configuration & c, double radius, size_t MeshSi
 		}
 	}
 }
-/** \brief Calculate volume fraction if each particle is replaced with a hypersphere of certain radius; do this by pixelizing the configuration to MeshSide pixes in each side. (CLAUDE)
+
+/** \brief Calculate volume fraction if each particle is replaced with a hypersphere of certain radius; do this by pixelizing the configuration to MeshSide pixes in each side. 
  *  \param c        Configuration whose occupied volume is measured.
  *  \param radius   Sphere radius placed on each particle.
  *  \param MeshSide Number of pixels along each box direction.
@@ -289,7 +292,8 @@ double Volume(const Configuration & c, double radius, size_t MeshSide, std::vect
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
 #include <set>
-/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particles a and b will be connected. (CLAUDE)
+
+/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particles a and b will be connected. 
  *  \param c Configuration of particles.
  *  \param a Index of the first particle.
  *  \param b Index of the second particle.
@@ -419,7 +423,7 @@ double MinConnectDiameter(const Configuration & c, size_t a, size_t b)
 //	}
 //}
 
-/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particle n will connect to its periodic image in direction dir. (CLAUDE)
+/** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particle n will connect to its periodic image in direction dir. 
  *  \param c   Configuration of particles.
  *  \param n   Index of the particle.
  *  \param dir Box direction along which percolation is tested.
@@ -439,7 +443,7 @@ double PercolationDiameter(const Configuration & c, size_t n, DimensionType dir)
 //FoundPeriodicImages: whether or not found more than 1 periodic images of a particle, 
 //which means the cluster size is actually infinite rather than the returned value.
 #include <list>
-/** \brief Replace each particle in c with a hypersphere with radius, what's the cluster size InitParticle is in? FoundPeriodicImages: whether or not found more than 1 periodic images of a particle, which means the cluster size is actually infinite rather than the returned value. (CLAUDE)
+/** \brief Replace each particle in c with a hypersphere with radius, what's the cluster size InitParticle is in? FoundPeriodicImages: whether or not found more than 1 periodic images of a particle, which means the cluster size is actually infinite rather than the returned value. 
  *  \param[in]  c                  Configuration of particles.
  *  \param[in]  InitParticle       Index of the seed particle whose cluster is measured.
  *  \param[in]  radius             Sphere radius placed on each particle.
@@ -490,7 +494,7 @@ size_t ClusterSize(const Configuration & c, size_t InitParticle, double radius, 
 	return Found.size();
 }
 
-/** \brief Find all reciprocal lattice vectors (wavevectors) of a given periodic simulation box. (CLAUDE)
+/** \brief Find all reciprocal lattice vectors (wavevectors) of a given periodic simulation box. 
  *  \param tempList          A periodic simulation box.
  *  \param CircularKMax      Upper magnitude bound for the circularly-selected wavevectors.
  *  \param LinearKMax        Upper magnitude bound for the integer multiples of the selected wavevectors.
@@ -717,7 +721,7 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 #ifdef VORONOI_INCLUDED
 #include "Voronoi.h"
 #include <gsl/gsl_sf_legendre.h>
-/** \brief Evaluate the spherical-harmonic-normalized associated Legendre function P_l^m(x), including negative m. (CLAUDE)
+/** \brief Evaluate the spherical-harmonic-normalized associated Legendre function P_l^m(x), including negative m. 
  *  \param l Degree of the associated Legendre function.
  *  \param m Order of the associated Legendre function (may be negative).
  *  \param x Argument in [-1, 1].

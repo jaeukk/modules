@@ -9,9 +9,13 @@ dependencies; only external GSL (linear algebra in `GeometryVector`) and Boost
 | File | Purpose |
 |------|---------|
 | `GeometryVector.{h,cpp}` | Point/vector in up to `MaxDimension` Euclidean dimensions; dot products, GSL-backed matrix helpers. |
-| `PeriodicCellList.{h,cpp}` | `PeriodicCellList<T>` — a periodic point pattern with a cell list for O(1) neighbour queries. `Configuration` = `PeriodicCellList<AtomName>`. |
+| `PeriodicCellList.{h,cpp}` | `PeriodicCellList<T>` — a periodic point pattern with a cell list for O(1) neighbour queries. `Configuration` = `PeriodicCellList<AtomName>`. Re-includes the headers below as a backward-compatibility umbrella. |
+| `SpherePacking.{h,cpp}` | `SpherePacking` (a `PeriodicCellList<double>` whose characteristic is a sphere radius) and its on-disk pack container `SpherePackingPack`. |
+| `ConfigurationIO.{h,cpp}` | File-format readers/writers for `Configuration`/`SpherePacking` (`.pos`, binary `.Config`, HOOMD XML, stealth, GROMACS `.gro`, Torquato–Jiao packings, plain `.txt`). |
+| `ClusterMerger.h` | Header-only incremental cluster merger over a `PeriodicCellList` (merges particles into clusters as a connection distance grows). |
 | `RandomGenerator.{h,cpp}` | Reproducible Mersenne-Twister RNG (Boost) with uniform / normal / Poisson draws. |
-| `etc.{h,cpp}` | Global constants (`pi`, `MaxDimension`, tolerances) and small shared utilities. |
+| `etc.{h,cpp}` | Global constants (`pi`, `MaxDimension`, tolerances), the lazily-opened `logfile`, hypersphere/superdisk volume helpers, and `progress_display`. |
+| `ParameterInput.{h,cpp}` | Stream-based parameter-input helpers split out of `etc` (no current callers): the `cont` / `Parameters` named-parameter reader and the `n_naryNumber` variable-base odometer. |
 
 ## Dependencies
 
