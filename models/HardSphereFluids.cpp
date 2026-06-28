@@ -295,7 +295,7 @@ double HSF::g2_at_D() {
 		D_ = this->Diameter*1.2;
 	double rho = this->NumPrts / this->pSpheres->PeriodicVolume();
 //#pragma omp parallel for 
-	for (int i = 0; i < this->NumPrts; i++) {
+	for (size_t i = 0; i < this->NumPrts; i++) {
 		this->pSpheres->IterateThroughNeighbors(this->pSpheres->GetRelativeCoordinates(i), D_,
 			[&result,i](const GeometryVector & shift, const GeometryVector & latticeShift, const signed long *PeriodicShift, size_t Source)->void {
 			if(i!=Source)
@@ -391,12 +391,12 @@ int HSF::Equilibrate() {
 			std::cout << "Equilibration started: NVT ensemble\n";
 		auto stat = [&g2D_](double &av, double &std)->void {
 			av = 0.0;	std = 0.0;
-			for (int idx = 0; idx < g2D_.size(); idx++) {
+			for (size_t idx = 0; idx < g2D_.size(); idx++) {
 				av += g2D_[idx];	std += g2D_[idx] * g2D_[idx];
 			}
 			av /= (double)g2D_.size();	std = fabs(std / (double)g2D_.size() - av * av) / ((double)g2D_.size() - 1.0);
 			std = sqrt(std);
-			for (int idx = 1; idx < g2D_.size(); idx++)
+			for (size_t idx = 1; idx < g2D_.size(); idx++)
 				g2D_[idx - 1] = g2D_[idx];
 		};
 		for (int i = 0; i < numTest-1; i++) {

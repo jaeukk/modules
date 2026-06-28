@@ -96,7 +96,6 @@ double ElasticConstant(Potential & pot, Configuration structure, DimensionType i
 	for(DimensionType t=0; t<dim; t++)
 	{
 		newbasis[t]=structure.GetBasisVector(t);
-		double temp=newbasis[t].x[k];
 		newbasis[t].x[k]+=epsilon1*newbasis[t].x[l];
 	}
 
@@ -230,12 +229,12 @@ struct ElasticOptimizeStruct
 double Elastic_Objective(unsigned n, const double *x, double *grad, void *data)
 {
 	ElasticOptimizeStruct * pData = reinterpret_cast<ElasticOptimizeStruct *>(data);
-	assert(n==pData->d*(pData->d-1)/2+pData->n);
+	assert(n==(unsigned)(pData->d*(pData->d-1)/2+pData->n));
 	assert(grad==nullptr);
 	std::vector<double> EulerAngles, param;
 	for(int i=0; i<pData->n; i++)
 		param.push_back(x[i]);
-	for(int i=pData->n; i<n; i++)
+	for(unsigned i=pData->n; i<n; i++)
 		EulerAngles.push_back(x[i]);
 	gsl_matrix * rot = GetRotation(EulerAngles, pData->d);
 	AllElasticConstants el=pData->GetElasticFunc(param);
@@ -525,7 +524,7 @@ namespace
 
 			return result;
 		}
-		catch(InvalidStructure a)
+		catch(InvalidStructure & a)
 		{
 			if(grad!=nullptr)
 				for(unsigned i=0; i<n; i++)
@@ -647,7 +646,7 @@ namespace
 
 			return ;
 		}
-		catch(InvalidStructure a)
+		catch(InvalidStructure & a)
 		{
 			if(grad!=nullptr)
 				for(unsigned i=0; i<n; i++)
@@ -688,7 +687,6 @@ namespace
 			for(DimensionType i=0; i<dim; i++)
 			{
 				GeometryVector vBase = List.GetBasisVector(i);
-				double Length = std::sqrt(vBase.Modulus2());
 				for(DimensionType j=0; j<dim; j++)
 				{
 					pParams[i*dim+j]=vBase.x[j];
@@ -765,13 +763,13 @@ void RelaxStructure_LocalGradientDescent(Configuration & List, Potential & pot, 
 		double f1=Objective(NumParam, pParams, gradient, pAux);
 		//normalize the gradient
 		double sum=0.0;
-		for(int i=0; i<NumParam; i++)
+		for(size_t i=0; i<NumParam; i++)
 			sum+=gradient[i]*gradient[i];
 		double norm=std::sqrt(sum);
-		for(int i=0; i<NumParam; i++)
+		for(size_t i=0; i<NumParam; i++)
 			gradient[i]/=norm;
 
-		for(int i=0; i<NumParam; i++)
+		for(size_t i=0; i<NumParam; i++)
 			newx[i]=pParams[i]-gradient[i]*StepSize;
 
 		double f2=Objective(NumParam, newx, nullptr, pAux);
@@ -815,7 +813,7 @@ void RelaxStructure_LocalGradientDescent(Configuration & List, Potential & pot, 
 		Configuration List2 = GetConfig(&aux, pParams);
 		List=List2;
 	}
-	catch(InvalidStructure a)
+	catch(InvalidStructure & a)
 	{
 		//std::cerr<<"Warning in RelaxStructure_NLOPT_inner : caught InvalidStructure error, stop structure optimization!\n";
 	};
@@ -895,7 +893,7 @@ void RelaxStructure_NLOPT_inner(Configuration & List, Potential & pot, double Pr
 		Configuration List2 = GetConfig(&aux, pParams);
 		List=List2;
 	}
-	catch(InvalidStructure a)
+	catch(InvalidStructure & a)
 	{
 		//std::cerr<<"Warning in RelaxStructure_NLOPT_inner : caught InvalidStructure error, stop structure optimization!\n";
 	};
@@ -914,7 +912,6 @@ void RelaxStructure_NLOPT_NoDerivative(Configuration & List, Potential & pot, do
 		return;
 	DimensionType dim=List.GetDimension();
 	size_t NumParam;
-	nlopt_result status;
 
 	//do optimization
 	Aux aux(List);
@@ -949,7 +946,7 @@ void RelaxStructure_NLOPT_NoDerivative(Configuration & List, Potential & pot, do
 
 	//std::cout<<"NLopt fvalue before:"<<Objective(NumParam, pParams, nullptr, reinterpret_cast<void *>(&aux))<<'\n';
 
-	status=nlopt_optimize(opt, pParams, &minf);
+	nlopt_optimize(opt, pParams, &minf);
 
 	//debug temp
 	//std::cout<<"NLopt return:"<<status<<'\n';
@@ -960,7 +957,7 @@ void RelaxStructure_NLOPT_NoDerivative(Configuration & List, Potential & pot, do
 		Configuration List2 = GetConfig(&aux, pParams);
 		List=List2;
 	}
-	catch(InvalidStructure a)
+	catch(InvalidStructure & a)
 	{
 		//std::cerr<<"Warning in RelaxStructure_NLOPT_inner : caught InvalidStructure error, stop structure optimization!\n";
 	};
@@ -1126,7 +1123,7 @@ void RelaxStructure_SteepestDescent(Configuration & List, Potential & pot, doubl
 		Configuration List2 = GetConfig(&aux, s->x->data);
 		List=List2;
 	}
-	catch(InvalidStructure a)
+	catch(InvalidStructure & a)
 	{
 		std::cerr<<"Warning in RelaxStructure_NLOPT_inner : caught InvalidStructure error, stop structure optimization!\n";
 	};
@@ -1217,7 +1214,7 @@ void RelaxStructure_ConjugateGradient(Configuration & List, Potential & pot, dou
 		Configuration List2 = GetConfig(&aux, s->x->data);
 		List=List2;
 	}
-	catch(InvalidStructure a)
+	catch(InvalidStructure & a)
 	{
 		std::cerr<<"Warning in RelaxStructure_NLOPT_inner : caught InvalidStructure error, stop structure optimization!\n";
 	};
@@ -1314,7 +1311,7 @@ return list;
 // Functions required by the MINOP algorithm:
 int OptimFunc::getDataLength() const
 {
-	size_t NumParam;
+	size_t NumParam=0;
 	if(this->pAux->Switch==2)
 		NumParam=this->pAux->Dim*this->pAux->Dim+this->pAux->Dim*this->pAux->NumParticle;
 	else if(this->pAux->Switch==1)
@@ -1408,7 +1405,7 @@ void RelaxStructure_MINOP_withoutPertubation(Configuration & List, Potential & p
 	{
 		runMINOP79(opt, vParams, vResults, MaxStep, Emin, 1e-13, Verbosity-6);
 	}
-	catch (NotANumberFound except)
+	catch (NotANumberFound & except)
 	{
 		std::cerr<<"found NaN in MinopStructureOptimization, stopping!\n";
 		std::cerr<<"Output structure to stdcerr\n";
@@ -1416,7 +1413,7 @@ void RelaxStructure_MINOP_withoutPertubation(Configuration & List, Potential & p
 		::Output(std::cerr, List);
 		throw;
 	}
-	catch (std::bad_alloc a)
+	catch (std::bad_alloc & a)
 	{
 		std::cerr<<"Warning in MinopStructureOptimization : caught std::bad_alloc error, stop structure optimization!\n";
 	}
@@ -1477,7 +1474,6 @@ void runMINOP79(const OptimFunc& function,
 
 	double stepSize = 1e-3;          // Called \Delta in the paper
 	double minStepSize = 1e-15;
-	double maxStepSize = 1;
 
 	double f_x;            // func(v_x)
 	double f_xa;           // func(v_xa)

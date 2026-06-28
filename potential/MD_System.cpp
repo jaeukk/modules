@@ -11,10 +11,10 @@ void ParticleMolecularDynamics::InitNoseHoover(double Q)
 }
 
 ParticleMolecularDynamics::ParticleMolecularDynamics(const Configuration & Position, double TimeStep, double Mass)
-	: Position(Position)
+	: Mass(Position.NumParticle(), Mass)
+	, Position(Position)
 	, Velocity(Position.NumParticle(), GeometryVector(Position.GetDimension()))
 	, Acceleration(Position.NumParticle(), GeometryVector(Position.GetDimension()))
-	, Mass(Position.NumParticle(), Mass)
 {
 	this->NumParticle=Position.NumParticle();
 	this->Dimension=Position.GetDimension();
@@ -63,7 +63,7 @@ void ParticleMolecularDynamics::_GetAcc(Potential & potential)
 	//for(int j=0; j<this->Dimension; j++)
 	//	this->Acceleration->GetParticle(i)[j]/=this->Mass;
 	potential.AllForce(this->Acceleration);
-	for(int i=0; i<this->Acceleration.size(); i++)
+	for(size_t i=0; i<this->Acceleration.size(); i++)
 		this->Acceleration[i].MultiplyFrom( 1.0/this->Mass[i] );
 }
 
@@ -124,12 +124,12 @@ void ParticleMolecularDynamics::Evolve(size_t repeat, Potential & potential)//fl
 		{
 			//calculate v(t+0.5dt)
 ////#pragma omp for
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 				this->Velocity[i].AddFrom(0.5*this->TimeStep*this->Acceleration[i]);
 
 			//calculate x(t+dt)
 ////#pragma omp single
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 			{
 				//this->Position->GetParticle(i)[j]+=this->TimeStep*this->Velocity->GetParticle(i)[j];
 				GeometryVector newCart=this->Position.GetCartesianCoordinates(i)+this->TimeStep*this->Velocity[i];
@@ -145,7 +145,7 @@ void ParticleMolecularDynamics::Evolve(size_t repeat, Potential & potential)//fl
 
 			//calculate v(t+dt)
 ////#pragma omp for
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 				this->Velocity[i].AddFrom( 0.5*this->TimeStep*this->Acceleration[i] );
 
 			//add time
@@ -197,12 +197,12 @@ void ParticleMolecularDynamics::AndersonEvolve(size_t repeat, Potential & potent
 		{
 			//calculate v(t+0.5dt)
 ////#pragma omp for
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 				this->Velocity[i].AddFrom(0.5*this->TimeStep*this->Acceleration[i]);
 
 			//calculate x(t+dt)
 ////#pragma omp single
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 			{
 				//this->Position->GetParticle(i)[j]+=this->TimeStep*this->Velocity->GetParticle(i)[j];
 				GeometryVector newCart=this->Position.GetCartesianCoordinates(i)+this->TimeStep*this->Velocity[i];
@@ -220,7 +220,7 @@ void ParticleMolecularDynamics::AndersonEvolve(size_t repeat, Potential & potent
 
 			//calculate v(t+dt)
 ////#pragma omp for
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 				this->Velocity[i].AddFrom( 0.5*this->TimeStep*this->Acceleration[i] );
 
 			//add time
@@ -261,11 +261,11 @@ void ParticleMolecularDynamics::Evolve_RecordDeltaForce(size_t repeat, Potential
 		for(size_t u=0; u<repeat; u++)
 		{
 			//calculate v(t+0.5dt)
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 				this->Velocity[i].AddFrom(0.5*this->TimeStep*this->Acceleration[i]);
 
 			//calculate x(t+dt)
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 			{
 				//this->Position->GetParticle(i)[j]+=this->TimeStep*this->Velocity->GetParticle(i)[j];
 				GeometryVector newCart=this->Position.GetCartesianCoordinates(i)+this->TimeStep*this->Velocity[i];
@@ -295,7 +295,7 @@ void ParticleMolecularDynamics::Evolve_RecordDeltaForce(size_t repeat, Potential
 			}
 
 			//calculate v(t+dt)
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 				this->Velocity[i].AddFrom( 0.5*this->TimeStep*this->Acceleration[i] );
 
 			//add time
@@ -317,12 +317,12 @@ void ParticleMolecularDynamics::NoseHooverEvolve(size_t repeat, Potential & pote
 ////#pragma omp barrier
 			//calculate v(t+0.5dt)
 ////#pragma omp for
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 				this->Velocity[i].AddFrom(0.5*this->TimeStep*this->Acceleration[i]);
 
 			//calculate x(t+dt)
 ////#pragma omp single
-			for(long i=0; i<this->NumParticle; i++)
+			for(long i=0; i<(long)this->NumParticle; i++)
 			{
 				//this->Position->GetParticle(i)[j]+=this->TimeStep*this->Velocity->GetParticle(i)[j];
 				GeometryVector newCart=this->Position.GetCartesianCoordinates(i)+this->TimeStep*this->Velocity[i];
@@ -343,11 +343,11 @@ void ParticleMolecularDynamics::NoseHooverEvolve(size_t repeat, Potential & pote
 				oldxi=this->xi;
 				for(int m=0; m<20; m++)
 				{
-					for(long i=0; i<this->NumParticle; i++)
+					for(long i=0; i<(long)this->NumParticle; i++)
 						newvelocity[i]=(halfvelocity[i]+this->Acceleration[i]*0.5*this->TimeStep)*(1.0/(1+this->xi*0.5*this->TimeStep));
 
 					temp=0+oldxi;
-					for(long i=0; i<this->NumParticle; i++)
+					for(long i=0; i<(long)this->NumParticle; i++)
 						temp+=(this->Mass[i]*this->Velocity[i].Modulus2()+this->Mass[i]*newvelocity[i].Modulus2()-2*kT)/this->MassQ*0.5*this->TimeStep;
 					this->xi=temp;
 				}
@@ -493,7 +493,7 @@ bool ParticleMDAnnealing::StopSignal=false;
 //	};
 //}
 ParticleMDAnnealing::ParticleMDAnnealing(const Configuration & InitConfig, int RandomSeed, double Pressure, Potential & pot, bool BoxMCMove, std::ostream * output, double CoolingScheduleRescale, bool UseSortedList) : 
-	Output(output), gen(RandomSeed), BoxMCMove(BoxMCMove), AutoTimeStep(true)
+	gen(RandomSeed), Output(output), BoxMCMove(BoxMCMove), AutoTimeStep(true)
 {
 	if(BoxMCMove)
 		this->RelaxStructureFunction= [] (Configuration & List, Potential & pot, double Pressure, double MinDistance) ->void
@@ -521,7 +521,6 @@ ParticleMDAnnealing::ParticleMDAnnealing(const Configuration & InitConfig, int R
 	//this->CellMoveProbability=1/(5.0*InitConfig.NumParticle()-4.0);
 
 	this->Pressure=Pressure;
-	size_t ExpectedStep=std::log(Tinit/Tcut)/std::log(alpha);
 
 
 	///////////////////////

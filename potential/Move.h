@@ -56,6 +56,9 @@ public:
 	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
 		\return A new clone of this move. */
 	virtual MCMove<System, AdditionalInfo> * clone() =0;
+
+	/** \brief Virtual destructor so derived moves are destroyed correctly through a base pointer. */
+	virtual ~MCMove() {}
 };
 
 /** \brief A derivative of MCMove specialized in point configurations in canonical ensemble. */
@@ -80,6 +83,8 @@ public:
 		this->sigma=0.1;
 		this->TrialCount=0;
 		this->AcceptCount=0;
+		this->moved=0;
+		this->AcceptRatio=0;
 		this->MyMinAcceptance= ::MinAcceptance;
 		this->MinDistance=0;
 	}
@@ -180,7 +185,6 @@ public:
 
 		bool TooNearNeighborFound=true;
 
-		size_t ReTrialCount=0;
 		this->moved=list.GetRandomParticle(gen);
 		this->newcoord=list.GetRelativeCoordinates(this->moved);
 		DimensionType dim=list.GetDimension();

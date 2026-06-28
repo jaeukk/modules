@@ -446,7 +446,7 @@ public:
 		std::vector<GeometryVector> vs;
 		this->GetVertices(vs);
 		ofile << "#Vertices\t"<<vs.size()<<"\n";
-		for (int i=0; i<vs.size(); i++)
+		for (size_t i=0; i<vs.size(); i++)
 			ofile << vs[i];
 
 	}

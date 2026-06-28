@@ -24,7 +24,7 @@ const double coeff1=0.2;
 bool ParticleSimulatedAnnealing::StopSignal=false;
 
 ////////////////////////////////////////////////////////////////////////////////////////
-ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(DimensionType Dimension, size_t NumParticle, double InitialDensity, int RandomSeed, double Pressure, Potential & pot, std::ostream * output, double CoolingScheduleRescale, double MinDistance, int AlgorithmLevel, bool UseSortedList) : Output(output), gen(RandomSeed), MinDistance(MinDistance)
+ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(DimensionType Dimension, size_t NumParticle, double InitialDensity, int RandomSeed, double Pressure, Potential & pot, std::ostream * output, double CoolingScheduleRescale, double MinDistance, int AlgorithmLevel, bool UseSortedList) : gen(RandomSeed), Output(output), MinDistance(MinDistance)
 {
 	this->alpha=1.0- coeff1*std::pow( power1, Dimension)/NumParticle/CoolingScheduleRescale;
 	if(alpha==1)
@@ -38,7 +38,6 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(DimensionType Dimension, 
 	this->CellMoveProbability=1/(5.0*NumParticle-4.0);
 
 	this->Pressure=Pressure;
-	size_t ExpectedStep=std::log(Tinit/Tcut)/std::log(alpha);
 
 	//////////////////////
 	//initialize this->pList
@@ -108,7 +107,7 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(DimensionType Dimension, 
 		RelaxStructure_ConjugateGradient(List, pot, Pressure, Switch, MinDistance, 10000);
 	};
 }
-ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(const Configuration & pInitConfig, int RandomSeed, double Pressure, Potential & pot, std::ostream * output, double CoolingScheduleRescale, double MinDistance, int AlgorithmLevel, bool UseSortedList) : Output(output), gen(RandomSeed), MinDistance(MinDistance)
+ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(const Configuration & pInitConfig, int RandomSeed, double Pressure, Potential & pot, std::ostream * output, double CoolingScheduleRescale, double MinDistance, int AlgorithmLevel, bool UseSortedList) : gen(RandomSeed), Output(output), MinDistance(MinDistance)
 {
 	this->alpha=1.0- coeff1*std::pow( power1, pInitConfig.GetDimension())/pInitConfig.NumParticle()/CoolingScheduleRescale;
 	if(alpha==1)
@@ -122,7 +121,6 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(const Configuration & pIn
 	this->CellMoveProbability=1/(5.0*pInitConfig.NumParticle()-4.0);
 
 	this->Pressure=Pressure;
-	size_t ExpectedStep=std::log(Tinit/Tcut)/std::log(alpha);
 
 	//////////////////////
 	//initialize this->pList

@@ -22,14 +22,63 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <cmath>
+#include <vector>
 
 #include "Computation.h"        // Computation hierarchy (+ SpacefillingPacking, Voronoi)
 #include "PolyPacking.h"        // MakeMono2Poly*
 #include <HardSphereFluids.h>
+#include <RSA_Gen.h>            // RSA_Gen + PhiC()
+#include <HSF_Gen.h>            // HSF_Gen (migrated into modules/models)
 
 // Library globals owned by the executable (modular Verbosity convention).
 size_t Verbosity = 2;
 std::string masterDir = "./";
+
+// ---------------------------------------------------------------------------
+// PoissonPt: minimal binomial (fixed-N) Poisson point generator.
+//
+// The legacy TilingProblem CLI used a `PoissonPt(dim, numPrts, rho)` class that
+// did not survive into the modular GenerateConfigs (only `PoissonPtGen` remains,
+// with a different ctor/interface). This thin ConfigGen restores the "Poisson"
+// branch of the CLI: it drops numPrts points uniformly at random into a cubic
+// box whose side gives number density rho.
+// ---------------------------------------------------------------------------
+class PoissonPt : public ConfigGen {
+	RandomGenerator rng;
+public:
+	/** \brief Construct a fixed-N Poisson generator. (CLAUDE)
+	 *  \param dimension      Spatial dimension.
+	 *  \param numPrts        Number of points to place.
+	 *  \param numberdensity  Number density (sets the cubic box volume = numPrts/rho). */
+	PoissonPt(int dimension, int numPrts, double numberdensity) : ConfigGen() {
+		this->d = dimension; this->numPrts = numPrts; this->rho = numberdensity;
+		this->rng.seed((int)GetPreciseClock());
+	}
+	/** \brief Reset the number density. (CLAUDE) \param r  New number density. */
+	virtual void SetRho(double r) { this->rho = r; }
+	/** \brief Generate a Poisson sphere packing (radius-0 points) in a cubic box. (CLAUDE)
+	 *  \param[out] p  Output point pattern as a SpherePacking of radius-0 spheres. */
+	virtual void GenerateP(SpherePacking & p) {
+		double L = std::pow((double)this->numPrts / this->rho, 1.0 / this->d);
+		std::vector<GeometryVector> basis(this->d, GeometryVector(static_cast<int>(this->d)));
+		for (DimensionType i = 0; i < this->d; i++)
+			basis[i].x[i] = L;
+		p = SpherePacking((DimensionType)this->d, &basis[0], L);
+		GeometryVector rel(static_cast<int>(this->d));
+		for (size_t i = 0; i < this->numPrts; i++) {
+			for (DimensionType j = 0; j < this->d; j++)
+				rel.x[j] = this->rng.RandomDouble();
+			p.Insert(0.0, rel);
+		}
+	}
+	/** \brief Generate a Poisson point configuration. (CLAUDE)
+	 *  \param[out] c  Output point configuration. */
+	virtual void GenerateC(Configuration & c) {
+		SpherePacking p; this->GenerateP(p);
+		c = Configuration(p, "a");
+	}
+};
 
 //==============================================================================
 // TilingProblemCLI sliced verbatim from the legacy TilingProblem.cpp

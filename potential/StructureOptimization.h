@@ -138,7 +138,7 @@ inline void RelaxStructure(Configuration & List, Potential & pot, double Pressur
 	{
 		RelaxStructure_NLOPT(List, pot, Pressure, 2, MinDistance);
 	}
-	catch(EnergyDerivativeToBasisVectors_NotImplemented a)
+	catch(EnergyDerivativeToBasisVectors_NotImplemented & a)
 	{
 		for(int i=0; i<5; i++)
 		{

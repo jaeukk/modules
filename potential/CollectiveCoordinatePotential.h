@@ -458,7 +458,7 @@ public:
 		this->Snow = std::vector<double>(end, 0.0);
 
 #pragma omp parallel for num_threads(this->ParallelNumThread)
-		for(signed long nc=0; nc<NSubConfig; nc++)
+		for(signed long nc=0; nc<(signed long)NSubConfig; nc++)
 		{
 			for(signed long i=0; i<end; i++)
 			{

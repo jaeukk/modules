@@ -116,14 +116,14 @@ public:
 	 *  This->MaxRadius = the maximum of R_circum of all particles. */
 	void UpdateMaxRadius(void) {
 		if (this->MaxRadius == 0.0)	{
-			for (int i = 0; i < this->NumParticle(); i++)
+			for (size_t i = 0; i < this->NumParticle(); i++)
 				this->MaxRadius = std::max(this->MaxRadius, ParticleCharacteristics[i]->GetMaxRadius());
 		}
 	}
 	/** Update this->MaxRadius. */
 	void UpdateMaxRadius(void) const {
 		if (this->MaxRadius == 0.0) {
-			for (int i = 0; i < this->NumParticle(); i++)
+			for (size_t i = 0; i < this->NumParticle(); i++)
 				this->MaxRadius = std::max(this->MaxRadius, ParticleCharacteristics[i]->GetMaxRadius());
 		}
 	}
@@ -198,8 +198,8 @@ public:
 	 * \param seed A random seed for a random generator. */
 	virtual void RotateAllParticles(int seed = 0) {
 		RandomGenerator rng(seed);
-		for (int i = 0; i < this->NumParticle(); i++) 
-			this->RotateParticle(i, rng);		
+		for (size_t i = 0; i < this->NumParticle(); i++)
+			this->RotateParticle(i, rng);
 	}
 
 

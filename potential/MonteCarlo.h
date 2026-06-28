@@ -286,7 +286,7 @@ public:
 			NumThreads=stop;
 
 		//#pragma omp parallel for num_threads(NumThreads)
-		for(signed long i=0; i<stop; i++)
+		for(signed long i=0; i<(signed long)stop; i++)
 			this->vMonteCarlos[i].Move(Temperature/this->vEnergyFactors[i], Repeat, *moves[i], add);
 	}
 	/** \brief Perform parallel-tempering moves, mixing replica swaps and individual moves. (CLAUDE)
@@ -485,7 +485,7 @@ public:
 			if(this->Temperature<this->Tcut)
 			{
 				this->Temperature=0;
-				if(this->NumTry>this->ZeroMove)
+				if(this->NumTry>(size_t)this->ZeroMove)
 					this->NumTry=this->ZeroMove;
 			}
 		}
@@ -549,8 +549,8 @@ public:
 		\param InitAnalyzeSize  Initial number of samples collected before analyzing the energy series. */
 	ThermoCool(double Alpha, double Tinit, double Tcut, long ZeroMove, 
 		size_t SampleInterval=DefaultSampleInterval, double VsCoeff=DefaultVsCoeff, 
-		size_t InitAnalyzeSize=DefaultInitAnalyzeSize) : Tcut(Tcut), ZeroMove(ZeroMove), 
-		SampleInterval(SampleInterval), VsCoeff(VsCoeff), InitAnalyzeSize(InitAnalyzeSize)
+		size_t InitAnalyzeSize=DefaultInitAnalyzeSize) : SampleInterval(SampleInterval),
+		VsCoeff(VsCoeff), InitAnalyzeSize(InitAnalyzeSize), Tcut(Tcut), ZeroMove(ZeroMove)
 	{
 		this->Vs=(1.0-Alpha)*SampleInterval*VsCoeff;
 		this->Continue=true;

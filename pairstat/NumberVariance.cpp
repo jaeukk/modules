@@ -16,7 +16,7 @@ void GetSamplingPoints(DimensionType dim, size_t NumPoints, std::vector<Geometry
 	centers.clear();
 	centers.resize(NumPoints, GeometryVector(static_cast<int> (dim)));
 
-	for (int i = 0; i < NumPoints; i ++){
+	for (size_t i = 0; i < NumPoints; i ++){
 		for (int j = 0; j < dim; j++){
 			centers[i].x[j] = rng.RandomDouble();
 		}
@@ -32,12 +32,12 @@ void GetN(const Configuration &config, std::vector<double> &N, double Rmax, doub
 	double Rc = sqrt(config.GetDimension())*Rmax;
 	config.IterateThroughNeighbors(x0_RelativeCoordinates, Rc, [dR, &N, &GetRadius](const GeometryVector &x0, const GeometryVector &L_shift, const signed long *PeriodicShift, size_t prt_index) ->void {
 		int index = (int)floor(GetRadius(x0) / dR);
-		if (index < N.size())
+		if (index < (int)N.size())
 			N[index]++;
 	}
 	);
 	/* cumulative sum */
-	for (int i = 1; i < N.size(); i++) {
+	for (size_t i = 1; i < N.size(); i++) {
 		N[i] += N[i-1];
 	}
 }
@@ -56,18 +56,18 @@ void MC_NV_single(const Configuration & config, std::vector<GeometryVector> & re
 		GetN(config, N, Rmax, dR, window_centers[0], WindowSizeFunct);
 		results.resize(N.size(), GeometryVector(0,0,0,0));
 		Ns_0 = std::vector<double>(N);
-		for (int i = 0; i < N.size(); i++){
+		for (size_t i = 0; i < N.size(); i++){
 			results[i].x[0] = dR*(i+1);
 		}
 	}
 
 	/* second and other centers */
 #pragma omp parallel for
-	for (int i=1; i< window_centers.size(); i++){
+	for (int i=1; i< (int)window_centers.size(); i++){
 		std::vector<double> N;
 		GetN(config, N, Rmax, dR, window_centers[i], WindowSizeFunct);
 
-		for (int j=0; j<N.size(); j++){
+		for (size_t j=0; j<N.size(); j++){
 			double val = N[j] - Ns_0[j];
 #pragma omp atomic
 			results[j].x[1] += val;
@@ -78,7 +78,7 @@ void MC_NV_single(const Configuration & config, std::vector<GeometryVector> & re
 
 	/* summarize data */
 	double num_window_centers = (double)window_centers.size();
-	for (int i = 0; i < results.size(); i++){
+	for (size_t i = 0; i < results.size(); i++){
 		double mean = results[i].x[1] / num_window_centers;
 		double variance = (results[i].x[2]/num_window_centers - mean*mean) ;
 		if (num_window_centers > 1.0){
@@ -106,20 +106,20 @@ void MC_NV_Ensemble(const std::function<Configuration(size_t i)> &GetConfigsFunc
 	progress_display pd(NumConfigs);
 
 	/* repeat over configurations */
-	for (int i = 0; i < NumConfigs; i++){
+	for (size_t i = 0; i < NumConfigs; i++){
 		Configuration c = GetConfigsFunction(i);
 		std::vector<GeometryVector> Result_;
 		MC_NV_single(c, Result_, Rmax, dR, WindowCenters, WindowSizeFunct);
 		pd ++ ;
 		if (i == 0){
 			Result = std::vector<GeometryVector> (Result_);
-			for (int j = 0; j < Result.size(); j++){
+			for (size_t j = 0; j < Result.size(); j++){
 				Result[j].x[3] = Result[j].x[1];
 				Result[j].x[1] = 0.0;
 			}
 		}
 		else{
-			for (int j = 0; j < Result.size(); j++){
+			for (size_t j = 0; j < Result.size(); j++){
 				double val = Result_[j].x[1] - Result[j].x[3];
 				Result[j].x[1] += val;
 				Result[j].x[2] += val*val;
@@ -127,11 +127,11 @@ void MC_NV_Ensemble(const std::function<Configuration(size_t i)> &GetConfigsFunc
 		}
 	}
 	/* Summarize data */
-	for(int i = 0; i < Result.size(); i++){
+	for(size_t i = 0; i < Result.size(); i++){
 		Result[i].x[1] /= (double)NumConfigs;
 		/*SE*/
 		if(NumConfigs > 1){
-			Result[i].x[2] = std::sqrt(abs(Result[i].x[2]/NumConfigs - Result[i].x[1]*Result[i].x[1])/(NumConfigs - 1));	
+			Result[i].x[2] = std::sqrt(abs(Result[i].x[2]/NumConfigs - Result[i].x[1]*Result[i].x[1])/(NumConfigs - 1));
 		}
 		else{
 			Result[i].x[2] = 0.0;
@@ -152,7 +152,7 @@ void MC_NV_Ensemble(const std::function<Configuration(size_t i)> &GetConfigsFunc
 		progress_display pd(NumConfigs);
 
 		/* repeat over configurations */
-		for (int i = 0; i < NumConfigs; i++){
+		for (size_t i = 0; i < NumConfigs; i++){
 			Configuration c = GetConfigsFunction(i);
 			std::vector<GeometryVector> WindowCenters;
 			GetSamplingPoints(c.GetDimension(), num_window_centers, WindowCenters, rng);
@@ -162,13 +162,13 @@ void MC_NV_Ensemble(const std::function<Configuration(size_t i)> &GetConfigsFunc
 			pd ++ ;
 			if (i == 0){
 				Result = std::vector<GeometryVector> (Result_);
-				for (int j = 0; j < Result.size(); j++){
+				for (size_t j = 0; j < Result.size(); j++){
 					Result[j].x[3] = Result[j].x[1];
 					Result[j].x[1] = 0.0;
 				}
 			}
 			else{
-				for (int j = 0; j < Result.size(); j++){
+				for (size_t j = 0; j < Result.size(); j++){
 					double val = Result_[j].x[1] - Result[j].x[3];
 					Result[j].x[1] += val;
 					Result[j].x[2] += val*val;
@@ -176,7 +176,7 @@ void MC_NV_Ensemble(const std::function<Configuration(size_t i)> &GetConfigsFunc
 			}
 		}
 		/* Summarize data */
-		for(int i = 0; i < Result.size(); i++){
+		for(size_t i = 0; i < Result.size(); i++){
 			Result[i].x[1] /= (double)NumConfigs;
 			/*SE*/
 			if(NumConfigs > 1){
@@ -245,10 +245,10 @@ void MC_NV_Ensemble_Orientational(const std::function<Configuration(size_t i)> &
 	progress_display pd(NumConfigs);
 
 	/* repeat over configurations */
-	for (int i = 0; i < NumConfigs; i++){
+	for (size_t i = 0; i < NumConfigs; i++){
 		Configuration c = GetConfigsFunction(i);
 		std::vector<GeometryVector> Result_;
-		
+
 		/* Get a rotation matrix */
 		std::vector<GeometryVector> R;
 		RandomRotation(d, R, rng_rot);
@@ -267,13 +267,13 @@ void MC_NV_Ensemble_Orientational(const std::function<Configuration(size_t i)> &
 		pd ++ ;
 		if (i == 0){
 			Result = std::vector<GeometryVector> (Result_);
-			for (int j = 0; j < Result.size(); j++){
+			for (size_t j = 0; j < Result.size(); j++){
 				Result[j].x[3] = Result[j].x[1];
 				Result[j].x[1] = 0.0;
 			}
 		}
 		else{
-			for (int j = 0; j < Result.size(); j++){
+			for (size_t j = 0; j < Result.size(); j++){
 				double val = Result_[j].x[1] - Result[j].x[3];
 				Result[j].x[1] += val;
 				Result[j].x[2] += val*val;
@@ -281,11 +281,11 @@ void MC_NV_Ensemble_Orientational(const std::function<Configuration(size_t i)> &
 		}
 	}
 	/* Summarize data */
-	for(int i = 0; i < Result.size(); i++){
+	for(size_t i = 0; i < Result.size(); i++){
 		Result[i].x[1] /= (double)NumConfigs;
 		/*SE*/
 		if(NumConfigs > 1){
-			Result[i].x[2] = std::sqrt(abs(Result[i].x[2]/NumConfigs - Result[i].x[1]*Result[i].x[1])/(NumConfigs - 1));	
+			Result[i].x[2] = std::sqrt(abs(Result[i].x[2]/NumConfigs - Result[i].x[1]*Result[i].x[1])/(NumConfigs - 1));
 		}
 		else{
 			Result[i].x[2] = 0.0;

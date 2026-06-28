@@ -21,23 +21,35 @@
 
 #include <GenerateConfigs.h>
 #include <NumberVariance.h>
+#include <VolumeFractionVariance.h>	// MC_vfv (split out of NumberVariance)
 #include <StructureFactor.h>
+#include <SpectralDensity.h>		// IsotropicSpectralDensity (split out of StructureFactor)
 
 //==============================================================================
 // Body sliced verbatim from the legacy TilingProblem.cpp (lines 345-1362):
 // ImLatGen + the Computation base class and all of its derivatives.
 //==============================================================================
 //lattice with vacancies
-struct ImLatGen :LatticeGen {
+//
+// Rewritten against the current LatticeGen API (models/GenerateConfigs.h). The
+// legacy members it relied on -- LatticeGen(basis,int), SetBasis, currPhi,
+// SetNumInEachSides, N, rMax -- no longer exist. Instead we build a 1-particle
+// cubic unit cell (number density 1; the LatticeGen ctor sets each particle
+// radius to half the nearest-neighbour distance = 0.5 here), keep our own
+// tile-count and particle radius, then tile the cell and delete random
+// vacancies. N0 is the vacancy-free site count = (sites/side)^d, so p is the
+// mean vacancy fraction.
+struct ImLatGen : LatticeGen {
 private:
-	double p;		//mean fraction of vacancies
-	int dist_type;	/* distribution of the number of vacancies
-					 * 0: Binomial distribution, 1: Poisson distribution	*/
-	int N0;			//the number of particles in initial packings
+	double p;						//mean fraction of vacancies
+	int N0;							//number of sites in the vacancy-free tiling
+	std::vector<size_t> numInSide;	//tile count per direction (base NumInSide is private)
+	double rMax;					//particle radius taken from the unit cell
+
 	/** \brief Build the standard cubic (axis-aligned unit) basis in the given dimension. (CLAUDE)
 	 *  \param dimension  Spatial dimension.
 	 *  \return           Set of orthonormal cubic basis vectors. */
-	std::vector<GeometryVector> getCubicBasis(int dimension) {
+	static std::vector<GeometryVector> getCubicBasis(int dimension) {
 		std::vector<GeometryVector> b;
 		for (int i = 0; i < dimension; i++) {
 			b.emplace_back(GeometryVector(static_cast<int>(dimension)));
@@ -45,47 +57,45 @@ private:
 		}
 		return b;
 	}
+	/** \brief Build a 1-particle cubic unit-cell sphere packing from basis vectors. (CLAUDE)
+	 *  \param basis  Basis vectors of the unit cell.
+	 *  \return       Sphere packing with one particle at the origin (radius fixed by LatticeGen). */
+	static SpherePacking buildUnitCell(const std::vector<GeometryVector> & basis) {
+		std::vector<GeometryVector> b(basis);
+		SpherePacking cell((DimensionType)b.size(), &b[0], 1.0);
+		cell.Insert(0.0, GeometryVector(static_cast<int>(b.size())));
+		return cell;
+	}
 public:
 	/** \brief Construct an imperfect-lattice generator from explicit basis vectors. (CLAUDE)
 	 *  \param basis          Basis vectors of the underlying lattice.
 	 *  \param numPrts        Number of particles in the initial (vacancy-free) lattice.
 	 *  \param p              Mean fraction of vacancies.
 	 *  \param numberdensity  Target number density. */
-	ImLatGen(const std::vector<GeometryVector> & basis, int numPrts, double p, double numberdensity) : LatticeGen(basis, 1){
-		SetBasis(basis);
-		//if (this->maxPhi > targetPackingFraction)
-		//	this->currPhi = targetPackingFraction;
-		//else
-		//	std::cout << "target packing fraction is too high\n";
-
-		this->p = p;// 1.0 - this->currPhi / this->maxPhi;
-		
+	ImLatGen(const std::vector<GeometryVector> & basis, int numPrts, double p, double numberdensity)
+		: LatticeGen(buildUnitCell(basis)) {
+		this->p = p;
 		this->rho = numberdensity;
-		//int LengInOrigLat = (int)round(pow(numPrts/(1.0-this->p),1.0/this->d));
-		//int NumInOrigLat = (int)round(pow(LengInOrigLat, this->d));
-		int LengInOrigLat = (int)round(pow(numPrts , 1.0 / this->d));
-		int NumInOrigLat = (int)round(pow(LengInOrigLat, this->d));
-		SetNumInEachSides(std::vector<size_t>(this->d, (size_t)LengInOrigLat));
-		
-		//readjustment
-		this->N0 = this->numPrts;// *this->currPhi / this->maxPhi;
-		//this->p = 1.0 - this->currPhi / this->maxPhi;
+		int LengInOrigLat = (int)round(pow((double)numPrts, 1.0 / this->d));
+		this->numInSide = std::vector<size_t>(this->d, (size_t)LengInOrigLat);
+		this->SetNumCells(this->numInSide);
+		this->N0 = (int)round(pow((double)LengInOrigLat, (double)this->d));
+		this->rMax = this->F_Cell.GetCharacteristics(0);
 	}
 	/** \brief Construct an imperfect-lattice generator on a cubic lattice. (CLAUDE)
 	 *  \param dimension      Spatial dimension.
 	 *  \param numPrts        Number of particles in the initial (vacancy-free) lattice.
 	 *  \param p              Mean fraction of vacancies.
 	 *  \param numberdensity  Target number density. */
-	ImLatGen(int dimension, int numPrts, double p, double numberdensity) : ImLatGen(getCubicBasis(dimension), numPrts, p, numberdensity ){}
+	ImLatGen(int dimension, int numPrts, double p, double numberdensity) : ImLatGen(getCubicBasis(dimension), numPrts, p, numberdensity) {}
 	/** \brief set the final packing fraction!! (and derive the vacancy fraction)
 	 *  \param phi  Target packing fraction (must be below maxPhi). */
 	virtual void SetPackingFraction(double phi) {
 		if (phi < this->maxPhi) {
-			this->currPhi = phi;
-			this->p = 1.0 - this->currPhi / this->maxPhi;
-			int LengInOrigLat = (int)round(pow(this->N0 / (1.0 - this->p), 1.0 / this->d));
-			int NumInOrigLat = (int)round(pow(LengInOrigLat, this->d));
-			SetNumInEachSides(std::vector<size_t>(this->d, (size_t)LengInOrigLat));
+			this->p = 1.0 - phi / this->maxPhi;
+			int Leng = (int)round(pow(this->N0 / (1.0 - this->p), 1.0 / this->d));
+			this->numInSide = std::vector<size_t>(this->d, (size_t)Leng);
+			this->SetNumCells(this->numInSide);
 		}
 		else {
 			std::cout << "the target packing fraction is too high!\n";
@@ -94,38 +104,31 @@ public:
 	/** \brief Set the target number density. (CLAUDE)
 	 *  \param numberdensity  Target number density. */
 	virtual void SetRho(double numberdensity) { this->rho = numberdensity; }
-	/** \brief Set the number of particles and re-derive the lattice side count. (CLAUDE)
-	 *  \param numPrts  Number of particles in the initial (vacancy-free) lattice. */
+	/** \brief Set the number of sites and re-derive the lattice side count. (CLAUDE)
+	 *  \param numPrts  Number of sites in the initial (vacancy-free) lattice. */
 	virtual void SetNumPrts(int numPrts) {
 		this->N0 = numPrts;
-		//int LengInOrigLat = (int)round(pow(numPrts / (1.0 - this->p), 1.0 / this->d));
-		//int NumInOrigLat = (int)round(pow(LengInOrigLat, this->d));
-		int LengInOrigLat = (int)round(pow(numPrts, 1.0 / this->d));
-		int NumInOrigLat = (int)round(pow(LengInOrigLat, this->d));
-		SetNumInEachSides(std::vector<size_t>(this->d, (size_t)LengInOrigLat));
+		int Leng = (int)round(pow((double)numPrts, 1.0 / this->d));
+		this->numInSide = std::vector<size_t>(this->d, (size_t)Leng);
+		this->SetNumCells(this->numInSide);
 	}
 
 	/** \brief Generate a point configuration: tile the cell, then delete random vacancies. (CLAUDE)
 	 *  \param[out] c  Output configuration with vacancies removed. */
 	virtual void GenerateC(Configuration &c) {
-		Configuration temp = MultiplicateStructure(this->F_Cell, this->N);
-		int currN, idx;	RandomGenerator g(std::time(NULL));
+		Configuration temp = MultiplicateStructure(Configuration(this->F_Cell, "a"), this->numInSide);
+		RandomGenerator g(std::time(NULL));
 		int numVacancies = (int)round(this->N0*this->p);
 		for (int i = 0; i < numVacancies; i++) {
-			idx = (int)floor(temp.NumParticle() * g.RandomDouble());
+			int idx = (int)floor(temp.NumParticle() * g.RandomDouble());
 			temp.DeleteParticle(idx);
 		}
-		c = Configuration(temp);
-		//double numDensity = c.NumParticle() / c.PeriodicVolume();
-		//double factor = pow(numDensity/ this->rho, 1.0/this->d);
-		//c.Rescale(factor);
+		c = temp;
 	}
 	/** \brief Generate a sphere packing from the vacancy-bearing lattice. (CLAUDE)
 	 *  \param[out] c  Output sphere packing built from the generated configuration. */
 	virtual void GenerateP(SpherePacking & c) {
 		Configuration temp; this->GenerateC(temp);
-		//double rho_i = this->N0 / (this->numPrts * this->F_Cell.PeriodicVolume());
-		//double factor = pow(rho_i/this->rho, 1.0 / this->d);
 		c = SpherePacking(temp, this->rMax);
 	}
 
@@ -633,7 +636,7 @@ public:
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
 		auto GetC = [&GetConfigs](size_t i)->Configuration {return Configuration(GetConfigs(i),"a"); };
 		omp_set_num_threads(this->numThreads);
-		MC_nv(GetC, numConfigs, result, Rmax, dR, numSamplingPts);
+		MC_NV_Ensemble(GetC, numConfigs, result, Rmax, dR, (size_t)numSamplingPts);
 	}
 	/** \brief Write the local number variance to "<prefix>_localNumVar". (CLAUDE)
 	 *  \param OutputPrefix  Output filename prefix. */

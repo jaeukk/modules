@@ -487,7 +487,7 @@ public:
 		std::vector<GeometryVector> temp;
 		this->p1->AllForce(results);
 		this->p2->AllForce(temp);
-		for(int i=0; i<results.size(); i++)
+		for(size_t i=0; i<results.size(); i++)
 			results[i]=results[i]*this->Weight1+temp[i]*this->Weight2;
 	}
 	//Energy derivative respect to basis vectors

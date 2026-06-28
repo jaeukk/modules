@@ -1,7 +1,36 @@
 #include "etc.h"
 #include <cmath>
 
-std::fstream logfile("DetailedLog.txt", std::fstream::app|std::fstream::out);
+/** \brief A filebuf that opens "DetailedLog.txt" only on the first write, so
+ *  applications that never log anything do not leave behind an empty
+ *  DetailedLog.txt in their working directory. (CLAUDE) */
+namespace {
+	class LazyLogBuf : public std::filebuf
+	{
+		bool opened = false;
+		void ensure_open()
+		{
+			if (!opened) {
+				opened = true;	// set first: a failed open should not retry on every char
+				this->open("DetailedLog.txt", std::fstream::app | std::fstream::out);
+			}
+		}
+	protected:
+		int_type overflow(int_type c = traits_type::eof()) override
+		{
+			ensure_open();
+			return std::filebuf::overflow(c);
+		}
+		std::streamsize xsputn(const char * s, std::streamsize n) override
+		{
+			ensure_open();
+			return std::filebuf::xsputn(s, n);
+		}
+	};
+	LazyLogBuf logbuf;	// constructed before logfile (same TU, declared first)
+}
+
+std::ostream logfile(&logbuf);
 
 //unsigned long MCThreadsPerConfiguration=0;
 unsigned long MCNumParallelConfigurations=0;

@@ -35,7 +35,10 @@ const char * const FigureFormat = ".bmp";
 #include <string>
 #include <ctime>
 
-extern std::fstream logfile;
+/** \brief Diagnostic log stream.  Backed by a lazily-opened "DetailedLog.txt":
+ *  the file is created only when something is actually written, so apps that
+ *  never log leave no DetailedLog.txt behind. (CLAUDE) */
+extern std::ostream logfile;
 
 extern size_t Verbosity;
 

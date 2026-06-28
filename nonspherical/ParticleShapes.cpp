@@ -75,7 +75,7 @@ void Shape::Scale2Vol(double newVolume) {
 bool CheckNewCoordinates(int Dimension, const std::vector<GeometryVector> & newbasis) {
 	const double error = 1e-13;	// 
 	/* new basis vector should be orthonormal */
-	if (Dimension == newbasis.size()) {
+	if ((size_t)Dimension == newbasis.size()) {
 		bool check = true;
 		if (Dimension == 2) {
 			check &= fabs(newbasis[0].Modulus2() - 1.0) < error;
@@ -175,7 +175,7 @@ void PlanarFigure::CheckVertices() {
 
 			this->normal = (1.0 / sqrt(temp.Modulus2()))*temp;
  
-			for (int i = 1; i < NUM; i++) {
+			for (size_t i = 1; i < NUM; i++) {
 				temp = (this->E[i - 1]).Cross(this->E[i]);
 				temp = (1.0 / sqrt(temp.Modulus2()))*temp;
 				this->Trust_V &= this->normal.IsEqual(temp);
@@ -199,12 +199,11 @@ void PlanarFigure::CheckVertices() {
 void PlanarFigure::Update_ER_vectors() {
 	this->E.resize(this->num_Vs);
 	this->R.resize(this->num_Vs);
-	size_t j = 0;
 
 	this->E[0] = 0.5*(*(this->V[0]) - *(this->V[this->num_Vs - 1]));
 	this->R[0] = 0.5*(*(this->V[0]) + *(this->V[this->num_Vs - 1]));
 
-	for (int i = 1; i < this->num_Vs; i++) {
+	for (size_t i = 1; i < this->num_Vs; i++) {
 //		j = (i == 0) ? this->num_Vs - 1 : i - 1;
 		this->E[i] = 0.5*(*(this->V[i]) - *(this->V[i-1]));
 		this->R[i] = 0.5*(*(this->V[i]) + *(this->V[i-1]));
@@ -217,8 +216,8 @@ void PlanarFigure::Update_ER_vectors() {
  **********************************/
 // Update the largest distnace from vertices to the center.
 void PlanarFigure::UpdateR() {
-	double temp_max = 0, temp_min=0, tempV2 = 0;
-	for (int i = 0; i < this->num_Vs; i++) {
+	double temp_max = 0, tempV2 = 0;
+	for (size_t i = 0; i < this->num_Vs; i++) {
 		tempV2 = (this->V[i])->Modulus2();
 		temp_max = std::max(tempV2, temp_max);		
 	}
@@ -264,7 +263,7 @@ void PlanarFigure::UpdateSurfaceArea() {
 	if (!this->update_ER)
 		Update_ER_vectors();
 
-	for (int i = 0; i < this->num_Vs; i++) {
+	for (size_t i = 0; i < this->num_Vs; i++) {
 		sum += sqrt(this->E[i].Modulus2());
 	}
 	this->area = 2.0 * sum;
@@ -278,7 +277,7 @@ void PlanarFigure::UpdateSurfaceArea() {
 PlanarFigure::PlanarFigure(GeometryVector * v, size_t num_vertices) : Shape::Shape() {
 	this->num_Vs = num_vertices;
 	this->Dimension = v[0].Dimension;	
-	for (int i = 0; i < this->num_Vs; i++)
+	for (size_t i = 0; i < this->num_Vs; i++)
 		this->V.push_back(&v[i]);
 	
 	this->Update_ER_vectors();
@@ -288,7 +287,7 @@ PlanarFigure::PlanarFigure(GeometryVector * v, size_t num_vertices) : Shape::Sha
 PlanarFigure::PlanarFigure(GeometryVector * v, std::vector<size_t> vert_idx) : Shape::Shape(){
 	this->num_Vs = vert_idx.size();
 	this->Dimension = v[0].Dimension;
-	for (int i = 0; i < this->num_Vs; i++)
+	for (size_t i = 0; i < this->num_Vs; i++)
 		this->V.push_back(&v[vert_idx[i]]);
 
 	this->Update_ER_vectors();
@@ -307,7 +306,7 @@ GeometryVector PlanarFigure::GetCenterOfMass() {
 	GeometryVector center((int)this->Dimension);
 	//Divide a planar figure into triangles
 	//Compute the center of mass of each triangle, and compute the center of mass of the entire shape.
-	for (int i = 0; i < this->num_Vs; i++) {
+	for (size_t i = 0; i < this->num_Vs; i++) {
 		size_t j = (i == 0) ? this->num_Vs - 1 : i - 1;
 		GeometryVector v = *this->V[i] - x0, u = *this->V[j] - x0;
 		GeometryVector C = (1.0 / 3.0 *(v+u))+x0;
@@ -329,13 +328,13 @@ GeometryVector PlanarFigure::GetCenterOfMass() {
 }
 void PlanarFigure::Print(std::ostream & ofile) const {
 	ofile << "#Vertices\t" << this->num_Vs << "\n";
-	for (int i = 0; i < this->num_Vs; i++)
+	for (size_t i = 0; i < this->num_Vs; i++)
 		ofile << *(this->V[i]);
 }
 
 void PlanarFigure::GetVertices(std::vector<GeometryVector> & Verts) const {
 	Verts.resize(this->num_Vs);
-	for (int i = 0; i < this->num_Vs; i++) {
+	for (size_t i = 0; i < this->num_Vs; i++) {
 		Verts[i] = *(this->V[i]);
 	}
 }
@@ -372,7 +371,7 @@ void PlanarFigure::Scale(double linearfactor) {
 //	this->volume *= linearfactor * linearfactor;
 //	this->area *= linearfactor;
 	this->r_perp *= linearfactor;
-	for (int i = 0; i < this->num_Vs; i++) {
+	for (size_t i = 0; i < this->num_Vs; i++) {
 //		*(this->V[i]) = linearfactor * (*(this->V[i]));
 		if (this->update_ER) {
 			this->E[i] = linearfactor * this->E[i];
@@ -948,7 +947,7 @@ void Polyhedron::UpdateSurfaceArea() {
 	this->area = surface_area;
 }
 bool Polyhedron::CheckEulerIdentity() const {
-	bool EulerIdentity, ClosedSurface;
+	bool EulerIdentity;
 	//Euler identity
 	size_t V = this->Vertices.size(), F = this->Gamma.size(), E = 0;
 	for (auto i = this->Gamma.begin(); i != this->Gamma.end(); i++)

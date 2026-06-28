@@ -25,7 +25,7 @@ inline void AnalyzeData(const std::vector<double> & data, double & average, doub
 
 	//calculate autocorrelation function
 	corrtime=0.5;
-	for(int i=0; i<data.size(); i++)
+	for(size_t i=0; i<data.size(); i++)
 	{
 		double autocor=0.0;
 		for(auto iter=data.begin()+i; iter!=data.end(); iter++)

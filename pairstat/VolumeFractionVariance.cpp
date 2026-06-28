@@ -45,7 +45,7 @@ static void I_1(const SpherePacking & packing, std::vector<double> &I, double Rm
 		}
 	});
 
-	for (int i = 1; i < I.size(); i++)
+	for (size_t i = 1; i < I.size(); i++)
 		I[i] += I[i - 1];
 }
 
@@ -58,22 +58,22 @@ static void I_config(const SpherePacking & packing, std::vector<GeometryVector> 
 	{
 		GeometryVector t;	t.Dimension = 4;
 		phi_inter.resize((size_t)ceil(Rmax / dR), t);
-		for (int i = 0; i < phi_inter.size(); i++)
+		for (size_t i = 0; i < phi_inter.size(); i++)
 			phi_inter[i].x[3] = phi_theor*HyperSphere_Volume(d, dR*(i + 1.0));
 	}
 
-	for (int n = 0; n < x0_relative.size(); n++) {
+	for (size_t n = 0; n < x0_relative.size(); n++) {
 		std::vector<double> I_n;
 		I_1(packing, I_n, Rmax, dR, x0_relative[n]);
 
-		for (int i = 0; i < I_n.size(); i++) {
+		for (size_t i = 0; i < I_n.size(); i++) {
 			double dV = I_n[i];
 			phi_inter[i].x[0] = (1.0 - 1.0 / (n + 1.0))* phi_inter[i].x[0] + dV / (n + 1.0);
 			phi_inter[i].x[1] = (1.0 - 1.0 / (n + 1.0))* phi_inter[i].x[1] + dV*dV / (n + 1.0);
 		}
 	}
 
-	for (int i = 0; i < phi_inter.size(); i++) {
+	for (size_t i = 0; i < phi_inter.size(); i++) {
 		double R = dR*(i + 1.0);
 		double Vr = HyperSphere_Volume(d, R);
 		phi_inter[i].x[0] /= Vr;
@@ -104,14 +104,14 @@ void MC_vfv(const std::function<SpherePacking(size_t i)> &GetConfig, size_t numC
 
 	if (num_threads > 1) {
 #pragma omp parallel for schedule (guided) shared(count) num_threads(num_threads)
-		for (int i = 0; i < numConfig; i++) {
+		for (int i = 0; i < (int)numConfig; i++) {
 			std::vector<GeometryVector> phi1;
 			SpherePacking conf(GetConfig(i));
 			I_config(conf, phi1, Rmax, dR, samplingPoints);
 #pragma omp critical
 			{
 				count++;
-				for (int j = 0; j < phi1.size(); j++) {
+				for (size_t j = 0; j < phi1.size(); j++) {
 					sum[j].x[0] = (1.0 - 1.0 / count)*sum[j].x[0] + phi1[j].x[0] / count;
 					sum[j].x[1] = (1.0 - 1.0 / count)*sum[j].x[1] + phi1[j].x[1] / count;
 					if (numConfig > 1)
@@ -121,13 +121,13 @@ void MC_vfv(const std::function<SpherePacking(size_t i)> &GetConfig, size_t numC
 		}
 	}
 	else {
-		for (int i = 0; i < numConfig; i++) {
+		for (size_t i = 0; i < numConfig; i++) {
 			std::vector<GeometryVector> phi1;
 			SpherePacking conf(GetConfig(i));
 			I_config(conf, phi1, Rmax, dR, samplingPoints);
 			{
 				count++;
-				for (int j = 0; j < phi1.size(); j++) {
+				for (size_t j = 0; j < phi1.size(); j++) {
 					sum[j].x[0] = (1.0 - 1.0 / count)*sum[j].x[0] + phi1[j].x[0] / count;
 					sum[j].x[1] = (1.0 - 1.0 / count)*sum[j].x[1] + phi1[j].x[1] / count;
 					if (numConfig > 1)
@@ -138,7 +138,7 @@ void MC_vfv(const std::function<SpherePacking(size_t i)> &GetConfig, size_t numC
 	}
 
 	//analyze data
-	for (int i = 0; i < result.size(); i++) {
+	for (size_t i = 0; i < result.size(); i++) {
 		double av = sum[i].x[0];
 		result[i].x[1] = (sum[i].x[1] - av*av) * (1.0 + 1.0 / (numConfig*numSampling - 1.0));
 

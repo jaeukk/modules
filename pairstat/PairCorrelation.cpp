@@ -157,7 +157,7 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 
 	std::vector<double> distances;
 
-	DimensionType dim;
+	DimensionType dim = 0;
 
 	size_t TotalAtomCount = 0;
 	double AverageDensity = 0;

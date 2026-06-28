@@ -44,7 +44,7 @@ start:
 			coord[i]=-1;
 			coord[i+1]+=increment;
 		}
-		if(coord[this->dimension-1]<=finish) goto start;
+	if(coord[this->dimension-1]<=finish) goto start;
 		// end of the loop
 
 		//copy the data from vector result to array adjacentcelllist
@@ -117,7 +117,7 @@ start:
 			coord[i]=initial;
 			coord[i+1]+=increment;
 		}
-		if(coord[this->dimension-1]<finish) goto start;
+	if(coord[this->dimension-1]<finish) goto start;
 
 		//function end
 		return;
@@ -196,7 +196,7 @@ void VoxelList::SplitVoxelSerial(const SpherePacking & Config, double Radius, in
 	newsub->reserve(this->NumVoxel()*(this->level+1));
 	unsigned long nbr=this->NumVoxel();
 
-	for(signed long i=0; i<nbr; i++)
+	for(signed long i=0; i<(signed long)nbr; i++)
 	{
 		//locate this voxel
 		std::vector<voxeltype>::iterator itero=this->originindex->begin()+MaxDimension*i;
@@ -287,7 +287,7 @@ void VoxelList::SplitVoxel(const SpherePacking & Config, double Radius, int chec
 		std::vector<voxeltype> myneworigin;
 		std::vector<unsigned short> mynewsub;
 #pragma omp for
-		for(signed long i=0; i<nbr; i++)
+		for(signed long i=0; i<(signed long)nbr; i++)
 		{
 			//locate this voxel
 			std::vector<voxeltype>::iterator itero=this->originindex->begin()+MaxDimension*i;
@@ -490,7 +490,7 @@ void RSA::RSA_II_Parallel( size_t NumInsertedLimit, size_t TrialTime)
 			RandomGenerator mygen((int)(this->gen.RandomDouble()*10000)+omp_get_thread_num());
 			std::vector<RSA_II_TempStruct> myresults;
 #pragma omp for
-			for(signed long i=0; i<TrialTime; i++)
+			for(signed long i=0; i<(signed long)TrialTime; i++)
 			{
 				double temp[MaxDimension];
 				for(int j=0; j<this->dimension; j++)
@@ -514,7 +514,13 @@ void RSA::RSA_II_Parallel( size_t NumInsertedLimit, size_t TrialTime)
 			}
 		}
 		RSA_II_TempClass rtemp(this->gen);
+		// std::random_shuffle is deprecated, but std::shuffle uses a different
+		// generator interface and would change the random sequence (hence the
+		// numerical results); keep it and suppress only the deprecation warning.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 		std::random_shuffle(results.begin(), results.end(), rtemp);
+#pragma GCC diagnostic pop
 		for(auto iter=results.begin(); iter!=results.end(); iter++)
 		{
 			double * temp = iter->x;
@@ -609,7 +615,7 @@ SpherePacking GenerateRSAPacking(int dimension, unsigned long nbrsphere, short n
 		{
 			double temp[MaxDimension];
 			con1.pVoxels->GetCenter(temp, i);
-			for(size_t j=0; j<dimension; j++)
+			for(size_t j=0; j<(size_t)dimension; j++)
 				output<<temp[j]<<", \t";
 			output<<",\n";
 		}
@@ -636,11 +642,13 @@ SpherePacking GenerateRSAPacking(int dimension, unsigned long nbrsphere, short n
 		if (sizeof(VoxelList) * temp * Factor < MAX_MEM_BOX) {
 			con1.SplitVoxel(parallel, 1);
 			SplitCount++;
-			if (Verbose > 3)
+			// (int) cast keeps this legacy always-false guard (Verbose is bool)
+			// without the -Wbool-compare warning; behavior unchanged.
+			if ((int)Verbose > 3)
 				output << "voxel list is splitted \n";
 		}
 		else
-			if (Verbose > 3)
+			if ((int)Verbose > 3)
 				output << "currently there are too many voxel lists (" << temp << ")\n";
 
 		double ratio=static_cast<double>(con1.pVoxels->NumVoxel())/temp;
@@ -657,7 +665,7 @@ SpherePacking GenerateRSAPacking(int dimension, unsigned long nbrsphere, short n
 			{
 				double temp[MaxDimension];
 				con1.pVoxels->GetCenter(temp, i);
-				for(size_t j=0; j<dimension; j++)
+				for(size_t j=0; j<(size_t)dimension; j++)
 					output<<temp[j]<<", \t";
 				output<<",\n";
 			}

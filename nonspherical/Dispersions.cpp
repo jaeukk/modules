@@ -36,7 +36,7 @@
 /** \return Ratio of all particle volumes to the volume of simulation box. */
 double Dispersion::PackingFraction() const {
 	double prtVol = 0.0;
-	for (int i = 0; i < this->NumParticle(); i++) {
+	for (size_t i = 0; i < this->NumParticle(); i++) {
 		prtVol += this->ParticleCharacteristics[i]->GetVolume();
 	}
 	return prtVol / this->PeriodicVolume();
@@ -50,7 +50,7 @@ void Dispersion::Rescale(double LinearFactor)
 	PeriodicCellList::Rescale(LinearFactor);
 	//Resize Particles.
 	this->MaxRadius *= LinearFactor;
-	for (int i = 0; i < this->NumParticle(); i++) {
+	for (size_t i = 0; i < this->NumParticle(); i++) {
 		this->ParticleCharacteristics[i]->Scale(LinearFactor);
 	}
 }
@@ -64,7 +64,7 @@ void Dispersion::Resize(double NewVolume)
 
 //Rescale particle sizes only
 void Dispersion::Rescale_prtOnly(double LinearFactor) {
-	for (int i = 0; i < this->NumParticle(); i++) {
+	for (size_t i = 0; i < this->NumParticle(); i++) {
 		this->ParticleCharacteristics[i]->Scale(LinearFactor);
 	}
 	this->MaxRadius *= LinearFactor;
@@ -211,6 +211,7 @@ void Dispersion::FindNearestNeighbors (const GeometryVector & RelativeCoordinate
 		std::vector<GeometryVector> list_i;
 		GeometryVector x0, n;
 		double distance_i = this->ParticleCharacteristics[prt_idx]->GetDistance2Boundary(pos_wrt_center, list_i, x0, n);
+		(void)distance_i;
 
 		for(auto v = list_i.begin(); v != list_i.end(); v++){
 			v->SetDimension(3);

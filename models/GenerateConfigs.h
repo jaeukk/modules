@@ -183,7 +183,7 @@ public:
 		//Particle radii = 0.5 * nearest neighbor distance.
 		{
 			bool uninitializedPrtRadii = false;		//True = at least one particle has a nonpositive radius.
-			for (int i = 0; i < this->numPrts; i++)
+			for (size_t i = 0; i < this->numPrts; i++)
 				uninitializedPrtRadii |= (F_Cell.GetCharacteristics(i) <= 0.0);
 
 			if (F_Cell.CheckOverlap()) {
@@ -196,7 +196,7 @@ public:
 							<<"Particle radii are set to be nearest neighbor distances.\n";
 				/* at least one particle has a nonpositive radius 
 				=> reset particle radii such that they are half of nearest neighbor distances.*/
-				for (int i = 0; i < this->numPrts; i++)
+				for (size_t i = 0; i < this->numPrts; i++)
 					F_Cell.UpdateCharacteristics(0.5*F_Cell.NearestParticleDistance(i), i);
 			}
 		}
@@ -321,7 +321,6 @@ public:
 	/** \brief Empty the simulation box and generate a Poisson point pattern of a given number density.
 	 *	\param[in,out] c	A periodic simulation box whose volume should be positive!	 */
 	virtual void GenerateC(Configuration & c) {
-		size_t d = c.GetDimension();
 		double volume = c.PeriodicVolume();
 
 		if (volume > 0.0) {

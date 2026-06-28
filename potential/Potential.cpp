@@ -84,13 +84,13 @@ double PairPotential::Energy()
 	//pre-allocation of internal neighbor-cell cache in Configuration
 	this->pConfig->PrepareIterateThroughNeighbors(this->Rcut);
 #pragma omp parallel for num_threads(this->ParallelNumThread)
-	for(long i=0; i<conf.NumParticle(); i++)
+	for(long i=0; i<(long)conf.NumParticle(); i++)
 	{
 		PairPotential & backup = ( *this);
 		//Configuration::particle * trial = this->pConfig->GetParticle(i);
 		conf.IterateThroughNeighbors(conf.GetRelativeCoordinates(i), this->Rcut, [&Energy, &backup, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) ->void 
 		{
-			if(SourceAtom!=i || LatticeShift.Modulus2()!=0) 
+			if(SourceAtom!=(size_t)i || LatticeShift.Modulus2()!=0)
 			{
 				double temp=backup.PairEnergy(shift);
 #pragma omp atomic
@@ -161,7 +161,7 @@ void PairPotential::AllForce(std::vector<GeometryVector> & results)
 	//pre-allocation of internal neighbor-cell cache in Configuration
 	this->pConfig->PrepareIterateThroughNeighbors(this->Rcut);
 #pragma omp parallel for num_threads(this->ParallelNumThread)
-	for(long i=0; i<Np; i++)
+	for(long i=0; i<(long)Np; i++)
 		this->Force(results[i], i);
 }
 double PairPotential::SecondDerivative(const GeometryVector & offset, DimensionType i, DimensionType j)//(d^2V)/(dxi*dxj), recommended to rewrite it
@@ -231,7 +231,7 @@ void PairPotential::EnergyDerivativeToBasisVectors(double * grad, double Pressur
 	//pre-allocation of internal neighbor-cell cache in Configuration
 	this->pConfig->PrepareIterateThroughNeighbors(this->Rcut);
 #pragma omp parallel for num_threads(this->ParallelNumThread)
-	for(long i=0; i<this->pConfig->NumParticle(); i++)
+	for(long i=0; i<(long)this->pConfig->NumParticle(); i++)
 	{
 		//Configuration::particle * pA=this->pConfig->GetParticle(i);
 		const Configuration * pTemp=this->pConfig;

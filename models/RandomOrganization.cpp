@@ -10,7 +10,7 @@ void IsActive(std::vector<GeometryVector> & List, std::vector<int> & result, dou
 	//without parallel computing
 	std::vector<int> TempList(List.size(), 0);
 #pragma omp parallel for schedule(dynamic,1)
-	for (int i = 1; i < List.size(); i++) {
+	for (int i = 1; i < (int)List.size(); i++) {
 		for (int j = 0; j < i; j++) {
 			GeometryVector temp = List[i] - List[j];
 			for (int k = 0; k < temp.Dimension; k++) {//Implement periodic boundary conditions
@@ -28,7 +28,7 @@ void IsActive(std::vector<GeometryVector> & List, std::vector<int> & result, dou
 	//Output 
 	result.resize(0);
 	result.reserve(List.size());
-	for (int i = 0; i < TempList.size(); i++) {
+	for (int i = 0; i < (int)TempList.size(); i++) {
 		if (TempList.size() > 0)	result.push_back(i);
 	}
 
@@ -41,7 +41,7 @@ bool B_Model(std::vector<GeometryVector> & List, double exclusionR, double delta
 
 	if (index.size() > 0) {
 		DimensionType dim = List[0].Dimension;
-		for (int i = 0; i < index.size(); i++) {
+		for (int i = 0; i < (int)index.size(); i++) {
 			int j = index[i];
 			GeometryVector dr = delta*RandomUnitVector(dim);
 			List.at(j) = List[j] + dr;
@@ -125,7 +125,7 @@ void B_model(Configuration &List, double delta, const std::vector<size_t> & Acti
 	DimensionType d = List.GetDimension();
 	//assume periodic cell is a simple cubic..
 //#pragma omp parallel for
-	for (int i = 0; i < ActivePrt_index.size(); i++) {
+	for (int i = 0; i < (int)ActivePrt_index.size(); i++) {
 		int t = ActivePrt_index[i];
 		//new_r = List.GetRelativeCoordinates(i) + delta*RandomUnitVector(d,g);
 		List.MoveParticle(t, List.GetRelativeCoordinates(t) + delta*RandomUnitVector(d, g));
@@ -137,7 +137,7 @@ void B_model(PeriodicCellList<double> &List, double delta, const std::vector<siz
 	DimensionType d = List.GetDimension();
 	//assume periodic cell is a simple cubic..
 	//#pragma omp parallel for
-	for (int i = 0; i < activePrt_index.size(); i++) {
+	for (int i = 0; i < (int)activePrt_index.size(); i++) {
 		int t = activePrt_index[i];
 		//new_r = List.GetRelativeCoordinates(i) + delta*particle radius*RandomUnitVector(d,g);
 		List.MoveParticle(t, List.GetRelativeCoordinates(t) + delta*List.GetCharacteristics(t)* RandomUnitVector(d, g));

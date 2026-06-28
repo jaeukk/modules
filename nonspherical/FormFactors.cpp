@@ -48,7 +48,6 @@ std::complex<double> PlanarFigure::FormFactor_analytic(const GeometryVector &k)
 	}
 
 	
-	double K_perp = sqrt(k_perp.Modulus2());
 	double K_parallel = sqrt(k_parallel.Modulus2());
 
 	GeometryVector Sum_Real((int)this->Dimension), Sum_Imag((int)this->Dimension);

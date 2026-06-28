@@ -124,7 +124,7 @@ public:
 	/** \brief Run this method if the packing is polydisperse. */
 	void Switch2Polydisperse(){
 		this->isMonodisperse = false;
-		for (int i = 0; i<this->pSpheres->NumParticle(); i++){
+		for (size_t i = 0; i<this->pSpheres->NumParticle(); i++){
 			this->pSphereRadii.push_back(this->pSpheres->GetCharacteristics(i));
 		}
 		std::cout << "Now, this->Diameter is the maxium particle diameter!!\n";
