@@ -347,10 +347,11 @@ public:
 	 *  \param source List to copy geometry and particle data from. */
 	PeriodicCellList(const PeriodicCellList<OtherCharacteristics> & source)
 		: MaxRadius(source.MaxRadius), Dimension(source.Dimension),
-		Cells(source.Cells), ApproximateCellSize(source.ApproximateCellSize),
-		SortedVicinityList(source.SortedVicinityList), VicinityLatticesRc2(0.0),
-		ParticleCartesians(source.ParticleCartesians), ParticleRelatives(source.ParticleRelatives),
-		ParticleCharacteristics(source.ParticleCharacteristics), vol(source.vol)
+		Cells(source.Cells),
+		ParticleRelatives(source.ParticleRelatives), ParticleCartesians(source.ParticleCartesians),
+		ParticleCharacteristics(source.ParticleCharacteristics),
+		ApproximateCellSize(source.ApproximateCellSize), vol(source.vol),
+		VicinityLatticesRc2(0.0), SortedVicinityList(source.SortedVicinityList)
 	{
 		for (DimensionType i = 0; i< ::MaxDimension; i++)
 		{
@@ -371,10 +372,11 @@ public:
 	 *  \param cha    Characteristic value assigned to every particle. */
 	template<typename add> PeriodicCellList(const PeriodicCellList<add> & source, const OtherCharacteristics & cha)
 		: Dimension(source.Dimension),
-		Cells(source.Cells), ApproximateCellSize(source.ApproximateCellSize),
-		SortedVicinityList(source.SortedVicinityList), VicinityLatticesRc2(0.0),
-		ParticleCartesians(source.ParticleCartesians), ParticleRelatives(source.ParticleRelatives),
-		ParticleCharacteristics(source.NumParticle(), cha), vol(source.vol)
+		Cells(source.Cells),
+		ParticleRelatives(source.ParticleRelatives), ParticleCartesians(source.ParticleCartesians),
+		ParticleCharacteristics(source.NumParticle(), cha),
+		ApproximateCellSize(source.ApproximateCellSize), vol(source.vol),
+		VicinityLatticesRc2(0.0), SortedVicinityList(source.SortedVicinityList)
 	{
 		for (DimensionType i = 0; i< ::MaxDimension; i++)
 		{
