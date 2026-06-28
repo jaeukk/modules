@@ -19,7 +19,7 @@ OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 INC := -I$(core) -I$(pairstat) -I.
 
 # Objects of the lower modules this app links against.
-CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o \
+CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
 PAIRSTAT_OBJS := $(pairstat)/obj/PairCorrelation.o $(pairstat)/obj/StructureFactor.o \
                  $(pairstat)/obj/NumberVariance.o $(pairstat)/obj/ContactStatistics.o

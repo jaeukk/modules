@@ -40,7 +40,7 @@ MISC_OBJS := $(ODIR)Discrepancy.o
 INC := -I$(core) -I$(pairstat) -I$(potential) -I$(misc) -I$(visualization) -I. $(NLOPT_INC)
 
 # Object files of the lower modules this app links against.
-CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o \
+CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
 PAIRSTAT_OBJS := $(pairstat)/obj/StructureFactor.o
 POTENTIAL_OBJS := $(potential)/obj/Potential.o $(potential)/obj/StructureOptimization.o

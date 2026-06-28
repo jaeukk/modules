@@ -16,7 +16,7 @@ OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I.
 
-CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o \
+CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
 
 .PHONY: all clean core-objs

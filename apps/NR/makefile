@@ -19,7 +19,7 @@ OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I$(pairstat) -I$(models) -I.
 
-CORE_OBJS  := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o \
+CORE_OBJS  := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
               $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
 PAIR_OBJS  := $(pairstat)/obj/NumberVariance.o
 MODEL_OBJS := $(models)/obj/GenerateConfigs.o $(models)/obj/HardSphereFluids.o \

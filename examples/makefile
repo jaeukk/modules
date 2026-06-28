@@ -15,7 +15,7 @@ TARGET := g2_sk_demo.out
 
 INC := -I$(core) -I$(pairstat)
 
-CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o \
+CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
 PAIRSTAT_OBJS := $(pairstat)/obj/PairCorrelation.o \
                  $(pairstat)/obj/StructureFactor.o \
