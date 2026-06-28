@@ -6,6 +6,8 @@
  *	\brief Function implementations of computing local number variances of point patterns under the periodic boundary conditions. */
 
 #include "NumberVariance.h"
+#include <etc.h>		// progress_display
+#include <ctime>
 //#include <time.h>
 
 
@@ -294,3 +296,7 @@ void MC_NV_Ensemble_Orientational(const std::function<Configuration(size_t i)> &
 	std::cout << "Done!\n";
 
 }
+
+
+// The local volume-fraction variance sigma_V^2(R) of sphere packings (I_1,
+// I_config, and the MC_vfv family) was split into VolumeFractionVariance.cpp.

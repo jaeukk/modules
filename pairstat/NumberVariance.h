@@ -168,4 +168,8 @@ void MC_NV_Ensemble_Orientational(const std::function<Configuration(size_t i)> &
 	std::vector<GeometryVector> & Result, double Rmax, double dR, const std::vector<GeometryVector> & WindowCenters, const std::function<double(const GeometryVector &)> WindowSizeFunct = radius_in_Sphere);
 
 
+// The local volume-fraction variance sigma_V^2(R) of sphere packings (the MC_vfv
+// family) was split into VolumeFractionVariance.h.
+
+
 #endif

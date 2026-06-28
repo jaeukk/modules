@@ -29,6 +29,10 @@
  *  PeriodicCellList, so only Mtilde is added here. Used by FFH / CCOptimization.) */
 double Mtilde(double k, double R, DimensionType d);
 
+// The spectral density chi_V(k) of sphere packings — SpectralDensity[_Lstorage]
+// and IsotropicSpectralDensity[_Lstorage] — was split into SpectralDensity.h.
+// (It is built from Mtilde, which stays here as the shared sphere form factor.)
+
 /** \brief Calculate the structure factor at a certain k.
  *  \param Config  A point configuration.
  *  \param k       The wavevector at which S(k) is evaluated.

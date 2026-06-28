@@ -23,10 +23,11 @@
 #include <PeriodicCellList.h>
 #include <GeometryVector.h>
 
-#include "PairCorrelation.h"
-#include "StructureFactor.h"
-#include "NumberVariance.h"
-#include "ContactStatistics.h"
+/* header files in $(pairstat) */
+#include <PairCorrelation.h>
+#include <StructureFactor.h>
+#include <NumberVariance.h>
+#include <ContactStatistics.h>
 
 class Computation
 {

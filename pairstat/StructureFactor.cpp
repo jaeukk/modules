@@ -6,6 +6,7 @@
 
 #include <complex>
 #include <cmath>
+#include <map>
 #include <algorithm>
 #include <boost/math/special_functions/bessel.hpp>	// Mtilde (cyl_bessel_j)
 
@@ -43,6 +44,9 @@ struct SkBin
 	SkBin() : Sum1(0), SumK1(0), SumK2(0), SumS(0), SumS2(0)
 	{}
 };
+
+// The spectral density chi_V(k) of sphere packings (SpectralDensity[_Lstorage]
+// and IsotropicSpectralDensity[_Lstorage]) was split into SpectralDensity.cpp.
 
 
 double StructureFactor(const Configuration & Config, const GeometryVector & k)
