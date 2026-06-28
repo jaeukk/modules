@@ -100,3 +100,11 @@ void GetRandomVector(int Dimension, RandomGenerator & gen, double * result)
 
 	return;
 }
+
+//random vector uniformly distributed in the cube [-1,1]^d.
+void RandomVectorInCube(DimensionType d, RandomGenerator & gen, GeometryVector & result)
+{
+	result.SetDimension(d);
+	for (DimensionType i = 0; i < d; i++)
+		result.x[i] = 2.0*(gen.RandomDouble() - 0.5);
+}

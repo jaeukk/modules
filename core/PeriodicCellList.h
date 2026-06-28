@@ -83,7 +83,7 @@ protected:
 	mutable double VicinityLatticesRc2;
 	bool SortedVicinityList;//use sorted vicinity lattice list, which takes some time to sort, but makes iteration more efficient
 
-	/** \brief Recompute Cartesian coordinates of particle a from its relative coordinates. (CLAUDE)
+	/** \brief Recompute Cartesian coordinates of particle a from its relative coordinates.
 	 *  \param a Index of the particle to update. */
 	void UpdateCartesianCoordinates(size_t a)
 	{
@@ -96,7 +96,8 @@ protected:
 		for (DimensionType i = 0; i<this->Dimension; i++)
 			this->ParticleCartesians[a].AddFrom((this->BasisVector[i])*(this->ParticleRelatives[a].x[i]));
 	}
-	/** \brief Wrap particle a back into the primary periodic box. (CLAUDE)
+
+	/** \brief Wrap particle a back into the primary periodic box.
 	 *  \param a Index of the particle to wrap. */
 	void PutToPeriodicBox(size_t a)
 	{
@@ -118,9 +119,10 @@ protected:
 		}
 		return result;
 	}
+
 	/** \brief Compute the per-dimension cell index containing a relative coordinate.
 	 *  \param[out] index               Filled with the dimensional cell index.
-	 *  \param[in]  RelativeCoordinates Point in relative (box) coordinates. (CLAUDE) */
+	 *  \param[in]  RelativeCoordinates Point in relative (box) coordinates. */
 	void GetFullIndex(signed long * index, const GeometryVector & RelativeCoordinates) const
 	{
 		for (DimensionType i = 0; i<this->Dimension; i++)
@@ -167,7 +169,7 @@ protected:
 	}
 
 
-	/** \brief Recursively enumerate cell-lattice points within a spherical shell into the vicinity list. (CLAUDE)
+	/** \brief Recursively enumerate cell-lattice points within a spherical shell into the vicinity list.
 	 *  \param now         Current cell-lattice point in Cartesian coordinates.
 	 *  \param DimIDo      Remaining dimension index to recurse over (0 terminates the recursion).
 	 *  \param nowRelative Current lattice shift in relative (cell-lattice) coordinates.
@@ -426,7 +428,7 @@ public:
 	}
 
 
-	/** \brief Reduce one basis vector against another to shorten the box, rebuilding the cell list. (CLAUDE)
+	/** \brief Reduce one basis vector against another to shorten the box, rebuilding the cell list.
 	 *  \param ilongest Index of the basis vector to reduce against the others. */
 	void TryRefineBasisVectors_inner(int ilongest)
 	{
@@ -473,7 +475,7 @@ public:
 	}
 
 
-	/** \brief Attempt to reduce all basis vectors to a more compact (near-orthogonal) box. (CLAUDE) */
+	/** \brief Attempt to reduce all basis vectors to a more compact (near-orthogonal) box. */
 	void TryRefineBasisVectors(void)
 	{
 		if (this->Dimension == 1)
@@ -483,15 +485,12 @@ public:
 	}
 
 
-	/** \brief Return the volume of the fundamental periodic cell. (CLAUDE) */
+	/** \brief Return the volume of the fundamental periodic cell.*/
 	double PeriodicVolume(void) const
 	{
-		//double result = ::Volume(this->BasisVector, this->Dimension);
-		//return result;
 		double result = 0;
 		if (this->vol <= 0.0) {
 			result = ::Volume(this->BasisVector, this->Dimension);
-			//this->vol = result;
 		}
 		else {
 			result = this->vol;
@@ -832,12 +831,11 @@ public:
 			}
 		}
 	}
-	/** \brief Move particle Num to a new relative coordinate, updating its cell assignment. (CLAUDE)
+	/** \brief Move particle Num to a new relative coordinate, updating its cell assignment.
 	 *  \param Num                   Index of the particle to move.
 	 *  \param newRelativeCoordinate Target position in relative (box) coordinates. */
 	void MoveParticle(size_t Num, const GeometryVector & newRelativeCoordinate)
 	{
-		//particle * a=&this->Particles[Num];
 		Index fromIndex;
 		fromIndex = this->GetIndex(Num);
 		std::vector<size_t > & currentCell = this->Cells[fromIndex];
@@ -852,17 +850,14 @@ public:
 		this->ParticleRelatives[Num] = newRelativeCoordinate;
 		for (DimensionType i = 0; i<this->Dimension; i++)
 		{
-			//while(this->ParticleRelatives[Num].x[i]>=1)
-			//	this->ParticleRelatives[Num].x[i]-=1;
-			//while(this->ParticleRelatives[Num].x[i]<0)
-			//	this->ParticleRelatives[Num].x[i]+=1;
 			this->ParticleRelatives[Num].x[i] -= std::floor(this->ParticleRelatives[Num].x[i]);
 			this->ParticleRelatives[Num].x[i] -= std::floor(this->ParticleRelatives[Num].x[i]);
 		}
 		this->UpdateCartesianCoordinates(Num);
 		this->UpdateCellList(itera, currentCell);
 	}
-	/** \brief Remove particle Num by swapping it with the last particle and updating cell lists. (CLAUDE)
+
+	/** \brief Remove particle Num by swapping it with the last particle and updating cell lists.
 	 *  \param Num Index of the particle to remove. */
 	void DeleteParticle(size_t Num)
 	{
@@ -921,14 +916,15 @@ public:
 			acurrentCell.pop_back();
 		}
 	}
-	/** \brief Return the i-th basis vector of the periodic box. (CLAUDE)
+
+	/** \brief Return the i-th basis vector of the periodic box.
 	 *  \param i Index of the basis vector. */
 	GeometryVector GetBasisVector(::DimensionType i) const
 	{
 		return this->BasisVector[i];
 	}
 
-	/** \brief Return the i-th reciprocal basis vector, computing and caching it if needed. (CLAUDE)
+	/** \brief Return the i-th reciprocal basis vector, computing and caching it if needed.
 	 *  \param i Index of the reciprocal basis vector. */
 	GeometryVector GetReciprocalBasisVector(::DimensionType i) const
 	{
@@ -1041,7 +1037,7 @@ public:
 				
 	}
 
-	/** \brief Recompute cell ranks from the current basis and reassign all particles to cells. (CLAUDE) */
+	/** \brief Recompute cell ranks from the current basis and reassign all particles to cells.*/
 	void RefineCellList(void)
 	{
 		this->ClearVicinityLatticeList();
@@ -1063,12 +1059,14 @@ public:
 			this->Cells[this->GetIndex(i)].push_back(i);
 		}
 	}
-	/** \brief Return the target (approximate) linear cell size. (CLAUDE) */
+
+	/** \brief Return the target (approximate) linear cell size. */
 	double GetCellSize(void)
 	{
 		return this->ApproximateCellSize;
 	}
-	/** \brief Enable or disable use of the sorted vicinity lattice list. (CLAUDE)
+
+	/** \brief Enable or disable use of the sorted vicinity lattice list. 
 	 *  \param SortedCellList True to use the sorted vicinity lattice list, false otherwise. */
 	void SetSortedCellList(bool SortedCellList)
 	{
@@ -1076,7 +1074,8 @@ public:
 			this->ClearVicinityLatticeList();
 		this->SortedVicinityList = SortedCellList;
 	}
-	/** \brief Set the target cell size, refining the cell list if cells become too large or small. (CLAUDE)
+
+	/** \brief Set the target cell size, refining the cell list if cells become too large or small.
 	 *  \param CellSize New target linear cell size. */
 	void SetCellSize(double CellSize)
 	{
@@ -1093,7 +1092,8 @@ public:
 		if (NeedRefine)
 			this->RefineCellList();
 	}
-	/** \brief Replace the box basis vectors, updating Cartesian coordinates and cell list. (CLAUDE)
+
+	/** \brief Replace the box basis vectors, updating Cartesian coordinates and cell list.
 	 *  \param NewBasisVectors Array of new basis vectors (one per dimension). */
 	void ChangeBasisVector(const GeometryVector NewBasisVectors[])
 	{
@@ -1122,10 +1122,10 @@ public:
 		this->vol = -1;
 		this->vol = this->PeriodicVolume();
 	}
+
 	/** \brief Remove all Particles */
 	void RemoveParticles(void)//remove all Particles
 	{
-		//this->Particles.clear();
 		this->ParticleCartesians.clear();
 		this->ParticleCharacteristics.clear();
 		this->ParticleRelatives.clear();
@@ -1133,7 +1133,8 @@ public:
 		for (auto iter = this->Cells.begin(); iter != this->Cells.end(); iter++)
 			iter->clear();
 	}
-	/** \brief Scale the box (and cell size) by Factor, isotropically rescaling all particle positions. (CLAUDE)
+
+	/** \brief Scale the box (and cell size) by Factor, isotropically rescaling all particle positions.
 	 *  \param Factor Multiplicative scaling factor applied to the box. */
 	virtual void Rescale(double Factor)
 	{
@@ -1145,14 +1146,16 @@ public:
 		/*reset volume*/
 		this->vol = -1.0;
 	}
-	/** \brief Rescale the box isotropically so its volume becomes NewVolume. (CLAUDE)
+
+	/** \brief Rescale the box isotropically so its volume becomes NewVolume.
 	 *  \param NewVolume Desired box volume after rescaling. */
 	virtual void Resize(double NewVolume)
 	{
 		double factor = std::pow(NewVolume / this->PeriodicVolume(), 1.0 / this->Dimension);
 		this->Rescale(factor);
 	}
-	/** \brief Convert Cartesian coordinates to relative (box) coordinates. (CLAUDE)
+
+	/** \brief Convert Cartesian coordinates to relative (box) coordinates.
 	 *  \param CartesianCoord Point in Cartesian coordinates.
 	 *  \return               The same point in relative (box) coordinates. */
 	GeometryVector CartesianCoord2RelativeCoord(const GeometryVector & CartesianCoord) const
@@ -1163,7 +1166,8 @@ public:
 
 		return result*(0.5 / pi);
 	}
-	/** \brief Convert relative (box) coordinates to Cartesian coordinates. (CLAUDE)
+
+	/** \brief Convert relative (box) coordinates to Cartesian coordinates. 
 	 *  \param RelativeCoord Point in relative (box) coordinates.
 	 *  \return              The same point in Cartesian coordinates. */
 	GeometryVector RelativeCoord2CartesianCoord(const GeometryVector & RelativeCoord) const
@@ -1174,14 +1178,16 @@ public:
 
 		return result;
 	}
-	/** \brief Wrap a relative-coordinate vector into its minimum-image representation in [-0.5, 0.5). (CLAUDE)
+
+	/** \brief Wrap a relative-coordinate vector into its minimum-image representation in [-0.5, 0.5). 
 	 *  \param a Relative-coordinate vector wrapped in place to its minimum image. */
 	void RelativeCoordToMinimumImage(GeometryVector & a) const
 	{
 		for (DimensionType i = 0; i<this->Dimension; i++)
 			a.x[i] -= std::floor(a.x[i]+0.5);
 	}
-	/** \brief Serialize dimension, basis, and particle data to a binary stream. (CLAUDE)
+
+	/** \brief Write dimension, basis, and particle data to a binary stream. 
 	 *  \param ofile Output stream to serialize into. */
 	void WriteBinary(std::ostream & ofile) const
 	{
@@ -1197,7 +1203,8 @@ public:
 			ofile.write((char *)(&this->ParticleCharacteristics[i]), sizeof(OtherCharacteristics));
 		}
 	}
-	/** \brief Construct a list by deserializing it from a binary stream (replaces a ReadBinary method). (CLAUDE)
+
+	/** \brief Construct a PeriodicCellList by reading a binary file (replaces a ReadBinary method). 
 	 *  \param ifile        Input stream to deserialize from.
 	 *  \param UseSortedList Choose sorted vicinity list for faster neighbor checks when geometry is fixed. */
 	// there is no such thing as void ReadBinary(std::istream & ifile)! Use the following constructor instead!
@@ -1248,7 +1255,7 @@ public:
 		this->vol = ::Volume(this->BasisVector, this->Dimension);
 	}
 
-	/** \brief Rotate the box to a standard lower-triangular orientation with descending basis-vector lengths. (CLAUDE) */
+	/** \brief Rotate the box to a standard lower-triangular orientation with descending basis-vector lengths. */
 	//rotate the current structure so that
 	//the 1st basis vector is (c11, 0, 0, ...)
 	//the 2nd basis vector is (c21, c22, 0, ...)
@@ -1259,6 +1266,7 @@ public:
 		::StandardizeOrientation(this->BasisVector, this->Dimension);
 		this->ChangeBasisVector(this->BasisVector);
 	}
+
 	/** \brief PeriodicCellList< of anything > can be converted to PeriocicCellList<Empty> */
 	//PeriodicCellList< of anything > can be converted to PeriocicCellList<Empty>
 	operator PeriodicCellList<Empty> const () const
@@ -1288,6 +1296,7 @@ public:
 		std::partial_sort(neighbors.begin(), neighbors.begin() + 1, neighbors.end(), [](const GeometryVector & left, const GeometryVector & right)->bool{return left.Modulus2() < right.Modulus2(); });
 		return std::sqrt(neighbors[0].Modulus2());
 	}
+
 	/** \brief Return the distance from particle No. i to the closest particle
 	 *  \param i Index of the particle whose nearest-neighbor distance is requested.
 	 *  \return  Distance from particle i to the nearest other particle. */
@@ -1331,6 +1340,7 @@ public:
 			return GeometryVector(r0_Relative.Dimension);
 		}
 	}
+	
 	/** \brief Least image displacement : input vector is in Cartesian coordinates
 	 *  \param i  Index of the particle.
 	 *  \param r0 Reference point in Cartesian coordinates.
@@ -1353,7 +1363,7 @@ public:
 		}
 	}
 
-	/** \brief Return a uniformly random Cartesian position within the periodic box. (CLAUDE) */
+	/** \brief Return a uniformly random Cartesian position within the periodic box. */
 	GeometryVector GetRandomPosition() {
 		RandomGenerator gen;
 		GeometryVector result;
@@ -1383,6 +1393,7 @@ public:
 			return 0;
 		}
 	}
+	
 	/** \brief The squared distance between i-th particle and test particle
 	 *  \param i    Index of the particle.
 	 *  \param test Test point in Cartesian coordinates.
@@ -1405,7 +1416,7 @@ public:
 		}
 	}
 
-	/** \brief Return the distance between particle i and particle j. (CLAUDE)
+	/** \brief Return the distance between particle i and particle j.
 	 *  \param i Index of the first particle.
 	 *  \param j Index of the second particle.
 	 *  \return  Minimum-image distance between particles i and j. */
@@ -1414,12 +1425,13 @@ public:
 	}
 
 };
+
 /** \brief Overlap all the configurations in that std::vector; require that all the configurations in the std::vector have the same basis vectors
  *  \param components Configurations to overlap, all sharing the same basis vectors.
  *  \return           A single list containing the particles of every input configuration. */
 //overlap all the configurations in that std::vector
 //require that all the configurations in the std::vector have the same basis vectors
-template<typename a>PeriodicCellList<a> CombinedList(const std::vector<PeriodicCellList<a> > & components)
+template<typename a> PeriodicCellList<a> CombinedList(const std::vector<PeriodicCellList<a> > & components)
 {
 	if(components.size()==0)
 		return PeriodicCellList<a>();
@@ -1432,6 +1444,7 @@ template<typename a>PeriodicCellList<a> CombinedList(const std::vector<PeriodicC
 	}
 	return result;
 }
+
 /** \brief config is a CombinedList of m PeriodicCellLists, extract the nth list
  *  \param config Combined list assembled from m equal-sized sub-lists.
  *  \param m      Total number of sub-lists combined into config.
@@ -1458,16 +1471,17 @@ template<typename a>PeriodicCellList<a> SeparateList(const PeriodicCellList<a> &
 	return result;
 }
 
-/** \brief Per-particle characteristic holding a short (up to 3-character) atom name. (CLAUDE) */
+/** \brief Per-particle characteristic holding a short (up to 3-character) atom name.  */
 struct AtomName
 {
 	char name[4];
-	/** \brief Construct an empty atom name. (CLAUDE) */
+	/** \brief Construct an empty atom name.  */
 	AtomName()
 	{
 		this->name[0]='\0';
 	}
-	/** \brief Construct from a C-string, truncating to 3 characters. (CLAUDE)
+
+	/** \brief Construct from a C-string, truncating to 3 characters.
 	 *  \param n Source C-string atom name. */
 	AtomName(const char * n)
 	{
@@ -1477,22 +1491,25 @@ struct AtomName
 };
 typedef PeriodicCellList<AtomName> Configuration;
 
-/** \brief Write a Configuration to a .pos text file with the given prefix. (CLAUDE)
+/** \brief Write a Configuration to a .pos text file with the given prefix. 
  *  \param prefix File name prefix (".pos" is appended).
  *  \param List   Configuration to write. */
 void Output(std::string prefix, const Configuration & List);
-/** \brief Write a Configuration in .pos text format to an output stream. (CLAUDE)
+
+/** \brief Write a Configuration in .pos text format to an output stream. 
  *  \param out  Output stream to write to.
  *  \param List Configuration to write. */
 void Output(std::ostream & out, const Configuration & List);
-/** \brief Write a Configuration in binary format to an output stream. (CLAUDE)
+
+/** \brief Write a Configuration in binary format to an output stream. 
  *  \param out  Output stream to write to.
  *  \param List Configuration to write. */
 inline void WriteBinary(std::ostream & out, const Configuration & List)
 {
 	List.WriteBinary(out);
 }
-/** \brief Write a Configuration in binary format to a .Config file with the given prefix. (CLAUDE)
+
+/** \brief Write a Configuration in binary format to a .Config file with the given prefix. 
  *  \param prefix File name prefix (".Config" is appended).
  *  \param List   Configuration to write. */
 inline void WriteBinary(std::string prefix, const Configuration & List)
@@ -1501,14 +1518,16 @@ inline void WriteBinary(std::string prefix, const Configuration & List)
 	std::fstream ofile(prefix.c_str(), std::fstream::out | std::fstream::binary);
 	WriteBinary(ofile, List);
 }
-/** \brief Read a Configuration in binary format from an input stream. (CLAUDE)
+
+/** \brief Read a Configuration in binary format from an input stream. 
  *  \param ifile Input stream to read from.
  *  \return      The deserialized Configuration. */
 inline Configuration ReadBinary(std::istream & ifile)
 {
 	return Configuration(ifile);
 }
-/** \brief Read a Configuration in binary format from a .Config file with the given prefix. (CLAUDE)
+
+/** \brief Read a Configuration in binary format from a .Config file with the given prefix. 
  *  \param prefix File name prefix (".Config" is appended).
  *  \return       The deserialized Configuration. */
 inline Configuration ReadBinary(std::string prefix)
@@ -1518,65 +1537,77 @@ inline Configuration ReadBinary(std::string prefix)
 	return ReadBinary(ifile);
 }
 
-/** \brief Read a Configuration from a .pos file with the given prefix. (CLAUDE)
+/** \brief Read a Configuration from a .pos file with the given prefix. 
  *  \param prefix File name prefix (".pos" is appended).
  *  \return       The Configuration read from file. */
 Configuration ReadPos(std::string prefix);
-/** \brief Read a Configuration in .pos format from an input stream. (CLAUDE)
+
+/** \brief Read a Configuration in .pos format from an input stream. 
  *  \param ifile Input stream in .pos format.
  *  \return      The Configuration read from the stream. */
 Configuration ReadPos(std::istream & ifile);
-/** \brief Read a Configuration from a HOOMD XML input stream. (CLAUDE)
+
+/** \brief Read a Configuration from a HOOMD XML input stream.
  *  \param ifile Input stream in HOOMD XML format.
  *  \return      The Configuration read from the stream. */
 Configuration ReadHoomdXml(std::istream & ifile);
-/** \brief Read a Configuration from a HOOMD .xml file with the given prefix. (CLAUDE)
+
+/** \brief Read a Configuration from a HOOMD .xml file with the given prefix.
  *  \param prefix File name prefix (".xml" is appended).
  *  \return       The Configuration read from file. */
 Configuration ReadHoomdXml(std::string prefix);
-/** \brief Read a Configuration from a stealth-format input stream with the given side length. (CLAUDE)
+
+/** \brief Read a Configuration from a stealth-format input stream with the given side length.
  *  \param file       Input stream in stealth format.
  *  \param SideLength Side length used for the (cubic) box basis vectors.
  *  \return           The Configuration read from the stream. */
 Configuration ReadStealthOutput(std::istream & file, double SideLength);
-/** \brief Read a Configuration from a stealth-format input stream (unit side length). (CLAUDE)
+
+/** \brief Read a Configuration from a stealth-format input stream (unit side length).
  *  \param file Input stream in stealth format.
  *  \return     The Configuration read from the stream. */
 Configuration ReadStealthOutput(std::istream & file);
-/** \brief Tile a Configuration NumberInEachSide times along every box direction. (CLAUDE)
+/** \brief Tile a Configuration NumberInEachSide times along every box direction.
  *  \param src             Source configuration to tile.
  *  \param NumberInEachSide Number of replicas along each box direction.
  *  \return                The tiled configuration. */
-Configuration MultiplicateStructure(const Configuration & src, size_t NumberInEachSide);
-/** \brief Tile a Configuration with per-direction replication counts. (CLAUDE)
+
+ Configuration MultiplicateStructure(const Configuration & src, size_t NumberInEachSide);
+
+ /** \brief Tile a Configuration with per-direction replication counts. 
  *  \param src             Source configuration to tile.
  *  \param NumberInEachSide Per-direction number of replicas.
  *  \return                The tiled configuration. */
 Configuration MultiplicateStructure(const Configuration & src, const std::vector<size_t> & NumberInEachSide);
-/** \brief Read a Configuration from a GROMACS .gro input stream. (CLAUDE)
+
+/** \brief Read a Configuration from a GROMACS .gro input stream. 
  *  \param file Input stream in GROMACS .gro format.
  *  \return     The Configuration read from the stream. */
 Configuration ReadGro(std::istream & file);
-/** \brief Return an empty unit cubic box configuration of dimension d. (CLAUDE)
+
+/** \brief Return an empty unit cubic box configuration of dimension d. 
  *  \param d        Spatial dimension of the box.
  *  \param CellSize Target linear cell size.
  *  \return         An empty unit cubic box configuration. */
 Configuration GetUnitCubicBox(DimensionType d, double CellSize=0.1);
 
-/** \brief Read a Configuration of relative coordinates from an input stream (unit side length). (CLAUDE)
+/** \brief Read a Configuration of relative coordinates from an input stream (unit side length).
  *  \param file Input stream of relative coordinates.
  *  \return     The Configuration read from the stream. */
 Configuration ReadCoordinate(std::istream & file);
-/** \brief Read a Configuration of relative coordinates with the given side length. (CLAUDE)
+
+/** \brief Read a Configuration of relative coordinates with the given side length.
  *  \param file       Input stream of relative coordinates.
  *  \param SideLength Side length used for the (cubic) box basis vectors.
  *  \return           The Configuration read from the stream. */
 Configuration ReadCoordinate(std::istream & file, double SideLength);
-/** \brief Read a Configuration of Cartesian coordinates from an input stream (unit side length). (CLAUDE)
+
+/** \brief Read a Configuration of Cartesian coordinates from an input stream (unit side length).
  *  \param file Input stream of Cartesian coordinates.
  *  \return     The Configuration read from the stream. */
 Configuration ReadCartesianCoordinate(std::istream & file);
-/** \brief Read a Configuration of Cartesian coordinates with the given side length. (CLAUDE)
+
+/** \brief Read a Configuration of Cartesian coordinates with the given side length.
  *  \param file       Input stream of Cartesian coordinates.
  *  \param SideLength Side length used for the (cubic) box basis vectors.
  *  \return           The Configuration read from the stream. */
@@ -1595,26 +1626,31 @@ private:
 	std::string IndexName, PackName;
 	long long NConfig;
 public:
-	/** \brief Construct an empty pack with no associated files. (CLAUDE) */
+	/** \brief Construct an empty pack with no associated files. */
 	ConfigurationPack()
 	{
 		this->NConfig=0;
 	}
-	/** \brief Construct and open a pack using the given file prefix. (CLAUDE)
+
+	/** \brief Construct and open a pack using the given file prefix. 
 	 *  \param prefix File name prefix identifying the pack files. */
 	ConfigurationPack(const std::string & prefix)
 	{
 		this->Open(prefix);
 	}
-	/** \brief Open (or attach to) the pack files identified by prefix. (CLAUDE)
+
+	/** \brief Open (or attach to) the pack files identified by prefix.
 	 *  \param prefix File name prefix identifying the pack files. */
 	void Open(const std::string & prefix);
-	/** \brief Return the number of configurations currently in the pack. (CLAUDE) */
+
+	/** \brief Return the number of configurations currently in the pack. */
 	long long NumConfig(void);
-	/** \brief Append a configuration to the pack files. (CLAUDE)
+
+	/** \brief Append a configuration to the pack files.
 	 *  \param c Configuration to append. */
 	void AddConfig(const Configuration & c);
-	/** \brief Read and return the i-th configuration from the pack. (CLAUDE)
+
+	/** \brief Read and return the i-th configuration from the pack.
 	 *  \param i Index of the configuration to read.
 	 *  \return  The i-th configuration in the pack. */
 	Configuration GetConfig(long long i);
@@ -1630,38 +1666,42 @@ public:
 class SpherePacking : public PeriodicCellList<double>
 {
 public:
-	/** \brief Construct an empty sphere packing. (CLAUDE) */
+	/** \brief Construct an empty sphere packing. */
 	SpherePacking() : PeriodicCellList()//, MaxRadius(0.0)
 	{
 	}
-	/** \brief Construct an empty sphere packing for a given box geometry. (CLAUDE)
+
+	/** \brief Construct an empty sphere packing for a given box geometry.
 	 *  \param Dimension    Spatial dimension.
 	 *  \param BasisVectors Basis vectors defining the periodic box.
 	 *  \param CellSize     Target linear cell size.
 	 *  \param UseSortedList Choose sorted vicinity list for faster neighbor checks when geometry is fixed. */
 	SpherePacking(DimensionType Dimension, GeometryVector * BasisVectors, double CellSize, bool UseSortedList=false);
-	/** \brief Construct from another list, assigning a uniform sphere radius to every particle. (CLAUDE)
+
+	/** \brief Construct from another list, assigning a uniform sphere radius to every particle.
 	 *  \param source Source list providing geometry and particle positions.
 	 *  \param radius Sphere radius assigned to every particle. */
 	template<typename add> SpherePacking(const PeriodicCellList<add> & source, const double & radius) : PeriodicCellList(source, radius)
 	{
 		this->MaxRadius=radius;
 	}
-	/** \brief Access the mutable radius of sphere Num. (CLAUDE)
+
+	/** \brief Access the mutable radius of sphere Num.
 	 *  \param Num Index of the sphere. */
 	virtual double & GetCharacteristics(size_t Num)
 	{
 		//this->MaxRadius = 0.0;
 		return this->ParticleCharacteristics[Num];
 	}
-	/** \brief Access the const radius of sphere Num. (CLAUDE)
+
+	/** \brief Access the const radius of sphere Num.
 	 *  \param Num Index of the sphere. */
 	virtual const double & GetCharacteristics(size_t Num) const
 	{
 		return this->ParticleCharacteristics[Num];
 	}
 
-	/** \brief Construct a sphere packing by deserializing it from a binary stream. (CLAUDE)
+	/** \brief Construct a sphere packing through a binary stream.
 	 *  \param ifile        Input stream to deserialize from.
 	 *  \param UseSortedList Choose sorted vicinity list for faster neighbor checks when geometry is fixed. */
 	SpherePacking(std::istream & ifile, bool UseSortedList=false) : PeriodicCellList<double>(ifile, UseSortedList)
@@ -1670,7 +1710,8 @@ public:
 		for(size_t i=0; i<this->NumParticle(); i++)
 			this->MaxRadius=std::max(this->MaxRadius, this->GetCharacteristics(i));
 	}
-	/** \brief Recompute the cached maximum sphere radius if it is currently invalid. (CLAUDE) */
+
+	/** \brief Recompute the cached maximum sphere radius if it is currently invalid. */
 	void UpdateMaxRadius(void) const
 	{
 		if (this->MaxRadius == 0.0)
@@ -1679,13 +1720,15 @@ public:
 				this->MaxRadius = std::max(this->MaxRadius, this->ParticleCharacteristics[i]);
 		}
 	}
-	/** \brief Return the largest sphere radius in the packing. (CLAUDE) */
+
+	/** \brief Return the largest sphere radius in the packing. */
 	double GetMaxRadius(void) const
 	{
 		UpdateMaxRadius();
 		return this->MaxRadius;
 	}
-	/** \brief Insert a sphere of the given radius at a relative coordinate. (CLAUDE)
+
+	/** \brief Insert a sphere of the given radius at a relative coordinate.
 	 *  \param radius            Radius of the sphere to insert.
 	 *  \param RelativeCoordinate Position of the sphere center in relative (box) coordinates. */
 	virtual void Insert(double radius, const GeometryVector & RelativeCoordinate);
@@ -1714,7 +1757,7 @@ public:
 	int CheckVoxelOverlap2(const GeometryVector & cr, double halfsize, double Radius) const;
 
 
-	/** \brief Check whether a sphere of the given radius placed at cr overlaps any existing sphere. (CLAUDE)
+	/** \brief Check whether a sphere of the given radius placed at cr overlaps any existing sphere.
 	 *  \param cr     Sphere center in relative (box) coordinates.
 	 *  \param Radius Cartesian radius of the upcoming sphere.
 	 *  \return       True if the new sphere overlaps any existing sphere. */
@@ -1749,7 +1792,7 @@ public:
 		return false;
 	}
 
-	/** \brief Return the packing fraction (total sphere volume divided by box volume). (CLAUDE) */
+	/** \brief Return the packing fraction (total sphere volume divided by box volume). */
 	double PackingFraction(void) const
 	{
 		double v1=0.0;
@@ -1777,13 +1820,15 @@ public:
 		/* inform that the volume is updated. */
 		this->vol = -1.0;
 	}
-	/** \brief Rescale the box and spheres isotropically so the box volume becomes NewVolume. (CLAUDE)
+
+	/** \brief Rescale the box and spheres isotropically so the box volume becomes NewVolume.
 	 *  \param NewVolume Desired box volume after rescaling. */
 	virtual void Resize(double NewVolume)
 	{
 		double factor = std::pow(NewVolume / this->PeriodicVolume(), 1.0 / this->Dimension);
 		this->Rescale(factor);
 	}
+
 	/** \brief Rescale particle sizes only
 	 *  \param factor Multiplicative scaling factor applied to sphere radii only. */
 	//Rescale particle sizes only
@@ -1794,7 +1839,7 @@ public:
 		this->MaxRadius *= factor;
 	}
 
-	/** \brief Set the radius of sphere index to newRadius, updating the cached maximum radius. (CLAUDE)
+	/** \brief Set the radius of particle index to newRadius, updating the cached maximum radius.
 	 *  \param newRadius New radius assigned to the sphere.
 	 *  \param index     Index of the sphere to update. */
 	void UpdateCharacteristics(double newRadius, int index) {
@@ -1819,21 +1864,23 @@ public:
 };
 
 
-/** \brief Read a SpherePacking from a Torquato-Jiao (TJ) format input stream. (CLAUDE)
+/** \brief Read a SpherePacking from a Torquato-Jiao (TJ) format input stream.
  *  \param inFile Input stream in TJ format.
  *  \return       The SpherePacking read from the stream. */
 SpherePacking ReadTJOutput(std::istream & inFile);
-/** \brief Read a SpherePacking from a TJ-format .dat file with the given prefix. (CLAUDE)
+
+/** \brief Read a SpherePacking from a TJ-format .dat file with the given prefix.
  *  \param prefix File name prefix (".dat" is appended).
  *  \return       The SpherePacking read from file. */
 SpherePacking ReadTJOutput(const std::string & prefix);
 
 
-/** \brief Write a SpherePacking in TJ format to an output file stream. (CLAUDE)
+/** \brief Write a SpherePacking in TJ format to an output file stream.
  *  \param ofile Output file stream to write to.
  *  \param pk    SpherePacking to write. */
 void WriteTJOutput(std::fstream & ofile, const SpherePacking & pk);
-/** \brief Write a SpherePacking in TJ format to a .dat file with the given prefix. (CLAUDE)
+
+/** \brief Write a SpherePacking in TJ format to a .dat file with the given prefix.
  *  \param prefix File name prefix (".dat" is appended).
  *  \param pk     SpherePacking to write. */
 void WriteTJOutput(const std::string & prefix, const SpherePacking & pk);
@@ -1848,26 +1895,33 @@ private:
 	std::string IndexName, PackName;
 	long long NConfig;
 public:
-	/** \brief Construct an empty pack with no associated files. (CLAUDE) */
+	/** \brief Construct an empty pack with no associated files.*/
 	SpherePackingPack() { this->NConfig = 0; }
-	/** \brief Construct and open a pack using the given file prefix. (CLAUDE)
+
+	/** \brief Construct and open a pack using the given file prefix.
 	 *  \param prefix File name prefix identifying the pack files. */
 	SpherePackingPack(const std::string & prefix) {
 		this->Open(prefix);
 	}
-	/** \brief Open (or attach to) the pack files identified by prefix. (CLAUDE)
+
+	/** \brief Open (or attach to) the pack files identified by prefix.
 	 *  \param prefix File name prefix identifying the pack files. */
-	void Open(const std::string &prefix);
-	/** \brief Return the number of sphere packings currently in the pack. (CLAUDE) */
+
+	 void Open(const std::string &prefix);
+
+	 /** \brief Return the number of sphere packings currently in the pack. */
 	long long NumConfig(void);
-	/** \brief Append a sphere packing to the pack files. (CLAUDE)
+
+	/** \brief Append a sphere packing to the pack files.
 	 *  \param c Sphere packing to append. */
 	void AddConfig(const SpherePacking &c);
-	/** \brief Read and return the i-th sphere packing from the pack. (CLAUDE)
+
+	/** \brief Read and return the i-th sphere packing from the pack. 
 	 *  \param i Index of the sphere packing to read.
 	 *  \return  The i-th sphere packing in the pack. */
 	SpherePacking GetConfig(long long i);
-	/** \brief Discard all sphere packings currently stored in the files. (CLAUDE) */
+
+	/** \brief Discard all sphere packings currently stored in the files. */
 	void Clear(void);
 };
 
@@ -1880,7 +1934,8 @@ typedef char VoxelType;
  *  \param[out] result   Filled with the occupancy grid (1 = occupied). */
 //pixelizing the configuration to MeshSide pixes in each side
 void DigitizeConfiguration(const Configuration & c, double radius, size_t MeshSide, std::vector<VoxelType> & result);
-/** \brief Pixelize the configuration and return the resulting occupancy grid. (CLAUDE)
+
+/** \brief Pixelize the configuration and return the resulting occupancy grid.
  *  \param c        Configuration to pixelize.
  *  \param radius   Sphere radius placed on each particle.
  *  \param MeshSide Number of pixels along each box direction.
@@ -1891,6 +1946,7 @@ inline std::vector<VoxelType> DigitizeConfiguration(const Configuration & c, dou
 	DigitizeConfiguration(c, radius, MeshSide, result);
 	return result;
 }
+
 /** \brief Calculate volume fraction if each particle is replaced with a hypersphere of certain radius; do this by pixelizing the configuration to MeshSide pixes in each side
  *  \param c        Configuration whose occupied volume is measured.
  *  \param radius   Sphere radius placed on each particle.
@@ -1973,7 +2029,7 @@ public:
 
 
 public:
-	/** \brief Build the bond list of a configuration, placing each particle in its own cluster. (CLAUDE)
+	/** \brief Build the bond list of a configuration, placing each particle in its own cluster.
 	 *  \param c    Configuration whose particles are merged into clusters.
 	 *  \param Rmax Maximum bond distance considered when building the bond list. */
 	ClusterMerger(const PeriodicCellList<Empty> & c, double Rmax)
@@ -2043,19 +2099,19 @@ public:
  *  \param OutputName File name prefix (".txt" is appended). */
 //output Cartesian coordinates of particles with the dimension and basis vectors
 void WriteConfiguration(const Configuration & conf, const std::string & OutputName);
-/** \brief Write a SpherePacking (dimension, basis vectors, coordinates and radii) to a .txt file. (CLAUDE)
+/** \brief Write a SpherePacking (dimension, basis vectors, coordinates and radii) to a .txt file. 
  *  \param conf       SpherePacking to write.
  *  \param OutputName File name prefix (".txt" is appended). */
 void WriteConfiguration(const SpherePacking & conf, const std::string & OutputName);
-/** \brief Write a generic PeriodicCellList (dimension, basis vectors, coordinates) to a .txt file. (CLAUDE)
+/** \brief Write a generic PeriodicCellList (dimension, basis vectors, coordinates) to a .txt file. 
  *  \param conf       PeriodicCellList to write.
  *  \param OutputName File name prefix (".txt" is appended). */
 template<typename T> void WriteConfiguration(const PeriodicCellList<T> & conf, const std::string & OutputName);
-/** \brief Read a Configuration from a .txt file written by WriteConfiguration. (CLAUDE)
+/** \brief Read a Configuration from a .txt file written by WriteConfiguration. 
  *  \param conf      Configuration to populate.
  *  \param InputName File name prefix (".txt" is appended). */
 void ReadConfiguration(Configuration & conf, const std::string & InputName);
-/** \brief Read a SpherePacking from a .txt file written by WriteConfiguration. (CLAUDE)
+/** \brief Read a SpherePacking from a .txt file written by WriteConfiguration. 
  *  \param conf      SpherePacking to populate.
  *  \param InputName File name prefix (".txt" is appended). */
 void ReadConfiguration(SpherePacking & conf, const std::string & InputName);

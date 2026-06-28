@@ -41,7 +41,7 @@ void StandardizeOrientation(GeometryVector * bas, DimensionType d)
 }
 
 
-/** \brief Determinant of a square GSL matrix via LU decomposition. (CLAUDE)
+/** \brief Determinant of a square GSL matrix via LU decomposition. 
  *  \param mat_ptr  Square matrix to evaluate (unmodified; copied internally).
  *  \return         The determinant of the matrix. */
 double get_det(gsl_matrix * mat_ptr) 

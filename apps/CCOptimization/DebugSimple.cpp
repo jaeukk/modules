@@ -3461,7 +3461,7 @@ return 0;
 							if (type == 0) {
 								c = GetLattice_config(basis, N);
 								int j = (int)floor(N*g.RandomDouble());
-								RandomVector(dim, temp);
+								RandomVectorInCube(dim, g, temp);
 								temp = delta*temp;
 								c.MoveParticle(j, c.CartesianCoord2RelativeCoord(c.GetCartesianCoordinates(j) + temp));
 								char name[200] = {};
@@ -3472,7 +3472,7 @@ return 0;
 								c = GetLattice_config(basis, N);
 								for (int j = 0; j < N; j++) {
 									//int j = (int)floor(N*g.RandomDouble());
-									RandomVector(dim, g, temp);
+									RandomVectorInCube(dim, g, temp);
 									temp = delta*temp;
 									c.MoveParticle(j, c.CartesianCoord2RelativeCoord(c.GetCartesianCoordinates(j) + temp));
 								}

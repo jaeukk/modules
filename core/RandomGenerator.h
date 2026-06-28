@@ -69,5 +69,11 @@ GeometryVector RandomUnitVector(DimensionType d);
  *  \param result Output buffer (length Dimension) to receive the components. */
 void GetRandomVector(int Dimension, RandomGenerator & gen, double * result);
 
+/** \brief Fill result with a random vector uniformly distributed in the cube [-1,1]^d.
+ *  \param d       Dimension of the vector to generate.
+ *  \param gen     Random number generator to sample from.
+ *  \param result  Output vector to receive the random components. */
+void RandomVectorInCube(DimensionType d, RandomGenerator & gen, GeometryVector & result);
+
 
 #endif

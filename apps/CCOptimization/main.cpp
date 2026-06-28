@@ -1076,7 +1076,7 @@ int GetMultiCCO(int argc, char ** argv){
 				for (size_t i = 0; i < sizes.size(); i++){					
 					for (size_t j = 0; j < sizes[i]; j++){
 						GeometryVector x;
-						RandomVector(dim, rngGod, x);
+						RandomVectorInCube(dim, rngGod, x);
 						pConfig.Insert(radii[i], x);
 					}
 				}

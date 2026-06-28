@@ -718,7 +718,7 @@ Configuration GetTarget(size_t i, int type, int N, std::vector<GeometryVector> &
 			c = GetLattice_config(basis, N);
 			for (int j = 0; j < N; j++) {
 				//int j = (int)floor(N*g.RandomDouble());
-				RandomVector(dim, g, temp);
+				RandomVectorInCube(dim, g, temp);
 				temp = parameter*temp;
 				c.MoveParticle(j, c.CartesianCoord2RelativeCoord(c.GetCartesianCoordinates(j) + temp));
 			}
@@ -761,7 +761,7 @@ Configuration GetTarget(size_t i, int type, int N, std::vector<GeometryVector> &
 		if (type == 0) {
 			c = GetLattice_config(basis, (int)pow(N, 1.0 / (double)dim));
 			for (int j = 0; j < N; j++) {
-				RandomVector(dim, g, temp);
+				RandomVectorInCube(dim, g, temp);
 				temp = parameter*temp;
 				c.MoveParticle(j, c.CartesianCoord2RelativeCoord(c.GetCartesianCoordinates(j) + temp));
 			}
