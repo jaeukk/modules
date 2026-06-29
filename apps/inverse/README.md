@@ -1,5 +1,8 @@
 # inverse — Collective-coordinate inversion
 
+> **Status: complete.** `make` builds a runnable `CCInversion.out` (no MathGL/OpenGL),
+> the example runs, and the app's own sources compile **warning-clean** (`-Wall`).
+
 Reconstructs point configurations from a prescribed subset of their **collective
 coordinates** (constraints on the structure factor / Fourier-space density), and
 studies how many distinct real-space configurations are consistent with a given
@@ -26,16 +29,20 @@ Please cite it when using this code.
 
 | file | contents |
 |------|----------|
-| [CCInversion.h](CCInversion.h) | CC-inversion potentials (`FrankInvertCCPotential*`), `SimpleHarmonic*`, `HS_pot`. |
+| [CCInversion.h](CCInversion.h) | CC-inversion potentials (`FrankInvertCCPotential*`). |
 | [CCInversionProblem.h](CCInversionProblem.h) / [.cpp](CCInversionProblem.cpp) | uniqueness-test drivers (`FrankInvCCUniqueTest*`) and the CLI entry `CCInversionProblem1`. |
-| [LatticeUtil.h](LatticeUtil.h) | `GetLattice_config` + `Find_LeastCommonDivider` (relocated from the retired `etc1.h`). |
 | [main.cpp](main.cpp) | entry point — the `CCInversion` command extracted from the legacy `Interfaces.h` dispatcher. |
+
+> The generic potentials `SimpleHarmonic`/`SimpleHarmonicF`/`HS_pot` and the
+> lattice helpers `GetLattice_config`/`Find_LeastCommonDivider` (`LatticeUtil.h`)
+> were moved into the **`misc`** module on 2026-06-29; this app now includes
+> `<LatticeUtil.h>` from there.
 
 ## Dependencies
 
 - **Modules:** `core`, `pairstat` (`StructureFactor` → `GetKs`), `potential`
   (`Potential`, `StructureOptimization`), and `misc` (`Discrepancy` → `MergeSort`,
-  compiled into this app's `obj/` by the makefile).
+  compiled into this app's `obj/` by the makefile; `LatticeUtil.h`).
 - **External:** GSL, NLopt, OpenMP. No MathGL/OpenGL needed — the `CCInversion`
   command does not touch the visualization implementations.
 

@@ -6,18 +6,18 @@
 # modules), placed under apps/ per the project layout.
 #
 # Contents:
-#   CCInversion.h          CC-inversion potentials (FrankInvertCCPotential*),
-#                          SimpleHarmonic*, HS_pot.
+#   CCInversion.h          CC-inversion potentials (FrankInvertCCPotential*).
 #   CCInversionProblem.*   the inversion-problem drivers (FrankInvCCUniqueTest*,
 #                          CCInversionProblem()).
-#   LatticeUtil.h          GetLattice_config + Find_LeastCommonDivider, relocated
-#                          here from the retired etc1.h (only consumer).
 #   main.cpp               CC-inversion entry point (the "CCInversion" command
 #                          extracted from the legacy Interfaces.h cli()).
 #
+# (SimpleHarmonic/SimpleHarmonicF/HS_pot and LatticeUtil.h were moved to the misc
+#  module on 2026-06-29; this app pulls LatticeUtil.h from misc via -I$(misc).)
+#
 # Depends on: core, pairstat (StructureFactor), potential (Potential,
 # StructureOptimization), and the support module misc (Discrepancy -> MergeSort,
-# ParameterSet, Interfaces).  External: GSL, NLopt.
+# ParameterSet, Interfaces, LatticeUtil).  External: GSL, NLopt.
 # The "CCInversion" command (CCInversionProblem1, used by main) does NOT need the
 # visualization implementations, so a runnable executable links without MathGL/
 # OpenGL.
