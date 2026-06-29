@@ -239,7 +239,7 @@ bool FrankInvCCUniqueTest2(const Configuration & target, size_t Nc, size_t numCo
 //				"real" : numConstraints = num real and imaginary parts in collective coordinates, consider real part if numConstraints is odd.
 //			    "image": numConstrainst = num real and imaginary parts in collective coordinates, consider imaginary part if numConstraints is odd.
 
-bool FrankInvCCUniqueTest3(const Configuration & target, size_t Nc, size_t numConstraints, std::vector<double> &results, std::vector<Configuration> &sols, std::fstream & outFile, double PositionTolerance, double EnergyTolerance, size_t NKPointsSkip, char * constType, int method, std::vector<std::vector<double>> & energy, const std::vector<Configuration> & initConfigs, std::vector<std::vector<double>> & proximity) {
+bool FrankInvCCUniqueTest3(const Configuration & target, size_t Nc, size_t numConstraints, std::vector<double> &results, std::vector<Configuration> &sols, std::fstream & outFile, double PositionTolerance, double EnergyTolerance, size_t NKPointsSkip, const char * constType, int method, std::vector<std::vector<double>> & energy, const std::vector<Configuration> & initConfigs, std::vector<std::vector<double>> & proximity) {
 	DimensionType d = target.GetDimension();
 	size_t NumParticle = target.NumParticle();
 	RandomGenerator gen(std::time(NULL) + (int)floor(target.GetCartesianCoordinates(1).x[0]));
@@ -369,11 +369,10 @@ bool FrankInvCCUniqueTest3(const Configuration & target, size_t Nc, size_t numCo
 			maxE = std::max(E, maxE);
 			minE = std::min(E, minE);
 			bool isDegenerated = false;
-			size_t identindex = 0;
 			double maxDr_temp = 0;
 			double proximityMetric = 0;
 
-			for (int n = 0; n < sols.size() && !isDegenerated; n++) {
+			for (size_t n = 0; n < sols.size() && !isDegenerated; n++) {
 				maxDr_temp = 0;
 				//proximityMetric = 0;
 				for (size_t j = 0; j < NumParticle; j++)
@@ -463,17 +462,16 @@ bool FrankInvCCUniqueTest3(const Configuration & target, size_t Nc, size_t numCo
 	//energy[1]: for secondary
 	//energy[i>1]: for others 
 	{
-		int index_secSol = 1;
 		int numSols = 0;
-		for (int i = 0; i < energy.size(); i++) {//order energy[1]: secondary...
+		for (int i = 0; i < (int)energy.size(); i++) {//order energy[1]: secondary...
 			MergeSort(energy[i]);
-			if (i != 0 && energy[i].size() >= numSols) {
-				index_secSol = i;	numSols = energy[i].size();
+			if (i != 0 && (int)energy[i].size() >= numSols) {
+					numSols = energy[i].size();
 			}
 		}
 		if (energy.size() >= 4) {//there are more than 2 other solutions; combine unimportant ones into a single data
-			for (int i = 3; i < energy.size(); i++) {
-				for (int j = 0; j < energy[i].size(); j++) {
+			for (int i = 3; i < (int)energy.size(); i++) {
+				for (int j = 0; j < (int)energy[i].size(); j++) {
 					energy[2].push_back(energy[i].at(j));
 				}
 			}
@@ -589,7 +587,7 @@ bool FrankInvCCUniqueTest4(const Configuration & target, size_t Nc, size_t numCo
 		temp.RemoveParticles();
 		if (initConfigs != nullptr) {
 			ConfigurationPack initConfigsSet(initConfigs);
-			if (initConfigsSet.NumConfig() > Nc) {//there are enough number of input configs
+			if (initConfigsSet.NumConfig() > (int)Nc) {//there are enough number of input configs
 				temp = initConfigsSet.GetConfig(i);
 				didYouLoad = true;
 			}
@@ -790,8 +788,6 @@ void CCInversionProblem(bool outConfig) {
 	std::ostream & ofile = std::cout;
 	char dir0[100] = "results/Reconst/";
 	char dir[100] = {};
-	char temp[200] = {};
-	char name[200] = {};
 	
 	//---- general parameters
 	DimensionType dim = 1;
@@ -799,7 +795,6 @@ void CCInversionProblem(bool outConfig) {
 	int numConfigs = 1000; //the number of target configs
 	int NKSkip = 0;
 	int numThreads = 0;
-	char constType[100] = {};
 	
 	//---- swap parameters
 	int N1 = 10;//min system size
@@ -817,7 +812,6 @@ void CCInversionProblem(bool outConfig) {
 	double delta2;
 	double d_delta;
 	bool doProxMetric;
-	double proximityUB = PositionTolerance*PositionTolerance;
 	{
 		ofile << "NKSkip=";
 		ifile >> NKSkip;
@@ -979,7 +973,7 @@ void CCInversionProblem(bool outConfig) {
 					std::vector<GeometryVector> summaryImag2;
 					
 					if (dim == 1) {
-						for (size_t M = N + M1; M <= N + M2; M++) {
+						for (size_t M = N + M1; M <= (size_t)(N + M2); M++) {
 							outfile << "-----------------------------------------------------------------" << std::endl;
 							outfile << "Testing N=" << N << "\tM=" << M << std::endl << std::endl;
 							outfile << "num\tconstr\tconfigs";
@@ -1026,7 +1020,7 @@ void CCInversionProblem(bool outConfig) {
 
 								std::vector<GeometryVector> table;
 								GeometryVector element(0, 0, 0, 0);	element.Dimension = 4;
-								for (int i = 1; i < bin.size(); i++) {
+								for (int i = 1; i < (int)bin.size(); i++) {
 									element.x[0] = 0.5*(bin[i] + bin[i - 1]);
 									table.push_back(element);
 								}
@@ -1036,7 +1030,7 @@ void CCInversionProblem(bool outConfig) {
 
 								{
 									table.resize(0);
-									for (int i = 0; i < av_X2.size(); i++) {
+									for (int i = 0; i < (int)av_X2.size(); i++) {
 										element.x[0] = (1.0 + 1.0 / d_x2)*0.5*av_X2[i];
 										table.push_back(element);
 									}
@@ -1129,20 +1123,20 @@ void CCInversionProblem(bool outConfig) {
 								//-------GENERATE INFO
 
 								FrankInvCCUniqueTest3(c, Nc, M, results_temp1, sols1, outfile1, PositionTolerance, EnergyTolerance, NKSkip, "real", method_num, energy1, initConfig, proximity1);
-								for (int j = 0; j < energy1.size(); j++)
+								for (int j = 0; j < (int)energy1.size(); j++)
 									MergeSort(energy1[j]);
 								
 
-								if (doProxMetric && proximity1.size()>numLegd) {
+								if (doProxMetric && (int)proximity1.size()>numLegd) {
 									//if there are more than 2 nontrivial solutions
 									//merge ternary solutions
 									for (int l = proximity1.size() - 1; l >= numLegd; l--) {
-										for (int k = 0; k < proximity1[l].size(); k++) {
+										for (int k = 0; k < (int)proximity1[l].size(); k++) {
 											proximity1[numLegd - 1].push_back(proximity1[l].at(k));
 										}
 									}
 									proximity1.resize(numLegd);
-									for (int j = 0; j < proximity1.size(); j++) {
+									for (int j = 0; j < (int)proximity1.size(); j++) {
 										MergeSort(proximity1[j]);
 									}
 								}
@@ -1155,19 +1149,19 @@ void CCInversionProblem(bool outConfig) {
 								}
 								else {//number of constraints = odd
 									FrankInvCCUniqueTest3(c, Nc, M, results_temp2, sols2, outfile1, PositionTolerance, EnergyTolerance, NKSkip, "image", method_num, energy2, initConfig, proximity2);
-									for (int j = 0; j < energy2.size(); j++)
+									for (int j = 0; j < (int)energy2.size(); j++)
 										MergeSort(energy2[j]);
 
-									if (doProxMetric && proximity2.size()>numLegd) {
+									if (doProxMetric && (int)proximity2.size()>numLegd) {
 											//if there are more than 2 nontrivial solutions
 											//merge ternary solutions
 											for (int l = proximity2.size() - 1; l >= numLegd; l--) {
-												for (int k = 0; k < proximity2[l].size(); k++) {
+												for (int k = 0; k < (int)proximity2[l].size(); k++) {
 													proximity2[numLegd - 1].push_back(proximity2[l].at(k));
 												}
 											}
 											proximity2.resize(numLegd);
-											for (int j = 0; j < proximity2.size(); j++) {
+											for (int j = 0; j < (int)proximity2.size(); j++) {
 												MergeSort(proximity2[j]);
 											}
 									}
@@ -1197,7 +1191,7 @@ void CCInversionProblem(bool outConfig) {
 //								numSols2[i] = sols2.size();
 
 								//organize output!!
-								if (M >= N && outConfig) {
+								if ((int)M >= N && outConfig) {
 									//TARGET
 									Merge_Sort(sols1[0], 0);
 									//SOLUTIONS: REAL CONDITION
@@ -1226,7 +1220,7 @@ void CCInversionProblem(bool outConfig) {
 										outfile << count << "\tTarget\t";
 										{//TARGET
 											
-											for (int z = 0; z < sols1[0].NumParticle(); z++)
+											for (int z = 0; z < (int)sols1[0].NumParticle(); z++)
 												outfile << std::setprecision(7) << sols1[0].GetCartesianCoordinates(z).x[0] << ",\t";
 
 											outfile << "\n";
@@ -1243,9 +1237,9 @@ void CCInversionProblem(bool outConfig) {
 											outfile << results_temp1[6] << "\t" << results_temp1[7] << "\t" << results_temp1[8] << std::endl;
 										}
 										else {//MULTIPLE SOLUTIONS
-											for (int t = 0; t < sols1.size(); t++) {
+											for (int t = 0; t < (int)sols1.size(); t++) {
 												outfile << count << "\tReal\t";
-												for (int y = 0; y < sols1[t].NumParticle(); y++)
+												for (int y = 0; y < (int)sols1[t].NumParticle(); y++)
 													outfile << sols1[t].GetCartesianCoordinates(y).x[0] << ",\t";
 
 												outfile << results_temp1[3 * t + 6] << "\t" << results_temp1[3 * t + 7] << "\t" << results_temp1[3 * t + 8] << std::endl;
@@ -1263,9 +1257,9 @@ void CCInversionProblem(bool outConfig) {
 											outfile << results_temp2[6] << "\t" << results_temp2[7] << "\t" << results_temp2[8] << std::endl;
 										}
 										else {//multiple solutions in real constraints
-											for (int t = 0; t < sols2.size(); t++) {
+											for (int t = 0; t < (int)sols2.size(); t++) {
 												outfile << count << "\tImag\t";
-												for (int y = 0; y < sols2[t].NumParticle(); y++)
+												for (int y = 0; y < (int)sols2[t].NumParticle(); y++)
 													outfile << sols2[t].GetCartesianCoordinates(y).x[0] << ",\t";
 
 												outfile << results_temp2[3 * t + 6] << "\t" << results_temp2[3 * t + 7] << "\t" << results_temp2[3 * t + 8] << std::endl;
@@ -1444,18 +1438,18 @@ void CCInversionProblem(bool outConfig) {
 								for (int i = 0; i < numConfigs; i++) {//For each TARGET
 									
 								  //C(i) condition: REAL
-									for (int l = 0; l < tab_energy[2 * i].size(); l++) {//For each TRIAL initial configs
+									for (int l = 0; l < (int)tab_energy[2 * i].size(); l++) {//For each TRIAL initial configs
 										int n = 0;
 										std::vector<double> list(dE.size());
-										for (int m = 0; m < tab_energy[2 * i][l].size(); m++) {
+										for (int m = 0; m < (int)tab_energy[2 * i][l].size(); m++) {
 											n = (int)floor(log(tab_energy[2 * i][l][m] / Energy0) / log(xdE));
-											if (n >= 0 && n < list.size())
+											if (n >= 0 && n < (int)list.size())
 												list.at(n)++;
 										}
 
 										double num = (double)tab_energy[2 * i][l].size();
 										if (num > 0.5) {
-											for (int m = 0; m < list.size(); m++) { //probability distributions
+											for (int m = 0; m < (int)list.size(); m++) { //probability distributions
 												list.at(m) /= num;
 											}
 										}
@@ -1464,7 +1458,7 @@ void CCInversionProblem(bool outConfig) {
 										EnergyDist[l][0].x[3]++; // the number of target configurations yielding l-th solution.
 
 										
-										for (int m = 0; m < list.size(); m++) { //Average of distributions!
+										for (int m = 0; m < (int)list.size(); m++) { //Average of distributions!
 #pragma omp atomic
 												EnergyDist[l][m].x[1] += list[m];
 #pragma omp atomic
@@ -1476,17 +1470,17 @@ void CCInversionProblem(bool outConfig) {
 
 									//C(ii) condition: IMAG
 									if (M % 2 != 0) {//real \neq imag
-										for (int l = 0; l < tab_energy[2 * i + 1].size(); l++) {//For each TRIAL initial configs
+										for (int l = 0; l < (int)tab_energy[2 * i + 1].size(); l++) {//For each TRIAL initial configs
 											int n = 0;
 											std::vector<double> list(dE.size());
-											for (int m = 0; m < tab_energy[2 * i+1][l].size(); m++) {
+											for (int m = 0; m < (int)tab_energy[2 * i+1][l].size(); m++) {
 												n = (int)floor(log(tab_energy[2 * i+1][l][m] / Energy0) / log(xdE));
-												if (n >= 0 && n < list.size())
+												if (n >= 0 && n < (int)list.size())
 													list.at(n)++;
 											}
 											double num = (double)tab_energy[2 * i + 1][l].size();
 											if (num > 0.5) {
-												for (int m = 0; m < list.size(); m++) { //probability distributions
+												for (int m = 0; m < (int)list.size(); m++) { //probability distributions
 													list.at(m) /= num;
 												}
 											}
@@ -1495,7 +1489,7 @@ void CCInversionProblem(bool outConfig) {
 											EnergyDist[3+l][0].x[3]++; // the number of target configurations yielding l-th solution.
 
 											
-											for (int m = 0; m < list.size(); m++) { //Average of distributions!
+											for (int m = 0; m < (int)list.size(); m++) { //Average of distributions!
 #pragma omp atomic
 													EnergyDist[3+l][m].x[1] += list[m];
 #pragma omp atomic
@@ -1517,7 +1511,7 @@ void CCInversionProblem(bool outConfig) {
 									
 
 									if (num > 0.5) {//Only when there are more than a single datum
-										for (int j = 0; j < EnergyDist[i].size(); j++) {
+										for (int j = 0; j < (int)EnergyDist[i].size(); j++) {
 											EnergyDist[i][j].x[2] = sqrt(fabs(EnergyDist[i][j].x[2] / num - EnergyDist[i][j].x[1] / num * EnergyDist[i][j].x[1] / num) / num);
 											EnergyDist[i][j].x[1] /= num; //*dE[j];
 																		  //EnergyDist[i][j].x[2] /= num; //*dE[j];
@@ -1550,17 +1544,17 @@ void CCInversionProblem(bool outConfig) {
 										//original data are processed s.t. the size of proximity is not larger than 4 (total, trivial, and leading nontrivial, and nontrivials).
 										
 										//REAL; C(I) condition
-										for (int l = 0; l < tab_proxy[2*i].size(); l++) {// l th solution!
+										for (int l = 0; l < (int)tab_proxy[2*i].size(); l++) {// l th solution!
 											int n = 0;
 											std::vector<double> list(av_X2.size()); //histogram
-											for (int m = 0; m < tab_proxy[2*i][l].size(); m++) {
+											for (int m = 0; m < (int)tab_proxy[2*i][l].size(); m++) {
 												n = (int)floor(log(tab_proxy[2*i][l][m] / x0) / log(d_x2));
-												if (n >= 0 && n < list.size())
+												if (n >= 0 && n < (int)list.size())
 													list.at(n)++;
 											}
 											double deno = (double)tab_proxy[2 * i][l].size();
 											if (deno > 0.5) {
-												for (int m = 0; m < list.size(); m++) 											
+												for (int m = 0; m < (int)list.size(); m++) 											
 													list.at(m) /= deno;//*dE[m];
 											}
 
@@ -1568,7 +1562,7 @@ void CCInversionProblem(bool outConfig) {
 											ProximityDist[l][0].x[3]++;	//The occurence of l-th solution
 											//double num_inv = 1.0 / (double)ProximityDist[l][0].x[3];
 											//	std::cout << "num = " << num << ",\t";
-											for (int m = 0; m < list.size(); m++) {
+											for (int m = 0; m < (int)list.size(); m++) {
 #pragma omp atomic
 												ProximityDist[l][m].x[1] += list[m];
 #pragma omp atomic
@@ -1580,17 +1574,17 @@ void CCInversionProblem(bool outConfig) {
 									
 										//IMAG; C(ii) condition
 										if (M % 2 != 0) {//a.k.a. C(i) and C(ii) are different
-											for (int l = 0; l < tab_proxy[2 * i+1].size(); l++) {
+											for (int l = 0; l < (int)tab_proxy[2 * i+1].size(); l++) {
 												int n = 0;
 												std::vector<double> list(av_X2.size()); //histogram
-												for (int m = 0; m < tab_proxy[2 * i+1][l].size(); m++) {
+												for (int m = 0; m < (int)tab_proxy[2 * i+1][l].size(); m++) {
 													n = (int)floor(log(tab_proxy[2 * i+1][l][m] / x0) / log(d_x2));
-													if (n >= 0 && n < list.size())
+													if (n >= 0 && n < (int)list.size())
 														list.at(n)++;
 												}
 												double deno = (double)tab_proxy[2 * i + 1][l].size();
 												if (deno > 0.5) {
-													for (int m = 0; m < list.size(); m++)
+													for (int m = 0; m < (int)list.size(); m++)
 														list.at(m) /= deno;//*dE[m];  : list = probability
 													
 												}
@@ -1598,7 +1592,7 @@ void CCInversionProblem(bool outConfig) {
 #pragma omp atomic
 												ProximityDist[l+ numLegd][0].x[3]++; 	//The occurence of l-th solution
 
-												for (int m = 0; m < list.size(); m++) {
+												for (int m = 0; m < (int)list.size(); m++) {
 #pragma omp atomic
 													ProximityDist[l + numLegd][m].x[1] += list[m];
 #pragma omp atomic
@@ -1614,7 +1608,7 @@ void CCInversionProblem(bool outConfig) {
 									for (int i = 0; i < 8; i++) {
 										double num = ProximityDist[i][0].x[3];	//The occurence of ith solution
 										if (num > 0) {
-											for (int j = 0; j < ProximityDist[i].size(); j++) {
+											for (int j = 0; j < (int)ProximityDist[i].size(); j++) {
 												ProximityDist[i][j].x[1] /= num;
 												ProximityDist[i][j].x[2] = sqrt(fabs(ProximityDist[i][j].x[2]/num - ProximityDist[i][j].x[1] * ProximityDist[i][j].x[1]) / num);
 												//ProximityDist[i][j].x[1] /= (1.0 - 1.0 / d_x2)*av_X2[j];
@@ -1623,13 +1617,13 @@ void CCInversionProblem(bool outConfig) {
 
 
 											if (i == 0) {
-												sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_real_total", dir, dim, systName, method, N, (int)M, i);
+												sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_real_total", dir, dim, systName, method, N, (int)M);
 											}
 											else if (i < 4) {
 												sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_real_%d", dir, dim, systName, method, N, (int)M, i - 1);
 											}
 											else if (i == 4) {
-												sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_imag_total", dir, dim, systName, method, N, (int)M, i);
+												sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_imag_total", dir, dim, systName, method, N, (int)M);
 											}
 											else {
 												sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_imag_%d", dir, dim, systName, method, N, (int)M, i - 5);
@@ -1952,8 +1946,6 @@ void CCInversionProblem1(bool outConfig) {
 	char dir0[100];// = "results/Reconst/";
 	sprintf(dir0, "%s/results/Reconst/", masterDir.c_str());
 	char dir[100] = {};
-	char temp[200] = {};
-	char name[200] = {};
 
 	//---- general parameters
 	DimensionType dim = 1;
@@ -1961,7 +1953,6 @@ void CCInversionProblem1(bool outConfig) {
 	int numConfigs = 1000; //the number of target configs
 	int NKSkip = 0;
 	int numThreads = 0;
-	char constType[100] = {};
 
 	//---- swap parameters
 	int N1 = 10;//min system size
@@ -1979,7 +1970,6 @@ void CCInversionProblem1(bool outConfig) {
 	double delta2;
 	double d_delta;
 	bool doProxMetric;
-	double proximityUB = PositionTolerance * PositionTolerance;
 	{
 		ofile << "NKSkip=";
 		ifile >> NKSkip;
@@ -2146,7 +2136,7 @@ void CCInversionProblem1(bool outConfig) {
 					std::vector<GeometryVector> summaryImag2;
 
 					if (dim == 1) {
-						for (size_t M = N + M1; M <= N + M2; M++) {
+						for (size_t M = N + M1; M <= (size_t)(N + M2); M++) {
 							outfile << "-----------------------------------------------------------------\n";
 							outfile << "Testing N=" << N << "\tM=" << M << "\n\n";
 							outfile << "num\tconstr\tconfigs";
@@ -2193,7 +2183,7 @@ void CCInversionProblem1(bool outConfig) {
 
 								std::vector<GeometryVector> table;
 								GeometryVector element(0, 0, 0, 0);	element.Dimension = 4;
-								for (int i = 1; i < bin.size(); i++) {
+								for (int i = 1; i < (int)bin.size(); i++) {
 									element.x[0] = 0.5*(bin[i] + bin[i - 1]);
 									table.push_back(element);
 								}
@@ -2203,7 +2193,7 @@ void CCInversionProblem1(bool outConfig) {
 
 								{
 									table.resize(0);
-									for (int i = 0; i < av_X2.size(); i++) {
+									for (int i = 0; i < (int)av_X2.size(); i++) {
 										element.x[0] = (1.0 + 1.0 / d_x2)*0.5*av_X2[i];
 										table.push_back(element);
 									}
@@ -2296,20 +2286,20 @@ void CCInversionProblem1(bool outConfig) {
 								//-------GENERATE INFO
 
 								FrankInvCCUniqueTest3(c, Nc, M, results_temp1, sols1, outfile1, PositionTolerance, EnergyTolerance, NKSkip, "real", method_num, energy1, initConfig, proximity1);
-								for (int j = 0; j < energy1.size(); j++)
+								for (int j = 0; j < (int)energy1.size(); j++)
 									MergeSort(energy1[j]);
 
 
-								if (doProxMetric && proximity1.size()>numLegd) {
+								if (doProxMetric && (int)proximity1.size()>numLegd) {
 									//if there are more than 2 nontrivial solutions
 									//merge ternary solutions
 									for (int l = proximity1.size() - 1; l >= numLegd; l--) {
-										for (int k = 0; k < proximity1[l].size(); k++) {
+										for (int k = 0; k < (int)proximity1[l].size(); k++) {
 											proximity1[numLegd - 1].push_back(proximity1[l].at(k));
 										}
 									}
 									proximity1.resize(numLegd);
-									for (int j = 0; j < proximity1.size(); j++) {
+									for (int j = 0; j < (int)proximity1.size(); j++) {
 										MergeSort(proximity1[j]);
 									}
 								}
@@ -2322,19 +2312,19 @@ void CCInversionProblem1(bool outConfig) {
 								}
 								else {//number of constraints = odd
 									FrankInvCCUniqueTest3(c, Nc, M, results_temp2, sols2, outfile1, PositionTolerance, EnergyTolerance, NKSkip, "image", method_num, energy2, initConfig, proximity2);
-									for (int j = 0; j < energy2.size(); j++)
+									for (int j = 0; j < (int)energy2.size(); j++)
 										MergeSort(energy2[j]);
 
-									if (doProxMetric && proximity2.size()>numLegd) {
+									if (doProxMetric && (int)proximity2.size()>numLegd) {
 										//if there are more than 2 nontrivial solutions
 										//merge ternary solutions
 										for (int l = proximity2.size() - 1; l >= numLegd; l--) {
-											for (int k = 0; k < proximity2[l].size(); k++) {
+											for (int k = 0; k < (int)proximity2[l].size(); k++) {
 												proximity2[numLegd - 1].push_back(proximity2[l].at(k));
 											}
 										}
 										proximity2.resize(numLegd);
-										for (int j = 0; j < proximity2.size(); j++) {
+										for (int j = 0; j < (int)proximity2.size(); j++) {
 											MergeSort(proximity2[j]);
 										}
 									}
@@ -2364,7 +2354,7 @@ void CCInversionProblem1(bool outConfig) {
 								//								numSols2[i] = sols2.size();
 
 								//organize output!!
-								if (M >= N && outConfig) {
+								if ((int)M >= N && outConfig) {
 									//TARGET
 									Merge_Sort(sols1[0], 0);
 									//SOLUTIONS: REAL CONDITION
@@ -2394,7 +2384,7 @@ void CCInversionProblem1(bool outConfig) {
 										outfile << count << "\tTarget\t";
 										{//TARGET
 
-											for (int z = 0; z < sols1[0].NumParticle(); z++)
+											for (int z = 0; z < (int)sols1[0].NumParticle(); z++)
 												outfile << std::setprecision(7) << sols1[0].GetCartesianCoordinates(z).x[0] << ",\t";
 
 											outfile << "\n";
@@ -2411,9 +2401,9 @@ void CCInversionProblem1(bool outConfig) {
 											outfile << results_temp1[6] << "\t" << results_temp1[7] << "\t" << results_temp1[8] << std::endl;
 										}
 										else {//MULTIPLE SOLUTIONS
-											for (int t = 0; t < sols1.size(); t++) {
+											for (int t = 0; t < (int)sols1.size(); t++) {
 												outfile << count << "\tReal\t";
-												for (int y = 0; y < sols1[t].NumParticle(); y++)
+												for (int y = 0; y < (int)sols1[t].NumParticle(); y++)
 													outfile << sols1[t].GetCartesianCoordinates(y).x[0] << ",\t";
 
 												outfile << results_temp1[3 * t + 6] << "\t" << results_temp1[3 * t + 7] << "\t" << results_temp1[3 * t + 8] << "\t";
@@ -2438,9 +2428,9 @@ void CCInversionProblem1(bool outConfig) {
 											outfile << results_temp2[6] << "\t" << results_temp2[7] << "\t" << results_temp2[8] << std::endl;
 										}
 										else {//multiple solutions in real constraints
-											for (int t = 0; t < sols2.size(); t++) {
+											for (int t = 0; t < (int)sols2.size(); t++) {
 												outfile << count << "\tImag\t";
-												for (int y = 0; y < sols2[t].NumParticle(); y++)
+												for (int y = 0; y < (int)sols2[t].NumParticle(); y++)
 													outfile << sols2[t].GetCartesianCoordinates(y).x[0] << ",\t";
 
 												outfile << results_temp2[3 * t + 6] << "\t" << results_temp2[3 * t + 7] << "\t" << results_temp2[3 * t + 8] << "\t"; 
@@ -2625,18 +2615,18 @@ void CCInversionProblem1(bool outConfig) {
 							for (int i = 0; i < numConfigs; i++) {//For each TARGET
 
 																  //C(i) condition: REAL
-								for (int l = 0; l < tab_energy[2 * i].size(); l++) {//For each TRIAL initial configs
+								for (int l = 0; l < (int)tab_energy[2 * i].size(); l++) {//For each TRIAL initial configs
 									int n = 0;
 									std::vector<double> list(dE.size());
-									for (int m = 0; m < tab_energy[2 * i][l].size(); m++) {
+									for (int m = 0; m < (int)tab_energy[2 * i][l].size(); m++) {
 										n = (int)floor(log(tab_energy[2 * i][l][m] / Energy0) / log(xdE));
-										if (n >= 0 && n < list.size())
+										if (n >= 0 && n < (int)list.size())
 											list.at(n)++;
 									}
 
 									double num = (double)tab_energy[2 * i][l].size();
 									if (num > 0.5) {
-										for (int m = 0; m < list.size(); m++) { //probability distributions
+										for (int m = 0; m < (int)list.size(); m++) { //probability distributions
 											list.at(m) /= num;
 										}
 									}
@@ -2645,7 +2635,7 @@ void CCInversionProblem1(bool outConfig) {
 									EnergyDist[l][0].x[3]++; // the number of target configurations yielding l-th solution.
 
 
-									for (int m = 0; m < list.size(); m++) { //Average of distributions!
+									for (int m = 0; m < (int)list.size(); m++) { //Average of distributions!
 #pragma omp atomic
 										EnergyDist[l][m].x[1] += list[m];
 #pragma omp atomic
@@ -2657,17 +2647,17 @@ void CCInversionProblem1(bool outConfig) {
 
 								//C(ii) condition: IMAG
 								if (M % 2 != 0) {//real \neq imag
-									for (int l = 0; l < tab_energy[2 * i + 1].size(); l++) {//For each TRIAL initial configs
+									for (int l = 0; l < (int)tab_energy[2 * i + 1].size(); l++) {//For each TRIAL initial configs
 										int n = 0;
 										std::vector<double> list(dE.size());
-										for (int m = 0; m < tab_energy[2 * i + 1][l].size(); m++) {
+										for (int m = 0; m < (int)tab_energy[2 * i + 1][l].size(); m++) {
 											n = (int)floor(log(tab_energy[2 * i + 1][l][m] / Energy0) / log(xdE));
-											if (n >= 0 && n < list.size())
+											if (n >= 0 && n < (int)list.size())
 												list.at(n)++;
 										}
 										double num = (double)tab_energy[2 * i + 1][l].size();
 										if (num > 0.5) {
-											for (int m = 0; m < list.size(); m++) { //probability distributions
+											for (int m = 0; m < (int)list.size(); m++) { //probability distributions
 												list.at(m) /= num;
 											}
 										}
@@ -2676,7 +2666,7 @@ void CCInversionProblem1(bool outConfig) {
 										EnergyDist[3 + l][0].x[3]++; // the number of target configurations yielding l-th solution.
 
 
-										for (int m = 0; m < list.size(); m++) { //Average of distributions!
+										for (int m = 0; m < (int)list.size(); m++) { //Average of distributions!
 #pragma omp atomic
 											EnergyDist[3 + l][m].x[1] += list[m];
 #pragma omp atomic
@@ -2698,7 +2688,7 @@ void CCInversionProblem1(bool outConfig) {
 
 
 								if (num > 0.5) {//Only when there are more than a single datum
-									for (int j = 0; j < EnergyDist[i].size(); j++) {
+									for (int j = 0; j < (int)EnergyDist[i].size(); j++) {
 										EnergyDist[i][j].x[2] = sqrt(fabs(EnergyDist[i][j].x[2] / num - EnergyDist[i][j].x[1] / num * EnergyDist[i][j].x[1] / num) / num);
 										EnergyDist[i][j].x[1] /= num; //*dE[j];
 																	  //EnergyDist[i][j].x[2] /= num; //*dE[j];
@@ -2731,17 +2721,17 @@ void CCInversionProblem1(bool outConfig) {
 									//original data are processed s.t. the size of proximity is not larger than 4 (total, trivial, and leading nontrivial, and nontrivials).
 
 									//REAL; C(I) condition
-									for (int l = 0; l < tab_proxy[2 * i].size(); l++) {// l th solution!
+									for (int l = 0; l < (int)tab_proxy[2 * i].size(); l++) {// l th solution!
 										int n = 0;
 										std::vector<double> list(av_X2.size()); //histogram
-										for (int m = 0; m < tab_proxy[2 * i][l].size(); m++) {
+										for (int m = 0; m < (int)tab_proxy[2 * i][l].size(); m++) {
 											n = (int)floor(log(tab_proxy[2 * i][l][m] / x0) / log(d_x2));
-											if (n >= 0 && n < list.size())
+											if (n >= 0 && n < (int)list.size())
 												list.at(n)++;
 										}
 										double deno = (double)tab_proxy[2 * i][l].size();
 										if (deno > 0.5) {
-											for (int m = 0; m < list.size(); m++)
+											for (int m = 0; m < (int)list.size(); m++)
 												list.at(m) /= deno;//*dE[m];
 										}
 
@@ -2749,7 +2739,7 @@ void CCInversionProblem1(bool outConfig) {
 										ProximityDist[l][0].x[3]++;	//The occurence of l-th solution
 																	//double num_inv = 1.0 / (double)ProximityDist[l][0].x[3];
 																	//	std::cout << "num = " << num << ",\t";
-										for (int m = 0; m < list.size(); m++) {
+										for (int m = 0; m < (int)list.size(); m++) {
 #pragma omp atomic
 											ProximityDist[l][m].x[1] += list[m];
 #pragma omp atomic
@@ -2761,17 +2751,17 @@ void CCInversionProblem1(bool outConfig) {
 
 									//IMAG; C(ii) condition
 									if (M % 2 != 0) {//a.k.a. C(i) and C(ii) are different
-										for (int l = 0; l < tab_proxy[2 * i + 1].size(); l++) {
+										for (int l = 0; l < (int)tab_proxy[2 * i + 1].size(); l++) {
 											int n = 0;
 											std::vector<double> list(av_X2.size()); //histogram
-											for (int m = 0; m < tab_proxy[2 * i + 1][l].size(); m++) {
+											for (int m = 0; m < (int)tab_proxy[2 * i + 1][l].size(); m++) {
 												n = (int)floor(log(tab_proxy[2 * i + 1][l][m] / x0) / log(d_x2));
-												if (n >= 0 && n < list.size())
+												if (n >= 0 && n < (int)list.size())
 													list.at(n)++;
 											}
 											double deno = (double)tab_proxy[2 * i + 1][l].size();
 											if (deno > 0.5) {
-												for (int m = 0; m < list.size(); m++)
+												for (int m = 0; m < (int)list.size(); m++)
 													list.at(m) /= deno;//*dE[m];  : list = probability
 
 											}
@@ -2779,7 +2769,7 @@ void CCInversionProblem1(bool outConfig) {
 #pragma omp atomic
 											ProximityDist[l + numLegd][0].x[3]++; 	//The occurence of l-th solution
 
-											for (int m = 0; m < list.size(); m++) {
+											for (int m = 0; m < (int)list.size(); m++) {
 #pragma omp atomic
 												ProximityDist[l + numLegd][m].x[1] += list[m];
 #pragma omp atomic
@@ -2795,7 +2785,7 @@ void CCInversionProblem1(bool outConfig) {
 								for (int i = 0; i < 8; i++) {
 									double num = ProximityDist[i][0].x[3];	//The occurence of ith solution
 									if (num > 0) {
-										for (int j = 0; j < ProximityDist[i].size(); j++) {
+										for (int j = 0; j < (int)ProximityDist[i].size(); j++) {
 											ProximityDist[i][j].x[1] /= num;
 											ProximityDist[i][j].x[2] = sqrt(fabs(ProximityDist[i][j].x[2] / num - ProximityDist[i][j].x[1] * ProximityDist[i][j].x[1]) / num);
 											//ProximityDist[i][j].x[1] /= (1.0 - 1.0 / d_x2)*av_X2[j];
@@ -2804,13 +2794,13 @@ void CCInversionProblem1(bool outConfig) {
 
 
 										if (i == 0) {
-											sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_real_total", dir, dim, systName, method, N, (int)M, i);
+											sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_real_total", dir, dim, systName, method, N, (int)M);
 										}
 										else if (i < 4) {
 											sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_real_%d", dir, dim, systName, method, N, (int)M, i - 1);
 										}
 										else if (i == 4) {
-											sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_imag_total", dir, dim, systName, method, N, (int)M, i);
+											sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_imag_total", dir, dim, systName, method, N, (int)M);
 										}
 										else {
 											sprintf(filename, "%s%dD%s__%s__N_%d_M_%d_Proxydist_imag_%d", dir, dim, systName, method, N, (int)M, i - 5);

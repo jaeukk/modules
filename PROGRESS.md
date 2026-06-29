@@ -77,8 +77,10 @@ the module tree still builds:
   `<RSA_Gen.h>`); it is scratch not built in new_c++ either.
 
 Files only in `new_c++` and not needed by my builds were left out (e.g.
-`Debye/`, `weighted/`, `PairStat/Percolation.h`, `FPT_Polygon/Spheres`,
+`Debye/`, `PairStat/Percolation.h`, `FPT_Polygon/Spheres`,
 `Trajectory`, `Potential/MonteCarlo.cpp`). All modules + consumers rebuild green.
+(`new_c++/weighted/` has since been migrated as the `apps/weighted` consumer — see
+its row in the consumer table below.)
 
 ## Module status
 
@@ -89,19 +91,26 @@ Files only in `new_c++` and not needed by my builds were left out (e.g.
 | potential | mid | ✅ done | yes | objects only |
 | models | mid | ✅ done | yes | GenerateConfigs from top-level |
 | nonspherical | mid | ✅ done | yes | ParticleShapes + FormFactors + Dispersions (core-only) |
-| inverse | high | ⛔ not started | — | needs nlopt (avail); (Gurobi opt) |
-| tiling | high | 🟡 migrated, blocked | partial | sources split into `apps/Tessellation-based/` (see below); 3/5 objects compile, `Computation`/`main` blocked on lean-pairstat gaps + dead `LatticeGen` API |
+| inverse | high | ➡️ built as `apps/inverse` | yes (app) | no standalone `modules/inverse/` library — the CC-inversion work is the **`apps/inverse`** consumer (builds & runs, see below). needs nlopt (avail); (Gurobi opt) |
+| tiling | high | ✅ compiles | yes (objs) | sources split into `apps/Tessellation-based/` (see below); **all 5 objects compile** (2026-06-23: `ImLatGen` rewritten to the current `LatticeGen` API; spectral-density + `MC_vfv` ported into pairstat). A *runnable* binary still needs CGAL/voro++/MathGL. |
 | visualization | leaf | 🟡 impls migrated, 3/4 build | partial | headers `Plots.h`/`DisplaySpheres.h` + impls `math3d.{h,cpp}`, `glframe.h`, `Plots.cpp`, `DisplaySpheres.cpp`. `math3d.o`/`DisplaySpheres.o` compile (OpenGL `#ifdef`-guarded out); `Plots.o` **blocked** on misc `LatticeSumSolver` (not yet migrated). Drawing needs MathGL/OpenGL+freeglut (absent). |
 | phonons | leaf | ✅ done | yes | `PhononFrequency.{h,cpp}` (+ `PlotPhononFrequencies.cpp`); both objects compile (core+potential+GSL; MathGL plotting guarded out) |
 | lp | leaf | 🟡 migrated, blocked | yes (empty) | `TorquatoJiao.{cpp,h}` + vendored `gurobi_c*.h`; whole TU is `#ifdef USE_TJ` → empty object by default. A `USE_TJ=1` build needs glpk + Gurobi (absent). |
-| misc | leaf | 🟡 headers only | n/a | `Discrepancy.h`, `ParameterSet.h`, `Interfaces.h` relocated into `modules/misc/`; header-only support shared by apps. Pending: the support/optimization library (`LatticeSumSolver`, `Optimize`, …) — see TODO. |
+| misc | leaf | 🟡 headers | n/a | `Discrepancy.h`, `ParameterSet.h`, `Interfaces.h`, **`LatticeUtil.h`** (promoted from apps/inverse, 2026-06-29) and **`misc.h`** (`SimpleHarmonic`/`SimpleHarmonicF`/`HS_pot`, moved out of apps/inverse 2026-06-29) in `modules/misc/`; header-only support shared by apps. ⚠ `misc.h` makes misc depend on **potential** (the three classes are `Potential` subclasses). Pending: the support/optimization library (`LatticeSumSolver`, `Optimize`, …) — see TODO. |
 
 ### Note on the lean-vs-full StructureFactor (resolved)
 Two consumers (FFH, CCOptimization) needed `GetKs`/`Mtilde` that the lean
 `pairstat` lacked. Resolution (R2 option b): `GetKs` already lives in core's
 `PeriodicCellList`; only `Mtilde` was ported into `pairstat/StructureFactor.{h,cpp}`
-(core-only, no nonspherical baggage). No consumer needed the dropped nonspherical
+(core-only, no nonspherical baggage). No consumer needed the dropped *nonspherical*
 spectral-density functions.
+
+Update (2026-06-23): the tiling app needed the **spherical** spectral density
+of sphere packings, so `SpectralDensity` / `SpectralDensity_Lstorage` and the
+ensemble `IsotropicSpectralDensity` / `IsotropicSpectralDensity_Lstorage` were
+ported into `pairstat/StructureFactor.{h,cpp}` (spherical only — still no
+nonspherical/USE_SHAPES baggage), and the local volume-fraction variance
+`MC_vfv` (+ file-local `I_1`/`I_config`) into `pairstat/NumberVariance.{h,cpp}`.
 
 ## Consumer migration status
 
@@ -114,8 +123,9 @@ spectral-density functions.
 | CCOptimization | modules/apps/CCOptimization | core, pairstat, potential | yes | ✅ builds & runs (only main.cpp; heavy includes were dead #if 0) |
 | FFH | modules/apps/FFH | core, pairstat (Mtilde), FFTW | yes | ✅ builds & links (FFTW_PREFIX → conda `pmp` env; runtime needs input data) |
 | CPmanager (was EXC_formats) | modules/apps/CPmanager | core | yes | ✅ builds (ConfigPack ↔ txt manager; runtime needs args) |
-| inverse (CC-inversion) | modules/apps/inverse | core, pairstat, potential, misc, visualization | objects compile | ✅ `main.o` + `CCInversionProblem.o` build. `main.cpp` is the entry point (the "CCInversion" command extracted from the legacy `Interfaces.h` cli(); defines `Verbosity` + `masterDir`). Linking a runnable binary still needs the visualization impls (MathGL/OpenGL). |
-| Tessellation-based (tiling) | modules/apps/Tessellation-based | core, pairstat, models, misc, visualization | partial (3/5) | 🟡 **blocked**. `SpacefillingPacking.o`, `Voronoi.o`, `PolyPacking.o` compile; `Computation.o`/`main.o` do not (see split note below). `main.cpp` is the "Tiling" entry point extracted from the legacy `Interfaces.h` cli(). |
+| inverse (CC-inversion) | modules/apps/inverse | core, pairstat, potential, misc | ✅ builds & runs | ✅ **COMPLETE: `make` → runnable `CCInversion.out`; example runs; 0 compiler warnings in its own sources** (verified 2026-06-29). **No MathGL/OpenGL needed** — the "CCInversion" command doesn't touch the visualization impls (`-I$(visualization)` is on the include path but no viz objects are linked). `main.cpp` is the entry point (extracted from the legacy `Interfaces.h` cli(); defines `Verbosity` + `masterDir`). Has `README.md` + `run_example.sh`. |
+| Tessellation-based (tiling) | modules/apps/Tessellation-based | core, pairstat, models, misc, visualization | ✅ objects (5/5) | ✅ **compiles** (2026-06-23). All five objects build; see the split note below for the fixes. A runnable binary still needs CGAL/voro++/MathGL. `main.cpp` is the "Tiling" entry point extracted from the legacy `Interfaces.h` cli(). Has a `README.md`. |
+| weighted (marked pt stats) | modules/apps/weighted | core | ✅ builds & runs | ✅ **builds & runs `weighted.out`** (depends on `core` only + header-only Boost/OpenMP). A simplified `PairStatisticsCLI` for **weighted/marked** point patterns: weighted structure factor (`SkComputation`), weighted two-/single-sided `g2` (`g2Computation`), and local variance of the weights (`LocalVariance`). Ships its own copies of `Computation`/`PairCorrelation`/`LocalVariance`/`WeightedStructureFactor` (distinct from the `pairstat` module's same-named files; they operate on `PeriodicCellList<std::complex<double>>`). Source = `new_c++/weighted/`. Used for the PRX 16, 011042 (2026) "Hyperuniformity of Weighted Particle Systems" paper. Doxygen comments + `README.md` added 2026-06-29. |
 
 ### Support-module split (visualization / misc)
 The headers the CC-inversion app pulled in but that aren't part of any compute
@@ -144,32 +154,38 @@ The legacy top-level tiling sources were migrated into `apps/Tessellation-based/
 - `PolyPacking.{h,cpp}` — the `MakeMono2Poly*` family extracted from the retired
   `etc1.{h,cpp}` (only tiling consumes it, via `MakeMono2Poly_parallel`).
 
-**Build status: blocked (3/5 objects).** `SpacefillingPacking.o`, `Voronoi.o`,
-`PolyPacking.o` compile under default flags (the CGAL/voro++/MathGL branches are
-`#ifdef`-guarded out — none of those libs are installed). `Computation.o` and
-`main.o` do **not** compile, for reasons inherent to the legacy code, not the
-split:
-1. **lean-pairstat gaps (R2):** `Computation` needs `IsotropicSpectralDensity`
-   /`IsotropicSpectralDensity_Lstorage` (spectral density) and `MC_nv` / `MC_vfv`
-   (number- and volume-fraction-variance Monte-Carlo) that the lean `pairstat`
-   dropped/renamed. Unblocking needs those ported into `pairstat`.
-2. **dead `LatticeGen` API:** `ImLatGen` calls `LatticeGen(basis,int)`,
-   `SetBasis`, `SetNumInEachSides`, `currPhi`, `rMax`, ... — all commented out in
-   *every* surviving `GenerateConfigs.h` (top-level and `Models/`). The legacy
-   `TilingProblem.cpp` was already stale against the current `GenerateConfigs`.
-3. **heavy libs:** a fully-functional binary additionally needs CGAL + voro++ +
-   MathGL (`make USE_CGAL=1 USE_VORO=1 USE_MATHGL=1`).
+**Build status: all 5 objects compile (2026-06-23).** Previously `Computation.o`
+and `main.o` were blocked; both now build. What was fixed:
+1. **lean-pairstat gaps (R2) — RESOLVED by porting into `pairstat`.**
+   `IsotropicSpectralDensity` / `IsotropicSpectralDensity_Lstorage` (+ the
+   single-config `SpectralDensity` / `SpectralDensity_Lstorage`) were ported into
+   `pairstat/StructureFactor.{h,cpp}`, and `MC_vfv` (+ the `I_1`/`I_config`
+   helpers) into `pairstat/NumberVariance.{h,cpp}` — same approach used earlier
+   for `Mtilde`. `MC_nv` was switched to the lean equivalent `MC_NV_Ensemble`.
+2. **dead `LatticeGen` API — RESOLVED by rewriting `ImLatGen`.** It no longer
+   uses `LatticeGen(basis,int)`/`SetBasis`/`SetNumInEachSides`/`currPhi`/`N`/`rMax`;
+   it builds a 1-particle cubic unit cell, keeps its own tile-count + radius,
+   tiles, and deletes random vacancies (Computation.h).
+3. **missing generators — RESOLVED.** `HSF_Gen` migrated from `c++/HSF/HSF_Gen.h`
+   into `modules/models/HSF_Gen.h`; `PoissonPt` (absent from the modular
+   `GenerateConfigs`) reintroduced as a small generator in `main.cpp`; `main.cpp`
+   gained `#include <RSA_Gen.h>` (for `RSA_Gen`/`PhiC`).
+4. **heavy libs (still required for a runnable binary):** the CGAL/voro++/MathGL
+   branches stay `#ifdef`-guarded out; a fully-functional binary needs
+   `make USE_CGAL=1 USE_VORO=1 USE_MATHGL=1` once those libs are installed.
 
-The migration (relocate + split + extract + entry point) is faithful and the
-wiring is in place; resurrecting (1)/(2) is a separate porting effort.
+The migration is faithful and all objects compile under the default flags;
+the regression set (core/pairstat/potential/models + examples/NR/PairStatCLI/
+CCOptimization) still builds and links green after the pairstat additions.
 
 ### etc1.h retirement
 Goal: remove the legacy grab-bag `etc1.{h,cpp}`. Usage audit — the only `etc1`
-functions used by **compiled modular code** are `GetLattice_config` (CCInversion.h
-+ CCInversionProblem.cpp) and `Find_LeastCommonDivider` (CCInversionProblem.cpp);
-both have a single consumer (the CC-inversion app), so per the rule (infrequent →
-move into the using source) they were relocated into
-`apps/inverse/LatticeUtil.h`. The `MakeMono2Poly*` family is used by the tiling
+functions used by **compiled modular code** are `GetLattice_config` and
+`Find_LeastCommonDivider` (CCInversionProblem.cpp). They were first relocated into
+`apps/inverse/LatticeUtil.h` (single consumer), then **promoted to
+`modules/misc/LatticeUtil.h` on 2026-06-29** once a second consumer appeared
+(`misc.h`'s `SimpleHarmonicF`) — consumers now `#include <LatticeUtil.h>` via
+`-I$(misc)`. The `MakeMono2Poly*` family is used by the tiling
 app (`MakeMono2Poly_parallel` in `TilingProblemCLI`), so it was relocated into
 `apps/Tessellation-based/PolyPacking.{h,cpp}` (see the Tessellation-based split).
 All other `etc1` symbols (`GetLattice`, `ccConfig`,
@@ -208,8 +224,8 @@ the 5 consumers): `OrderMetrics.cpp`, `PeriodicNetworks.{h,cpp}`,
 ## Not yet migrated (legacy consumers remaining)
 HSF, Statistics, QC, RandOrg, strong_contrast, SurfaceCoeff, THIRD_ORDER,
 Example, NonsphericalParticles (as its own app), Models (CLI).
-(Tessellation-based is now migrated under `apps/Tessellation-based/` — blocked,
-see above.)
+(Tessellation-based is now migrated under `apps/Tessellation-based/` — compiles
+(all 5 objects), see above.)
 
 **Excluded from objectives (do not migrate):** Energy, Projections.
 
@@ -223,9 +239,13 @@ Top-level `../c++/` sources, grouped by tier. Items migrated so far are ticked;
 the rest are still only in the legacy tree (any `#include` of them in `modules/`
 is inert — uncompiled scratch, behind `#ifdef VORONOI_INCLUDED`, or commented).
 
-- **inverse**: ✅ `CCInversion.h`, `CCInversionProblem.{cpp,h}`
-  migrated to `apps/inverse/` (with `LatticeUtil.h`). Still pending:
-  `InvStatMechInterface.cpp`.
+- **inverse**: ✅ **complete.** `CCInversion.h`, `CCInversionProblem.{cpp,h}`
+  migrated to `apps/inverse/`; builds & runs `CCInversion.out`. `CCInversion.h`
+  now holds only the `FrankInvertCCPotential*` family —
+  `SimpleHarmonic`/`SimpleHarmonicF`/`HS_pot` moved to `misc/misc.h` and
+  `LatticeUtil.h` promoted to `misc/` (2026-06-29).
+  (`InvStatMechInterface.cpp` is **not** part of the CC-inversion app — different
+  subject — so it is not tracked here.)
 - **misc** (support / optimization library → `modules/misc/`): pending migration
   of `LatticeSumSolver.{cpp,h}`, `Optimize.{cpp,h}`, `ThreeBody.{cpp,h}`,
   `Fitting.{cpp,h}`, `Degeneracy.{cpp,h}`, `Solvers.h`,
@@ -238,11 +258,13 @@ is inert — uncompiled scratch, behind `#ifdef VORONOI_INCLUDED`, or commented)
 - **misc headers (done)**: ✅ `Discrepancy.h`, `ParameterSet.h` → `misc/`;
   `Plots.h`, `DisplaySpheres.h` → `visualization/`; `Interfaces.h` → `misc/`.
   ✅ `etc1.{cpp,h}` retired (`GetLattice_config`/`Find_LeastCommonDivider` →
-  `apps/inverse/LatticeUtil.h`; `MakeMono2Poly*` → `apps/Tessellation-based/
-  PolyPacking`). Still pending: the `*.cpp` impl of `Discrepancy` (its header was
-  relocated; `Plots.cpp`/`DisplaySpheres.cpp` are now migrated — see below).
+  `misc/LatticeUtil.h` (2026-06-29; first lived in `apps/inverse/`);
+  `MakeMono2Poly*` → `apps/Tessellation-based/PolyPacking`). ✅ `misc/misc.h`
+  added (the `SimpleHarmonic`/`SimpleHarmonicF`/`HS_pot` potentials moved out of
+  `apps/inverse/CCInversion.h`). Still pending: the `*.cpp` impl of `Discrepancy`
+  (its header was relocated; `Plots.cpp`/`DisplaySpheres.cpp` are now migrated).
 - **tilings / Voronoi** → ✅ migrated to `apps/Tessellation-based/`
-  (`TilingProblem.{cpp,h}` split + `Voronoi.{cpp,h}`; blocked, see above)
+  (`TilingProblem.{cpp,h}` split + `Voronoi.{cpp,h}`; compiles, see above)
 - **linear programming (Gurobi)** → ✅ migrated to `modules/lp/`
   (`TorquatoJiao.{cpp,h}` + vendored `gurobi_c*.h`; compiles empty, `USE_TJ=1`
   blocked on glpk/Gurobi)

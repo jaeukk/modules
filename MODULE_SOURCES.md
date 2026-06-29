@@ -49,9 +49,11 @@ Source: **`new_c++/PairStat/`** ✅ (lean, decoupled; newer than the `c++/PairSt
 | File | From | Notes |
 |------|------|-------|
 | PairCorrelation.{h,cpp} | new_c++/PairStat/ | `.cpp` byte-identical to source |
-| StructureFactor.{h,cpp} | new_c++/PairStat/ | ⚠️ `Mtilde` retained from the full legacy SF; **+ spherical spectral density** `SpectralDensity[_Lstorage]` / `IsotropicSpectralDensity[_Lstorage]` ported from the full legacy SF (2026-06-23, for the tiling app). Still drops the *nonspherical* extras. |
-| NumberVariance.{h,cpp} | new_c++/PairStat/ | lean API (`MC_NV_Ensemble`, out-param `GetSamplingPoints`); **+ `MC_vfv`** (local volume-fraction variance, with file-local `I_1`/`I_config`) ported from the full legacy NV (2026-06-23). |
+| StructureFactor.{h,cpp} | new_c++/PairStat/ | ⚠️ `Mtilde` retained from the full legacy SF (new_c++ lacks it; FFH needs it). Still drops the *nonspherical* extras. |
+| NumberVariance.{h,cpp} | new_c++/PairStat/ | lean API (`MC_NV_Ensemble`, out-param `GetSamplingPoints`) |
 | ContactStatistics.{h,cpp} | new_c++/PairStat/ | `.cpp` byte-identical |
+| SpectralDensity.{h,cpp} | c++/ (flat, spherical only) | 🆕 spherical spectral density `SpectralDensity[_Lstorage]` / `IsotropicSpectralDensity[_Lstorage]` ported from the full legacy StructureFactor (no nonspherical/USE_SHAPES baggage). Ported 2026-06-23 for the tiling app; subsequently split into this dedicated TU. |
+| VolumeFractionVariance.{h,cpp} | c++/ (flat) | 🆕 local volume-fraction variance `MC_vfv` (+ file-local `I_1`/`I_config`) ported from the full legacy NumberVariance. Ported 2026-06-23 for the tiling app; subsequently split into this dedicated TU. |
 
 Note: the legacy `PairStat/Computation.{h,cpp}` is **not** part of this module —
 it migrated into `apps/PairStatCLI/` (the CLI consumer) instead.
@@ -116,6 +118,8 @@ Source: **`c++/`** (flat) ✅. Header-only support shared by apps.
 | Discrepancy.h | c++/ (flat) | also provides `Merge_Sort`/`MergeSort` |
 | ParameterSet.h | c++/ (flat) | |
 | Interfaces.h | c++/ (flat) | legacy `cli()` dispatcher (apps extract their entry points from it) |
+| LatticeUtil.h | c++/etc1.h (via apps/inverse) | 🆕 `GetLattice_config` + `Find_LeastCommonDivider`; first in `apps/inverse/`, **promoted here 2026-06-29** (2nd consumer: `misc.h`). core-only. |
+| misc.h | apps/inverse/CCInversion.h (orig. c++/CCInversion.h) | 🆕 `SimpleHarmonic`/`SimpleHarmonicF`/`HS_pot` potentials moved out of the inverse app 2026-06-29 (generic `Potential` subclasses; weren't used by any compiled source). ⚠ makes misc depend on **potential**; includes `<LatticeUtil.h>`. |
 
 Pending (not yet migrated): the `.cpp` impls and the support/optimization library
 (`LatticeSumSolver`, `Optimize`, `ThreeBody`, `Fitting`, `Degeneracy`, …).
@@ -201,13 +205,15 @@ Source: **`new_c++/NR/`** ✅ (tied with `c++/`; new_c++ authoritative).
 
 ## apps/inverse/  (CC-inversion)
 Source: **`c++/`** (flat) for the compute sources; entry point **extracted**.
+✅ **complete** — builds a runnable `CCInversion.out`, runs (no MathGL/OpenGL), and compiles with **0 warnings in its own sources**; has `README.md` + `run_example.sh`.
 
 | File | From | Notes |
 |------|------|-------|
-| CCInversion.h | c++/ (flat) | |
-| CCInversionProblem.{h,cpp} | c++/ (flat) | |
-| LatticeUtil.h | 🆕 | extracts `GetLattice_config` + `Find_LeastCommonDivider` from retired `c++/etc1.h` (single consumer) |
+| CCInversion.h | c++/ (flat) | ⚠️ 2026-06-29: holds only the `FrankInvertCCPotential*` family now — `SimpleHarmonic`/`SimpleHarmonicF`/`HS_pot` moved to `misc/misc.h`. |
+| CCInversionProblem.{h,cpp} | c++/ (flat) | includes `<LatticeUtil.h>` from misc (2026-06-29) |
 | main.cpp | 🆕 | the "CCInversion" command extracted from `c++/Interfaces.h` `cli()`; defines `Verbosity` + `masterDir` |
+
+(`LatticeUtil.h` was promoted out of this app to `misc/` on 2026-06-29 — see the misc section.)
 
 ## apps/PairStatCLI/
 Source: **`c++/PairStat/`** (driver) + **`new_c++/PairStat/`** (compute).
@@ -243,8 +249,9 @@ Source: **`new_c++/weighted/`** ✅ (only location).
 ## Notes
 
 - **`etc1.{h,cpp}` retired**: no `etc1.*` exists in `modules/`. Its used symbols
-  were relocated to `apps/inverse/LatticeUtil.h` and
-  `apps/Tessellation-based/PolyPacking.{h,cpp}`; the rest were dead/scratch.
+  were relocated to `misc/LatticeUtil.h` (`GetLattice_config` /
+  `Find_LeastCommonDivider`; first in `apps/inverse/`, promoted to misc 2026-06-29)
+  and `apps/Tessellation-based/PolyPacking.{h,cpp}`; the rest were dead/scratch.
 - **Makefiles / `config.mk`** are 🆕 (authored for the relocatable modular build),
   not copied from legacy.
 - For per-consumer build/blocked status and the migration rules (R1–R7), see

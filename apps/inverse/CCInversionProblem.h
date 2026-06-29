@@ -4,7 +4,8 @@
 #include "Potential.h"
 #include "StructureFactor.h"
 #include "StructureOptimization.h"
-#include "CCInversion.h"   // CC-inversion potentials + LatticeUtil (replaces etc1.h)
+#include "CCInversion.h"   // CC-inversion potentials (FrankInvertCCPotential*)
+#include <LatticeUtil.h>   // GetLattice_config / Find_LeastCommonDivider (misc module)
 #include "Discrepancy.h"   // Merge_Sort / MergeSort (was reached via etc1.h)
 #include "PeriodicCellList.h"
 
@@ -77,7 +78,7 @@ bool FrankInvCCUniqueTest2(const Configuration & target, size_t Nc, size_t N_kPo
  *  \param initConfig       Optional initial configurations to relax from; if empty, random configurations are used.
  *  \param[in,out] proximity  If non-empty on entry, filled with proximity metrics: [0]=all solutions vs target, [n+1]=metrics for the n-th solution; left untouched if empty.
  *  \return                 True if the target is uniquely reconstructed within PositionTolerance, false otherwise. */
-bool FrankInvCCUniqueTest3(const Configuration & target, size_t numGroundStates, size_t numConstraints, std::vector<double> &results, std::vector<Configuration> &sols, std::fstream & outFile, double PositionTolerance, double EnergyTolerance, size_t NKPointsSkip, char * constType, int method, std::vector<std::vector<double>> &energy, const std::vector<Configuration> & initConfig, std::vector<std::vector<double>> & proximity);
+bool FrankInvCCUniqueTest3(const Configuration & target, size_t numGroundStates, size_t numConstraints, std::vector<double> &results, std::vector<Configuration> &sols, std::fstream & outFile, double PositionTolerance, double EnergyTolerance, size_t NKPointsSkip, const char * constType, int method, std::vector<std::vector<double>> &energy, const std::vector<Configuration> & initConfig, std::vector<std::vector<double>> & proximity);
 
 //perform inversion procedure for d=2,3 systems
 //two constraints types are implemented; spherical and linear (k_i, k_i+k_j)

@@ -1,59 +1,90 @@
 # modules/ — modular build of the C++ physics library
 
 A clean, documented, **module-by-module** layout extracted non-destructively from
-the legacy flat codebase in `../`. The legacy top-level files and the existing
-application subdirectories are left untouched; consumers migrate to `modules/`
-incrementally.
+the legacy flat codebase in `../c++/` (with `../new_c++/` as the newer
+authoritative source). The legacy trees are left untouched; consumers migrate
+into `modules/` incrementally.
+
+For the running migration status and rules see **`PROGRESS.md`**; for per-file
+provenance see **`MODULE_SOURCES.md`**; for build/toolchain notes and conventions
+see **`CLAUDE.md`**.
 
 ## Dependency tiers
 
 ```
-            ┌─────────────────────────────────────────────────────────┐
-  T-leaf    │  viz (opt: OpenGL/MathGL)                                │
-            ├─────────────────────────────────────────────────────────┤
-  T-high    │  inverse (opt: Gurobi)      tiling (opt: CGAL/voro++)    │
-            ├─────────────────────────────────────────────────────────┤
-  T-mid     │  pairstat      potential      models                     │
-            ├─────────────────────────────────────────────────────────┤
-  T-base    │  core   ← everything depends on this                     │
-            └─────────────────────────────────────────────────────────┘
+          ┌──────────────────────────────────────────────────────────────┐
+  apps/   │  inverse  Tessellation-based  CHI  NR  FFH  CCOptimization     │
+          │  FirstPassageTime  CPmanager  PairStatCLI  weighted            │
+          ├──────────────────────────────────────────────────────────────┤
+  leaf    │  phonons   lp (opt Gurobi)   misc   visualization (opt GL/MathGL)
+          ├──────────────────────────────────────────────────────────────┤
+  mid     │  pairstat      potential      models      nonspherical         │
+          ├──────────────────────────────────────────────────────────────┤
+  base    │  core   ← everything depends on this                          │
+          └──────────────────────────────────────────────────────────────┘
 ```
 
-Layering rule: a module may only `-I` modules in **lower or equal** tiers.
+Layering rule (R6): a module may only `-I` modules in **lower or equal** tiers.
+Library modules live in `modules/<name>/`; migrated application drivers live in
+`modules/apps/<name>/`.
+
+## Library modules
 
 | Module | Tier | Purpose | Deps (modules) | External |
 |--------|------|---------|----------------|----------|
-| [core](core/) | base | GeometryVector, PeriodicCellList, RandomGenerator, etc | — | GSL, Boost |
-| [pairstat](pairstat/) | mid | g(r), S(k), number variance | core | GSL, Boost |
-| [potential](potential/) | mid | potentials, MD/MC, optimization | core | GSL, NLopt |
-| [models](models/) | mid | RSA, hard spheres, random organization | core (opt pairstat) | GSL |
-| inverse | high | inverse problems, CC inversion, tilings-LP | core, potential, pairstat | GSL, NLopt, (Gurobi) |
-| tiling | high | Voronoi, tiling problems | core, pairstat | CGAL, voro++ |
-| viz | leaf | DisplaySpheres, Plots | core | OpenGL, MathGL |
+| [core](core/) | base | GeometryVector, PeriodicCellList, **SpherePacking**, ConfigurationIO, ParameterInput, RandomGenerator, etc; owns `GetKs` | — | GSL, Boost |
+| [pairstat](pairstat/) | mid | g(r), S(k), spectral density χ_V, number/volume-fraction variance, contact stats | core | GSL, Boost |
+| [potential](potential/) | mid | potentials, MD/MC, structure optimization | core | GSL, NLopt |
+| [models](models/) | mid | RSA, hard spheres, random organization, config generators (`RSA_Gen`/`HSF_Gen`) | core (opt pairstat) | GSL |
+| [nonspherical](nonspherical/) | mid | ParticleShapes, FormFactors, Dispersions | core | GSL |
+| [phonons](phonons/) | leaf | PhononFrequency (+ plotting) | core, potential | GSL, (MathGL) |
+| [lp](lp/) | leaf | TorquatoJiao LP jamming (`USE_TJ`) | core | (glpk, Gurobi) |
+| [misc](misc/) | leaf | Discrepancy, ParameterSet, Interfaces, LatticeUtil, misc.h (SimpleHarmonic/HS_pot potentials) — header support | core, potential (for `misc.h`) | — |
+| [visualization](visualization/) | leaf | Plots, DisplaySpheres, math3d | core | (OpenGL, MathGL) |
 
-`inverse`, `tiling`, `viz` are scaffolded incrementally; the heavy optional
-libraries (CGAL / voro++ / OpenGL / MathGL / Gurobi) are off by default.
+Heavy optional libraries (CGAL / voro++ / OpenGL / MathGL / Gurobi) are **off by
+default**; the guarded branches compile out so objects build without them.
+
+## Application drivers (`apps/`)
+
+Migrated consumers, each with its own makefile. Highlights (see `PROGRESS.md` for
+the full per-app status):
+
+- **inverse** — collective-coordinate inversion; **complete**: `make` → runnable
+  `CCInversion.out` (needs **no** MathGL/OpenGL), runs, and builds warning-clean.
+  Has its own README + example.
+- **Tessellation-based** — Voronoi tilings & space-filling packings; all objects
+  compile (a *runnable* binary needs CGAL/voro++/MathGL). Has its own README.
+- **CHI, NR, FFH, CCOptimization, FirstPassageTime, CPmanager, PairStatCLI** —
+  build & run (FFH needs FFTW). `PairStatCLI` is the former pairstat CLI driver.
+- **weighted** — weighted S(k) / local variance consumer.
 
 ## Build
 
-Every module/consumer makefile does `include ../config.mk`, which **auto-detects**
-the GSL/NLopt prefix across machines (HOME `~/lib/gsl`, WSL `~/install`, DELLA
-`/usr/local`). Override with `make GSL_PREFIX=/path NLOPT_PREFIX=/path`.
+**Toolchain:** there is no native Windows g++/make here — build through **WSL**
+(repo at `/mnt/e/30_Codes/modules`). Every makefile does `include config.mk`,
+which **auto-detects** the GSL/NLopt prefix across machines (`~/install`,
+`~/lib/gsl`, `/usr/local`, `/usr`). Override with `make GSL_PREFIX=/path`.
 
 ```sh
-make -C core            # foundation + smoke.out
-make -C pairstat        # + pairstat.out CLI
-make -C potential       # library objects
-make -C models          # library objects  (make WITH_SK=1 to enable S(k) features)
-make -C examples        # end-to-end demo consumer (g2_sk_demo.out)
+make -C core                    # foundation (+ smoke.out)
+make -C pairstat objs           # library objects (the CLI lives in apps/PairStatCLI)
+make -C potential objs          # library objects
+make -C models objs             # library objects
+make -C examples                # end-to-end demo consumer (g2_sk_demo.out)
+make -C apps/inverse            # -> runnable CCInversion.out
+make -C apps/Tessellation-based # compile objects (binary needs CGAL/voro++/MathGL)
 ```
 
 Optional features are command-line toggles handled by `config.mk`:
-`USE_OPENMP` (default 1), `USE_CGAL`, `USE_VORO`, `USE_TJ`.
+`USE_OPENMP` (default 1), `USE_CGAL`, `USE_VORO`, `USE_TJ`, `USE_MATHGL`, and
+per-module flags like `WITH_SK`.
 
 ## Provenance & migration
 
 - `MODULE_SOURCES.md` — which legacy copy each file came from, and why.
-- `examples/` — the reference consumer + the step-by-step migration recipe for
-  porting the remaining subprojects (CHI, FFH, NR, HSF, …) off their broken
-  `../` / absolute-path makefiles onto `modules/`.
+- `PROGRESS.md` — migration rules (R1–R7) and per-module / per-consumer status.
+- `CLAUDE.md` — build/toolchain how-to, conventions, recurring fix patterns,
+  dated change log.
+- `examples/` — the reference consumer and migration recipe for porting the
+  remaining subprojects off their broken `../` / absolute-path makefiles.
