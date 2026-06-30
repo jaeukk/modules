@@ -3,15 +3,25 @@
  *	Email	: phy000.kim@gmail.com
  *	Date	: March 2022 */
 
-/** \file Computation.h 
- * \brief Source file for a Computation class and its derived classes.
- * It simplified the input and output for some calculations involving an ensemble of point configurations.
- * Computation PairStatisticsCLI code written by Ge.*/
+/** \file Computation.cpp
+ * \brief Source file for the Computation class and its derived classes.
+ * It simplifies the input and output for some calculations involving an ensemble of point configurations.
+ * Based on the PairStatisticsCLI code written by Ge.*/
 
 #include "Computation.h"
 
-/* Functions to write data in grace format. 
+/* Functions to write data in grace format.
  *	Taken from Plots.cpp */
+
+/** \brief Write one or more data sets to a Grace (.agr) project file, with explicit axis ranges.
+ * @param[in] presult	Array of @p NumSet data sets; each row's x[0]/x[1] become the plotted (x, y).
+ * @param[in] NumSet	The number of data sets in @p presult.
+ * @param[in] OutFilePrefix	Output path prefix; ".agr" is appended.
+ * @param[in] xLabel, yLabel	Axis labels.
+ * @param[in] legends	Per-data-set legend strings (may be shorter than @p NumSet).
+ * @param[in] Title		Plot title.
+ * @param[in] MinX, MaxX, TickX	Horizontal axis range and major tick spacing.
+ * @param[in] MinY, MaxY, TickY	Vertical axis range and major tick spacing. */
 void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumSet, const std::string & OutFilePrefix, const std::string & xLabel, const std::string & yLabel, const std::vector<std::string> & legends, const std::string & Title, double MinX, double MaxX, double TickX, double MinY, double MaxY, double TickY)
 {
 	const size_t NColor = 14;
@@ -339,6 +349,14 @@ void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumS
 		ofile<<'&';
 	}
 }
+
+/** \brief Write one or more data sets to a Grace file, auto-computing the axis ranges and ticks from the data.
+ * @param[in] presult	Array of @p NumSet data sets.
+ * @param[in] NumSet	The number of data sets in @p presult.
+ * @param[in] OutFilePrefix	Output path prefix; ".agr" is appended.
+ * @param[in] xLabel, yLabel	Axis labels.
+ * @param[in] legends	Per-data-set legend strings.
+ * @param[in] Title		Plot title. */
 void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumSet, const std::string & OutFilePrefix, const std::string & xLabel, const std::string & yLabel, const std::vector<std::string> & legends, const std::string & Title)
 {
 	const std::vector<GeometryVector> & result = presult[0];
@@ -382,11 +400,20 @@ void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumS
 
 	PlotFunction_Grace(presult, NumSet, OutFilePrefix, xLabel, yLabel, legends, Title, MinX, MaxX, TickX, MinY, MaxY, TickY);
 }
+
+/** \brief Convenience overload that writes a single data set to a Grace file.
+ * @param[in] result		The data set to plot (x[0]/x[1] become x, y).
+ * @param[in] OutFilePrefix	Output path prefix; ".agr" is appended.
+ * @param[in] xLabel, yLabel	Axis labels.
+ * @param[in] Title			Plot title. */
 void PlotFunction_Grace(const std::vector<GeometryVector> & result, const std::string & OutFilePrefix, const std::string & xLabel, const std::string & yLabel, const std::string & Title)
 {
 	PlotFunction_Grace(&result, 1, OutFilePrefix, xLabel, yLabel, std::vector<std::string>(), Title);
 }
 
+/** \brief Parse the data sets back out of a Grace stream.
+ * @param[out] result	Cleared, then filled with one vector of GeometryVector per "&"-separated set.
+ * @param[in] ifile		The input stream positioned at the start of a Grace file. */
 void ReadGraceData(std::vector<std::vector<GeometryVector> > & result, std::istream & ifile)
 {
 	if (!ifile.good())
@@ -422,6 +449,10 @@ void ReadGraceData(std::vector<std::vector<GeometryVector> > & result, std::istr
 	}
 	result.pop_back();
 }
+
+/** \brief Convenience overload that reads Grace data from "<InFilePrefix>.agr".
+ * @param[out] result		Cleared, then filled with one vector of GeometryVector per data set.
+ * @param[in] InFilePrefix	Input path prefix; ".agr" is appended. */
 void ReadGraceData(std::vector<std::vector<GeometryVector> > & result, const std::string & InFilePrefix)
 {
 	std::string name = InFilePrefix + std::string(".agr");

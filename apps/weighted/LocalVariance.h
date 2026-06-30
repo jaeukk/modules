@@ -86,6 +86,14 @@ void GetF(const MarkedPointPattern & config, std::vector<std::complex<double>> &
 /// @param WindowSizeFunct 
 void MC_LV_single(const MarkedPointPattern &  config, std::vector<GeometryVector> & results, double Rmax, double dR, const std::vector<GeometryVector> &  window_centers, const std::function<double(const GeometryVector & )> WindowSizeFunct = radius_in_Sphere);
 
+/// @brief Monte Carlo calculation of the local number variance of a single configuration, using randomly drawn window centers.
+/// @param config
+/// @param results 	results[i] = {R, variance, Re mean, Im mean}
+/// @param Rmax 	Largest window size
+/// @param dR 		Increment in window size
+/// @param num_window_centers 	The number of random window centers to draw.
+/// @param WindowSizeFunct
+/// @param seed 	Seed for the random generator that places the window centers.
 void MC_LV_single(const MarkedPointPattern & config, std::vector<GeometryVector> &results, double Rmax, double dR, size_t num_window_centers, const std::function<double(const GeometryVector &)> WindowSizeFunct = radius_in_Sphere, int seed = 0);
 
 
