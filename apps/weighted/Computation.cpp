@@ -666,7 +666,7 @@ void LocalVariance::Write(const std::string OutputPrefix)
 		save << "#y1 = Local average of particle weights at window radius R \n";
 
 		save << "#R\t Re y1\t Im y1\t err Re y1\t err Im y1\n";
-		for (int i = 0; i < this->mean_NR.size(); i++) {
+		for (size_t i = 0; i < this->mean_NR.size(); i++) {
 			save << std::fixed << std::setprecision(3) 
 				 << this->result[i].x[0] <<"\t";  //R
 			save << std::setprecision(8) 

@@ -384,7 +384,7 @@ int PairStatisticsCLI(){
 				else{
 					c.sequential_sampling = true;
 					std::cout<<"The config pack contains "<<c.p.NumConfig()<<" configurations.";
-					if (c.p.NumConfig() < StartIdx){
+					if ((size_t)c.p.NumConfig() < StartIdx){
 						GetConfigsFunction = nullptr;
 						NumConfig = 0;
 						std::cout << "StartIdx exceeds the size of ConfigPack\n";
@@ -418,7 +418,7 @@ int PairStatisticsCLI(){
 		// 		std::cerr << "Specify GetConfigsFunction before printing!\n";
 		// 	else
 		// 	{
-		// 		for (int index = 0; index < NumConfig; index++) {
+		// 		for (size_t index = 0; index < NumConfig; index++) {
 		// 			std::string file = OutputPrefix + std::string("__") + std::to_string(index) + ".txt";
 		// 			std::fstream OFILE(file.c_str(), std::fstream::out);
 
@@ -426,7 +426,7 @@ int PairStatisticsCLI(){
 		// 			ofile << "---------------------------\n";
 		// 			ofile << "\t" << index << "\n";
 		// 			ofile << "---------------------------\n";
-		// 			for (int i=0; i<c.NumParticle(); i++){
+		// 			for (size_t i=0; i<c.NumParticle(); i++){
 		// 				ofile << i << ": ";
 		// 				for (size_t j = 0; j < c.GetDimension(); j++){
 		// 					ofile << c.GetCartesianCoordinates(i).x[j] << " ";
@@ -444,7 +444,7 @@ int PairStatisticsCLI(){
 			else 
 			{
 				
-				for (int index = 0; index < NumConfig; index++) {
+				for (size_t index = 0; index < NumConfig; index++) {
 					std::string file = OutputPrefix + std::string("__") + std::to_string(index);
 					//sprintf(file, "%s__%d", OutputPrefix, index);
 					//WriteConfiguration(GetConfigsFunction(index), file);
@@ -452,7 +452,7 @@ int PairStatisticsCLI(){
 					ofile << "---------------------------\n";
 					ofile << "\t" << index << "\n";
 					ofile << "---------------------------\n";
-					for (int i=0; i<c.NumParticle(); i++){
+					for (size_t i=0; i<c.NumParticle(); i++){
 						ofile << i << ": ";
 						for (size_t j = 0; j < c.GetDimension(); j++){
 							ofile << c.GetCartesianCoordinates(i).x[j] << " ";

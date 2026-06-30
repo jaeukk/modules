@@ -41,7 +41,7 @@ void WeightedIsotropicTwoPairCorrelation(std::function<const PeriodicCellList<st
 #pragma omp parallel
 		{
 #pragma omp for schedule(guided)
-			for(signed long i=0; i<NumParticle; i++)
+			for(size_t i=0; i<NumParticle; i++)
 			{
 				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(i), MaxDistance, 
 					[&real, &imag, &i, &dR, &Config](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
@@ -80,8 +80,7 @@ void WeightedIsotropicTwoPairCorrelation(std::function<const PeriodicCellList<st
 	}
 	AverageDensity/=NumConfigs;
 
-	for(int i = 0; i < Result.size(); i ++ ){
-		double R = Result[i].x[0];
+	for(size_t i = 0; i < Result.size(); i ++ ){
 		Result[i].x[1] /= NumConfigs;
 		Result[i].x[2] /= NumConfigs;
 		Result[i].x[3] = std::sqrt( std::abs(Result[i].x[3] / NumConfigs - Result[i].x[1] * Result[i].x[1]));
@@ -132,7 +131,7 @@ void WeightedIsotropicSingleSidedTwoPairCorrelation(std::function<const Periodic
 #pragma omp parallel
 		{
 #pragma omp for schedule(guided)
-			for(signed long i=0; i<NumParticle; i++)
+			for(size_t i=0; i<NumParticle; i++)
 			{
 				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(i), MaxDistance, 
 					[&real, &imag, &i, &dR, &Config](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
@@ -171,8 +170,7 @@ void WeightedIsotropicSingleSidedTwoPairCorrelation(std::function<const Periodic
 	}
 	AverageDensity/=NumConfigs;
 
-	for(int i = 0; i < Result.size(); i ++ ){
-		double R = Result[i].x[0];
+	for(size_t i = 0; i < Result.size(); i ++ ){
 		Result[i].x[1] /= NumConfigs;
 		Result[i].x[2] /= NumConfigs;
 		Result[i].x[3] = std::sqrt( std::abs(Result[i].x[3] / NumConfigs - Result[i].x[1] * Result[i].x[1]));

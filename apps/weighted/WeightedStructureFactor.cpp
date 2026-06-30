@@ -160,7 +160,7 @@ void IsotropicStructureFactor_weighted(std::function<const PeriodicCellList<std:
 	}
 
 	//#pragma omp parallel for schedule(guided)
-	for (int i = 0; i < vSkBin.size(); i++ ){
+	for (size_t i = 0; i < vSkBin.size(); i++ ){
 		auto iter = vSkBin.begin() + i;
 		if (iter->Sum1 > 0.0){
 			GeometryVector temp(4);

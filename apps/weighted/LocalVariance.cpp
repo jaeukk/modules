@@ -15,7 +15,7 @@ void GetSamplingPoints(DimensionType dim, size_t NumPoints, std::vector<Geometry
 	centers.clear();
 	centers.resize(NumPoints, GeometryVector(static_cast<int> (dim)));
 
-	for (int i = 0; i < NumPoints; i ++){
+	for (size_t i = 0; i < NumPoints; i ++){
 		for (int j = 0; j < dim; j++){
 			centers[i].x[j] = rng.RandomDouble();
 		}
@@ -33,7 +33,7 @@ void GetF(const MarkedPointPattern &config, std::vector<std::complex<double>> &N
 	double Rc = sqrt(config.GetDimension())*Rmax;
 	if (Rmin_local_variance < 0.0){
 		config.IterateThroughNeighbors(x0_RelativeCoordinates, Rc, [dR, &N, &GetRadius, &config](const GeometryVector &x0, const GeometryVector &L_shift, const signed long *PeriodicShift, size_t prt_index) ->void {
-			int index = (int)floor(GetRadius(x0) / dR);
+			size_t index = (size_t)floor(GetRadius(x0) / dR);
 			if (index < N.size()){
 				// RE[index] +=config.GetCharacteristics(prt_index).real();
 				// IM[index] +=config.GetCharacteristics(prt_index).imag();
@@ -44,11 +44,11 @@ void GetF(const MarkedPointPattern &config, std::vector<std::complex<double>> &N
 	}
 	else{
 		/* Exclude the particles within the Rmin_local_variance */
-		config.IterateThroughNeighbors(x0_RelativeCoordinates, Rc, [dR, &N, &GetRadius, &config, &Rmin_local_variance](const GeometryVector &x0, const GeometryVector &L_shift, const signed long *PeriodicShift, size_t prt_index) ->void {
+		config.IterateThroughNeighbors(x0_RelativeCoordinates, Rc, [dR, &N, &GetRadius, &config](const GeometryVector &x0, const GeometryVector &L_shift, const signed long *PeriodicShift, size_t prt_index) ->void {
 			double R = GetRadius(x0);
 			if (R > Rmin_local_variance)
 			{
-				int index = (int)floor(GetRadius(x0) / dR);
+				size_t index = (size_t)floor(GetRadius(x0) / dR);
 				if (index < N.size()){
 					// RE[index] +=config.GetCharacteristics(prt_index).real();
 					// IM[index] +=config.GetCharacteristics(prt_index).imag();
@@ -61,7 +61,7 @@ void GetF(const MarkedPointPattern &config, std::vector<std::complex<double>> &N
 
 
 	/* cumulative sum */
-	for (int i = 1; i < N.size(); i++) {
+	for (size_t i = 1; i < N.size(); i++) {
 		//N[i] += std::complex<double> (RE[i-1], IM[i-1]);  //N[i-1];
 		N[i] += N[i-1]; 
 	}
@@ -72,7 +72,7 @@ void MC_LV_single(const MarkedPointPattern & config, std::vector<GeometryVector>
 {
 	results.clear();
 	results.resize((int)ceil(Rmax / dR), GeometryVector(0,0,0,0));
-	for (int i = 0; i < results.size(); i++){
+	for (size_t i = 0; i < results.size(); i++){
 		results[i].x[0] = dR*(i+1.0);
 	}
 	std::vector<double> sum1_RE(results.size(), 0.0);
@@ -82,14 +82,14 @@ void MC_LV_single(const MarkedPointPattern & config, std::vector<GeometryVector>
 
 	/* second and other centers */
 #pragma omp parallel for
-	for (int i=0; i< window_centers.size(); i++){
+	for (size_t i=0; i< window_centers.size(); i++){
 		std::vector<std::complex<double>> N;
 		MarkedPointPattern c(config);
 		c.PrepareIterateThroughNeighbors(Rmax);
 
 		GetF(c, N, Rmax, dR, window_centers[i], WindowSizeFunct);
 
-		for (int j=0; j<N.size(); j++){
+		for (size_t j=0; j<N.size(); j++){
 			double x = N[j].real();
 			double y = N[j].imag();
 			double z = N[j].real()*N[j].real() + N[j].imag()*N[j].imag();
@@ -104,7 +104,7 @@ void MC_LV_single(const MarkedPointPattern & config, std::vector<GeometryVector>
 
 	/* summarize data */
 	double num_window_centers = (double)window_centers.size();
-	for (int i = 0; i < results.size(); i++){
+	for (size_t i = 0; i < results.size(); i++){
 		std::complex<double> mean = std::complex<double>(sum1_RE[i], sum1_IM[i]) / num_window_centers; 
 		double variance = sum2[i]/num_window_centers - (mean.real()*mean.real() + mean.imag()*mean.imag());
 		
@@ -135,7 +135,7 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 
 	std::vector<GeometryVector> mean_NR;
 	/* repeat over configurations */
-	for (int i = 0; i < NumConfigs; i++){
+	for (size_t i = 0; i < NumConfigs; i++){
 		MarkedPointPattern c = GetConfigsFunction(i);
 		std::vector<GeometryVector> Result_;
 		MC_LV_single(c, Result_, Rmax, dR, WindowCenters, WindowSizeFunct);
@@ -143,7 +143,7 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 		if (i == 0){
 			Result = std::vector<GeometryVector> (Result_);
 			mean_NR.reserve(Result_.size());
-			for (int j = 0; j < Result.size(); j++){
+			for (size_t j = 0; j < Result.size(); j++){
 				Result[j].x[3] = Result[j].x[1];
 				Result[j].x[1] = 0.0;
 
@@ -151,7 +151,7 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 			}
 		}
 		else{
-			for (int j = 0; j < Result.size(); j++){
+			for (size_t j = 0; j < Result.size(); j++){
 				double val = Result_[j].x[1] - Result[j].x[3];
 				Result[j].x[1] += val;
 				Result[j].x[2] += val*val;
@@ -164,7 +164,7 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 		}
 	}
 	/* Summarize data */
-	for(int i = 0; i < Result.size(); i++){
+	for(size_t i = 0; i < Result.size(); i++){
 		Result[i].x[1] /= (double)NumConfigs;
 		/*SE*/
 		if(NumConfigs > 1){
@@ -173,7 +173,6 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 		else{
 			Result[i].x[2] = 0.0;
 		}
-		double mean = Result[i].x[1];
 		Result[i].x[1] += Result[i].x[3];
 		Result[i].x[3] = 0.0;
 
@@ -209,14 +208,14 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 
 	std::vector<GeometryVector> mean_NR;
 	/* repeat over configurations */
-	for (int i = 0; i < NumConfigs; i++){
+	for (size_t i = 0; i < NumConfigs; i++){
 		MarkedPointPattern c = GetConfigsFunction(i);
 		std::vector<GeometryVector> Result_;
 		/* Create window centers */
 		std::vector<GeometryVector> WindowCenters;
 		if (use_particle_centers){
 			WindowCenters.reserve(c.NumParticle());
-			for (int j = 0; j < c.NumParticle(); j++){
+			for (size_t j = 0; j < c.NumParticle(); j++){
 				GeometryVector v = c.GetRelativeCoordinates(j);
 				WindowCenters.push_back(v);
 			}
@@ -230,7 +229,7 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 		if (i == 0){
 			Result = std::vector<GeometryVector> (Result_);
 			mean_NR.reserve(Result_.size());
-			for (int j = 0; j < Result.size(); j++){
+			for (size_t j = 0; j < Result.size(); j++){
 				Result[j].x[3] = Result[j].x[1];
 				Result[j].x[1] = 0.0;
 
@@ -238,7 +237,7 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 			}
 		}
 		else{
-			for (int j = 0; j < Result.size(); j++){
+			for (size_t j = 0; j < Result.size(); j++){
 				double val = Result_[j].x[1] - Result[j].x[3];
 				Result[j].x[1] += val;
 				Result[j].x[2] += val*val;
@@ -251,7 +250,7 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 		}
 	}
 	/* Summarize data */
-	for(int i = 0; i < Result.size(); i++){
+	for(size_t i = 0; i < Result.size(); i++){
 		Result[i].x[1] /= (double)NumConfigs;
 		/*SE*/
 		if(NumConfigs > 1){
@@ -260,7 +259,6 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 		else{
 			Result[i].x[2] = 0.0;
 		}
-		double mean = Result[i].x[1];
 		Result[i].x[1] += Result[i].x[3];
 		Result[i].x[3] = 0.0;
 
