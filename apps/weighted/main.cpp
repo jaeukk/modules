@@ -3,9 +3,11 @@
  *	Email	: phy000.kim@gmail.com
  *	Date	: March 2022 */
 
-/** \file main.cpp 
- * \brief A simple CLI for computing various pair statistics from point configurations. 
- * This is a simplified version of the PairStatisticsCLI code written by Ge.*/
+/**
+ * \file main.cpp
+ * \brief A simple CLI for computing various pair statistics from point configurations.
+ * This is a simplified version of the PairStatisticsCLI code written by Ge.
+ */
 
 #include "Computation.h"
 //#include "ContactStatistics.h"
@@ -17,10 +19,12 @@
 
 size_t Verbosity = 2;
 
-/** \brief GetConfigsFunction that pairs a ConfigurationPack with per-particle weights read from text files.
- *	Acts as the source of marked configurations for the CLI: operator()(i) loads the i-th packed
- *	configuration, reads one column of a companion weights file into each particle's characteristic,
- *	and optionally rescales, filters, or shuffles the weights. */
+/**
+ * \brief GetConfigsFunction that pairs a ConfigurationPack with per-particle weights read from text files.
+ * Acts as the source of marked configurations for the CLI: operator()(i) loads the i-th packed
+ * configuration, reads one column of a companion weights file into each particle's characteristic,
+ * and optionally rescales, filters, or shuffles the weights.
+ */
 class ReadConfigPackWeights
 {
 public:
@@ -36,10 +40,12 @@ public:
 	bool sequential_sampling = true;	///< If true, read configurations in order; otherwise sample at random.
 	bool weight_shuffling = false;		///< If true, randomly permute the weights among the particles.
 
-	/// @brief Read the ConfigPack prefix, weights-file prefix, and weights column from the CLI streams.
-	/// @param ifile, ofile	The CLI input/output streams.
-	/// @param Rescale			Linear rescale applied to each configuration.
-	/// @param StartIdx			Index of the first configuration to read.
+	/**
+	 * \brief Read the ConfigPack prefix, weights-file prefix, and weights column from the CLI streams.
+	 * \param ifile, ofile	The CLI input/output streams.
+	 * \param Rescale			Linear rescale applied to each configuration.
+	 * \param StartIdx			Index of the first configuration to read.
+	 */
 	ReadConfigPackWeights(std::istream & ifile, std::ostream & ofile, double Rescale, size_t StartIdx = 0)
 	{
 		this->Rescale=Rescale;
@@ -56,14 +62,16 @@ public:
 		ifile>> column;
 	}
 
-	/// @brief Replace the per-weight transform applied while reading.
+	/** \brief Replace the per-weight transform applied while reading. */
 	void replace_filter(std::function<const std::complex<double> (std::complex<double>)> new_filter){
 		this->filter = new_filter;
 	}
 
-	/// @brief Return the i-th marked configuration (rescaled, weighted, and optionally filtered/shuffled).
-	/// @param i	Zero-based ensemble index (offset by StartIdx for sequential sampling).
-	/// @return The configuration with each particle's characteristic set to its weight.
+	/**
+	 * \brief Return the i-th marked configuration (rescaled, weighted, and optionally filtered/shuffled).
+	 * \param i	Zero-based ensemble index (offset by StartIdx for sequential sampling).
+	 * \return The configuration with each particle's characteristic set to its weight.
+	 */
 	PeriodicCellList<std::complex<double>> operator() (size_t i)
 	{
 		Configuration result;
@@ -140,18 +148,20 @@ public:
 	}
 };
 
-/** \brief GetConfigsFunction wrapper that rescales each configuration to unit number density.
- *	Wraps another GetConfigsFunction; operator()(i) resizes the i-th configuration so its number
- *	density is one. (Currently unused by the CLI; the enabling command is commented out.) */
+/**
+ * \brief GetConfigsFunction wrapper that rescales each configuration to unit number density.
+ * Wraps another GetConfigsFunction; operator()(i) resizes the i-th configuration so its number
+ * density is one. (Currently unused by the CLI; the enabling command is commented out.)
+ */
 class RescaleToUnitDensity
 {
 public:
 	std::function<const Configuration(size_t i)> GetConfigsFunction;	///< The wrapped configuration source.
-	/// @brief Wrap an existing configuration source.
+	/** \brief Wrap an existing configuration source. */
 	RescaleToUnitDensity(std::function<const Configuration(size_t i)> GetConfigsFunction) : GetConfigsFunction(GetConfigsFunction)
 	{}
 
-	/// @brief Return the i-th configuration rescaled to unit number density.
+	/** \brief Return the i-th configuration rescaled to unit number density. */
 	Configuration operator() (size_t i)
 	{
 		Configuration result = GetConfigsFunction(i);
@@ -162,20 +172,22 @@ public:
 
 int PairStatisticsCLI();
 
-/// @brief Program entry point; runs the interactive PairStatisticsCLI loop.
+/** \brief Program entry point; runs the interactive PairStatisticsCLI loop. */
 int main(int argc, char ** argv){
 	int signal;
 	signal = PairStatisticsCLI();
 	return signal;
 }
 
-/** \brief Interactive command loop that drives the weighted pair-statistics computations.
- *	Reads commands from std::cin and writes prompts to std::cout. Commands set parameters
- *	(e.g. OutputPrefix, NumConfig, StartIndex), build the configuration source
- *	(GetConfigsFunction ReadConfigPack), register computations (g2Computation, SkComputation,
- *	LocalVariance), and finally run them (Calculation). Type "Available" to list the supported
- *	computations and "Exit" to quit.
- * @return 0 on the Exit command, 2 on end-of-input. */
+/**
+ * \brief Interactive command loop that drives the weighted pair-statistics computations.
+ * Reads commands from std::cin and writes prompts to std::cout. Commands set parameters
+ * (e.g. OutputPrefix, NumConfig, StartIndex), build the configuration source
+ * (GetConfigsFunction ReadConfigPack), register computations (g2Computation, SkComputation,
+ * LocalVariance), and finally run them (Calculation). Type "Available" to list the supported
+ * computations and "Exit" to quit.
+ * \return 0 on the Exit command, 2 on end-of-input.
+ */
 int PairStatisticsCLI(){
 	char tempstring[1000];
 	/* An extern variable defined in ${core}/etc.h */

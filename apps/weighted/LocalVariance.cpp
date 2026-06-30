@@ -2,8 +2,10 @@
  *	Email	: phy000.kim@gmail.com
  *	Date	:	April. 2025 */
 
-/** \file LocalVariance.cpp
- *	\brief Function implementations of computing local number variances of point patterns under the periodic boundary conditions. */
+/**
+ * \file LocalVariance.cpp
+ * \brief Function implementations of computing local number variances of point patterns under the periodic boundary conditions.
+ */
 
 #include "LocalVariance.h"
 //#include <time.h>

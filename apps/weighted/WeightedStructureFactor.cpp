@@ -8,17 +8,19 @@
 #include <cmath>
 #include <algorithm>
 
-/** \file WeightedStructureFactor.cpp
- *	\brief	Function implementations for weighted structure factor. */
+/**
+ * \file WeightedStructureFactor.cpp
+ * \brief	Function implementations for weighted structure factor.
+ */
 
 /** \struct A class to store data in each bin. */
 struct SkBin
 {
-	double Sum1,	//< count
-		SumK1,		//<	sum of the magnitudes of wavevectors (|k|)
-		SumK2,		//< sum of squared magnitudes of wavevectors (|k|^2)
-		SumS,		//< sum of spectral functions
-		SumS2;		//< sum of squared spectral functions
+	double Sum1,	///< count
+		SumK1,		///<	sum of the magnitudes of wavevectors (|k|)
+		SumK2,		///< sum of squared magnitudes of wavevectors (|k|^2)
+		SumS,		///< sum of spectral functions
+		SumS2;		///< sum of squared spectral functions
 	SkBin() : Sum1(0), SumK1(0), SumK2(0), SumS(0), SumS2(0)
 	{}
 };
