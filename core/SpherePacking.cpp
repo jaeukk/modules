@@ -231,6 +231,7 @@ void SpherePacking::Insert(double radius, const GeometryVector & RelativeCoordin
 	if(this->MaxRadius<radius)
 		this->MaxRadius=radius;
 }
+
 /** \brief Check whether the voxel at cr (with given halfsize) is completely covered by existing spheres.  (mainly used in RandomSequentialAddition.{h,cpp})
  *  \param cr       Voxel center in relative (box) coordinates.
  *  \param halfsize Half the voxel side length (in relative units).

@@ -4,9 +4,10 @@
  *	Date	: June 2024 */
 
 
-/** \file ContactStatistics.h 
- * \brief Header file for a 
- * */
+/**
+ * \file ContactStatistics.h
+ * \brief Header file for a
+ */
 
 #include "ContactStatistics.h"
 

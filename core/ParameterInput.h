@@ -34,6 +34,7 @@ public:
 	 *  \param N  Digit index.
 	 *  \return   The digit value, or 0 if N is out of range. */
 	int GetNthDigit(size_t N) const;
+
 	/** \brief increment in the number
 	 *  \return  Reference to this number after incrementing. */
 	n_naryNumber& operator++ (int);
@@ -62,6 +63,7 @@ struct cont {
 	cont(const cont & source) : _int_ptr(source._int_ptr), _double_ptr(source._double_ptr), _size_ptr(source._size_ptr), _string_ptr(source._string_ptr) {
 		Fail = false;
 	}
+
 	/** \return this->Fail. True = operator >> failed. */
 	bool IsFail() { return Fail; }
 	/** \return the type of the non-null pointer. */
@@ -89,6 +91,7 @@ private:
  *  \param a   The cont whose pointed-to value receives the extracted value.
  *  \return    The input stream. */
 std::istream & operator >> (std::istream & is, cont & a);
+
 /** \brief Insertion operator for the cont struct.
  *  \param os  The output stream to write to.
  *  \param a   The cont whose pointed-to value is written.

@@ -3,9 +3,11 @@
  *	Email	: phy000.kim@gmail.com
  *	Date	: March 2022 */
 
-/** \file main.cpp 
- * \brief A simple CLI for computing various pair statistics from point configurations. 
- * This is a simplified version of the PairStatisticsCLI code written by Ge.*/
+/**
+ * \file main.cpp
+ * \brief A simple CLI for computing various pair statistics from point configurations.
+ * This is a simplified version of the PairStatisticsCLI code written by Ge.
+ */
 
 #include "Computation.h"
 //#include "ContactStatistics.h"
@@ -17,7 +19,7 @@ size_t Verbosity = 2;  // each executable defines it (new_c++ convention)
 
 // Verbosity is defined by the core module (modules/core/etc.cpp).
 
-//helper type 1 : callable types to get configurations
+//helper type 1 : callable types to get configurations in various file formats, storing configurations in individual txt files.
 class PrefixNumberSuffix
 {
 public:
@@ -25,10 +27,13 @@ public:
 	std::string PostName;
 	double Rescale;
 	Configuration (*GetFunction)(std::istream & ifile);
-	/** \brief Construct the loader, reading the file name prefix, suffix, and file type from the input stream. (CLAUDE)
-	 *  \param ifile    Input stream supplying the prefix, suffix, and file type.
-	 *  \param ofile    Output stream for prompts.
-	 *  \param Rescale  Linear scaling factor applied to each configuration when read. */
+	
+	/**
+	 * \brief Construct the loader, reading the file name prefix, suffix, and file type from the input stream.
+	 * \param ifile    Input stream supplying the prefix, suffix, and file type.
+	 * \param ofile    Output stream for prompts.
+	 * \param Rescale  Linear scaling factor applied to each configuration when read.
+	 */
 	PrefixNumberSuffix(std::istream & ifile, std::ostream & ofile, double Rescale)
 	{
 		char tempstring[1000];
@@ -55,9 +60,12 @@ inputtype:
 			goto inputtype;
 		}
 	}
-	/** \brief Read the configuration whose file name is prefix + i + suffix, then rescale it. (CLAUDE)
-	 *  \param i  Index inserted between prefix and suffix to form the file name.
-	 *  \return   The loaded and rescaled configuration. */
+
+	/**
+	 * \brief Read the configuration whose file name is prefix + i + suffix, then rescale it.
+	 * \param i  Index inserted between prefix and suffix to form the file name.
+	 * \return   The loaded and rescaled configuration.
+	 */
 	Configuration operator() (size_t i)const
 	{
 		std::stringstream name;
@@ -72,6 +80,8 @@ inputtype:
 		return result;
 	}
 };
+
+//helper type 2 : callable types to get configurations
 class PrefixNumberSuffix_withInitialNumber
 {
 public:
@@ -80,10 +90,13 @@ public:
 	double Rescale;
 	signed long InitialNumber;
 	Configuration (*GetFunction)(std::istream & ifile);
-	/** \brief Construct the loader, reading the prefix, suffix, file type, and initial index offset from the input stream. (CLAUDE)
-	 *  \param ifile    Input stream supplying the prefix, suffix, file type, and initial number.
-	 *  \param ofile    Output stream for prompts.
-	 *  \param Rescale  Linear scaling factor applied to each configuration when read. */
+
+	/**
+	 * \brief Construct the loader, reading the prefix, suffix, file type, and initial index offset from the input stream.
+	 * \param ifile    Input stream supplying the prefix, suffix, file type, and initial number.
+	 * \param ofile    Output stream for prompts.
+	 * \param Rescale  Linear scaling factor applied to each configuration when read.
+	 */
 	PrefixNumberSuffix_withInitialNumber(std::istream & ifile, std::ostream & ofile, double Rescale)
 	{
 		char tempstring[1000];
@@ -112,9 +125,12 @@ inputtype:
 		ofile<<"Input Initial Number:";
 		ifile>>this->InitialNumber;
 	}
-	/** \brief Read the configuration whose file name is prefix + (i + InitialNumber) + suffix, then rescale it. (CLAUDE)
-	 *  \param i  Index offset, added to InitialNumber to form the file name.
-	 *  \return   The loaded and rescaled configuration. */
+
+	/**
+	 * \brief Read the configuration whose file name is prefix + (i + InitialNumber) + suffix, then rescale it.
+	 * \param i  Index offset, added to InitialNumber to form the file name.
+	 * \return   The loaded and rescaled configuration.
+	 */
 	Configuration operator() (size_t i)const
 	{
 		std::stringstream name;
@@ -134,6 +150,8 @@ inputtype:
 		return result;
 	}
 };
+
+//helper type 3 : callable types to get configurations from a ConfigPack file.
 class ReadConfigPack
 {
 public:
@@ -142,11 +160,14 @@ public:
 	ConfigurationPack p;
 	RandomGenerator rng;
 	bool sequential_sampling = true;
-	/** \brief Construct the loader, reading the configuration-pack prefix and opening the pack. (CLAUDE)
-	 *  \param ifile     Input stream supplying the pack prefix.
-	 *  \param ofile     Output stream for prompts.
-	 *  \param Rescale   Linear scaling factor applied to each configuration when read.
-	 *  \param StartIdx  Index of the first configuration to read from the pack. */
+
+	/**
+	 * \brief Construct the loader, reading the configuration-pack prefix and opening the pack.
+	 * \param ifile     Input stream supplying the pack prefix.
+	 * \param ofile     Output stream for prompts.
+	 * \param Rescale   Linear scaling factor applied to each configuration when read.
+	 * \param StartIdx  Index of the first configuration to read from the pack.
+	 */
 	ReadConfigPack(std::istream & ifile, std::ostream & ofile, double Rescale, size_t StartIdx = 0)
 	{
 		this->Rescale=Rescale;
@@ -156,9 +177,12 @@ public:
 		ifile>>prefix;
 		p.Open(prefix);
 	}
-	/** \brief Return the i-th configuration from the pack (sequentially from StartIdx, or randomly), then rescale it. (CLAUDE)
-	 *  \param i  Sequential index added to StartIdx; ignored when random sampling is enabled.
-	 *  \return   The loaded and rescaled configuration. */
+
+	/**
+	 * \brief Return the i-th configuration from the pack (sequentially from StartIdx, or randomly), then rescale it.
+	 * \param i  Sequential index added to StartIdx; ignored when random sampling is enabled.
+	 * \return   The loaded and rescaled configuration.
+	 */
 	Configuration operator() (size_t i)
 	{
 		Configuration result;
@@ -178,13 +202,19 @@ class RescaleToUnitDensity
 {
 public:
 	std::function<const Configuration(size_t i)> GetConfigsFunction;
-	/** \brief Construct the wrapper around an existing configuration source. (CLAUDE)
-	 *  \param GetConfigsFunction  The underlying source returning the configuration of index i. */
+
+	/**
+	 * \brief Construct the wrapper around an existing configuration source.
+	 * \param GetConfigsFunction  The underlying source returning the configuration of index i.
+	 */
 	RescaleToUnitDensity(std::function<const Configuration(size_t i)> GetConfigsFunction) : GetConfigsFunction(GetConfigsFunction)
 	{}
-	/** \brief Return the i-th configuration rescaled to unit number density. (CLAUDE)
-	 *  \param i  Index passed to the underlying source.
-	 *  \return   The configuration rescaled to unit number density. */
+
+	/**
+	 * \brief Return the i-th configuration rescaled to unit number density.
+	 * \param i  Index passed to the underlying source.
+	 * \return   The configuration rescaled to unit number density.
+	 */
 	Configuration operator() (size_t i)
 	{
 		Configuration result = GetConfigsFunction(i);
@@ -199,10 +229,13 @@ public:
 	double Rescale;
 	ConfigurationPack p;
 	size_t InitialNumber;
-	/** \brief Construct the loader, reading the configuration-pack prefix and the initial index offset. (CLAUDE)
-	 *  \param ifile    Input stream supplying the pack prefix and initial number.
-	 *  \param ofile    Output stream for prompts.
-	 *  \param Rescale  Linear scaling factor applied to each configuration when read. */
+	
+	/**
+	 * \brief Construct the loader, reading the configuration-pack prefix and the initial index offset.
+	 * \param ifile    Input stream supplying the pack prefix and initial number.
+	 * \param ofile    Output stream for prompts.
+	 * \param Rescale  Linear scaling factor applied to each configuration when read.
+	 */
 	ReadConfigPack_withInitialNumber(std::istream & ifile, std::ostream & ofile, double Rescale)
 	{
 		this->Rescale=Rescale;
@@ -213,9 +246,12 @@ public:
 		ofile<<"Input Initial Number:";
 		ifile>>InitialNumber;
 	}
-	/** \brief Return configuration (i + InitialNumber) from the pack, then rescale it. (CLAUDE)
-	 *  \param i  Index offset, added to InitialNumber.
-	 *  \return   The loaded and rescaled configuration. */
+
+	/**
+	 * \brief Return configuration (i + InitialNumber) from the pack, then rescale it.
+	 * \param i  Index offset, added to InitialNumber.
+	 * \return   The loaded and rescaled configuration.
+	 */
 	Configuration operator() (size_t i)
 	{
 		Configuration result=p.GetConfig(i+InitialNumber);
@@ -223,18 +259,24 @@ public:
 		return result;
 	}
 };
+
 class SingleConfiguration
 {
 public:
 	Configuration c;
-	/** \brief Construct a source that always returns the single given configuration. (CLAUDE)
-	 *  \param C  The configuration to store and return. */
+	/**
+	 * \brief Construct a source that always returns the single given configuration.
+	 * \param C  The configuration to store and return.
+	 */
 	SingleConfiguration( Configuration C ) : c(C)
 	{
 	}
-	/** \brief Return the stored configuration; the index must be 0. (CLAUDE)
-	 *  \param i  Configuration index; must be 0.
-	 *  \return   The stored configuration. */
+
+	/**
+	 * \brief Return the stored configuration.
+	 * \param i  Configuration index; must be 0.
+	 * \return   The stored configuration.
+	 */
 	Configuration operator() (size_t i)
 	{
 		assert(i==0);
@@ -242,14 +284,18 @@ public:
 	}
 };
 
-/** \brief Run the interactive pair-statistics command-line interpreter. (CLAUDE)
- *  \return  Exit status code of the interpreter. */
+/**
+ * \brief Run the interactive pair-statistics command-line interpreter.
+ * \return  Exit status code of the interpreter.
+ */
 int PairStatisticsCLI();
 
-/** \brief Program entry point; launches the pair-statistics CLI. (CLAUDE)
- *  \param argc  Number of command-line arguments.
- *  \param argv  Array of command-line argument strings.
- *  \return      Process exit status (always 0). */
+/**
+ * \brief Program entry point; launches the pair-statistics CLI. 
+ * \param argc  Number of command-line arguments.
+ * \param argv  Array of command-line argument strings.
+ * \return      Process exit status (always 0).
+ */
 int main(int argc, char ** argv){
 	int signal;
 	signal = PairStatisticsCLI();

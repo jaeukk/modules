@@ -10,8 +10,10 @@
 #include <algorithm>
 #include <boost/math/special_functions/bessel.hpp>	// Mtilde (cyl_bessel_j)
 
-/** \file StructureFactor.cpp
- *	\brief	Function implementations for structure factor. */
+/**
+ * \file StructureFactor.cpp
+ * \brief	Function implementations for structure factor.
+ */
 
 // ---- Ported from the full top-level StructureFactor (core-only; used by FFH,
 //      CCOptimization). GetKs already lives in core, so only Mtilde here. -------
@@ -35,12 +37,12 @@ double Mtilde(double k, double R, DimensionType d)
 /** \struct A class to store data in each bin. */
 struct SkBin
 {
-	double Sum1,	//< count
-		SumK1,		//<	sum of the magnitudes of wavevectors (|k|)
-		SumK2,		//< sum of squared magnitudes of wavevectors (|k|^2)
-		SumS,		//< sum of spectral functions
-		SumS2;		//< sum of squared spectral functions
-	/** \brief Construct an empty bin with all accumulators set to zero. (CLAUDE) */
+	double Sum1,	///< count
+		SumK1,		///<	sum of the magnitudes of wavevectors (|k|)
+		SumK2,		///< sum of squared magnitudes of wavevectors (|k|^2)
+		SumS,		///< sum of spectral functions
+		SumS2;		///< sum of squared spectral functions
+	/** \brief Construct an empty bin with all accumulators set to zero. */
 	SkBin() : Sum1(0), SumK1(0), SumK2(0), SumS(0), SumS2(0)
 	{}
 };
@@ -253,101 +255,5 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 
 	if(Verbosity>2)
 		std::cout<<"done!\n";
-}
-
-void IsotropicStructureFactor_weighted(std::function<const PeriodicCellList<std::complex<double>>(size_t i)> GetConfigsFunction, size_t NumConfigs, double CircularKMax, double LinearKMax, std::vector<GeometryVector> & Results, double KPrecision, double SampleProbability)
-{
-	Results.clear();
-	if (!(CircularKMax>0))
-		return;
-	if (!(LinearKMax>0))
-		return;
-
-	if (KPrecision == 0.0)
-	{
-		std::cerr << "Warning in IsotropicStructureFactor : This version does not support KPrecision==0.0. Auto choosing this quantity!\n";
-		PeriodicCellList<std::complex<double>> c = GetConfigsFunction(0);
-		KPrecision = std::sqrt(c.GetReciprocalBasisVector(0).Modulus2());
-	}
-	size_t NumBin = std::floor(LinearKMax / KPrecision) + 1;
-	std::vector<SkBin> vSkBin(NumBin, SkBin());
-
-
-	GeometryVector prevBasis[::MaxDimension];
-	std::vector<GeometryVector> ks;
-	if (Verbosity>1)
-		std::cout << "Computing S(k)";
-	progress_display pd(NumConfigs);
-
-
-
-	for (size_t j = 0; j<NumConfigs; j++)
-	{
-		//if(Verbosity>3 || (Verbosity>2&&j%100==0) )
-		//	std::cout<<j<<"/"<<NumConfigs<<"configurations processed\n";
-		PeriodicCellList<std::complex<double>> CurrentConfig = GetConfigsFunction(j);
-		if (CurrentConfig.GetDimension() == 0)
-			break;
-		if (j != 0)
-		{
-			bool SameBasis = true;
-			for (DimensionType i = 0; i<CurrentConfig.GetDimension(); i++)
-				if (!(prevBasis[i] == CurrentConfig.GetBasisVector(i)))
-					SameBasis = false;
-
-			if (SameBasis == false)
-				ks = GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability);
-		}
-		else
-			ks = GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability);
-
-		signed long end = ks.size();
-
-#pragma omp parallel for schedule(guided)
-		for (signed long i = 0; i<end; i++)
-		{
-			double s = WeightedStructureFactor(CurrentConfig, ks[i]);
-			double k2 = ks[i].Modulus2();
-			size_t Bin = std::floor(std::sqrt(k2) / KPrecision);
-#pragma omp atomic
-			vSkBin[Bin].Sum1 += 1.0;
-			//-----added-----
-#pragma omp atomic
-			vSkBin[Bin].SumK1 += sqrt(k2);
-			//---------------
-#pragma omp atomic
-			vSkBin[Bin].SumK2 += k2;
-#pragma omp atomic
-			vSkBin[Bin].SumS += s;
-#pragma omp atomic
-			vSkBin[Bin].SumS2 += s * s;
-
-		}
-		for (DimensionType i = 0; i<CurrentConfig.GetDimension(); i++)
-			prevBasis[i] = CurrentConfig.GetBasisVector(i);
-		pd++;
-	}
-
-
-	for (auto iter = vSkBin.begin(); iter != vSkBin.end(); iter++)
-	{
-		if (iter->Sum1 != 0.0)
-		{
-			GeometryVector temp(4);
-			//temp.x[0] = std::sqrt(iter->SumK2 / iter->Sum1);
-			//temp.x[1] = iter->SumS / iter->Sum1;
-			//temp.x[2] = KPrecision;
-			//temp.x[3] = std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1)); // I modified it
-			temp.x[0] = iter->SumK1 / iter->Sum1;
-			temp.x[1] = iter->SumS / iter->Sum1;
-			double var = (iter->SumK2 / (iter->Sum1) - temp.x[0] * temp.x[0]) / (iter->Sum1);
-			temp.x[2] = (var > 0) ? std::sqrt(var) : 0;
-			temp.x[3] = std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1)); // I modified it
-			Results.push_back(temp);
-		}
-	}
-
-	if (Verbosity>2)
-		std::cout << "done!\n";
 }
 

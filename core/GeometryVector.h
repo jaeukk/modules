@@ -301,6 +301,7 @@ inline std::ostream & operator << (std::ostream & os, const GeometryVector & a)
 	os<<'\n';
 	return os;
 }
+
 /** \brief Read all MaxDimension coordinates from a stream.
  *  \param is  Input stream to read from.
  *  \param a   Vector to receive the read coordinates.
@@ -443,6 +444,7 @@ public:
 		this->dim=0;
 		this->x=nullptr;
 	}
+
 	/** \brief Construct a zero vector of the given dimension.
 	 *  \param dimension  Number of components to allocate. */
 	BigVector(size_t dimension)
@@ -452,6 +454,7 @@ public:
 		for(size_t i=0; i<dimension; i++)
 			this->x[i]=0.0;
 	}
+
 	/** \brief Copy-construct from another vector (deep copy).
 	 *  \param src  Source vector to copy from. */
 	BigVector(const BigVector & src)
@@ -477,6 +480,7 @@ public:
 		if(this->x!=nullptr)
 			delete [] this->x;
 	}
+
 	/** \brief Add components from another vector in-place.
 	 *  \param right  Vector whose components are added to this one. */
 	void AddFrom(const BigVector & right)
@@ -485,6 +489,7 @@ public:
 		for(size_t i=0; i<this->dim; i++)
 			this->x[i]+=right.x[i];
 	}
+
 	/** \brief Subtract components from another vector in-place.
 	 *  \param right  Vector whose components are subtracted from this one. */
 	void MinusFrom(const BigVector & right)

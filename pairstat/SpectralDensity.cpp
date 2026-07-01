@@ -2,9 +2,11 @@
  *  Email	:
  *	Date	:	*/
 
-/** \file SpectralDensity.cpp
- *	\brief Implementation of the spectral density chi_V(k) of sphere packings
- *	(split out of StructureFactor.cpp). */
+/**
+ * \file SpectralDensity.cpp
+ * \brief Implementation of the spectral density chi_V(k) of sphere packings
+ * (split out of StructureFactor.cpp).
+ */
 
 #include "SpectralDensity.h"
 #include "StructureFactor.h"	// Mtilde (sphere form factor)
@@ -15,17 +17,19 @@
 #include <etc.h>		// Verbosity, progress_display, MaxDimension
 
 
-/** \struct SkBin
- *  \brief Per-bin accumulator for isotropic averaging in |k|.
- *  (Mirrors the file-local SkBin in StructureFactor.cpp; kept local here so the
- *   two translation units stay independent.) */
+/**
+ * \struct SkBin
+ * \brief Per-bin accumulator for isotropic averaging in |k|.
+ * (Mirrors the file-local SkBin in StructureFactor.cpp; kept local here so the
+ * two translation units stay independent.)
+ */
 struct SkBin
 {
-	double Sum1,	//< count
-		SumK1,		//<	sum of the magnitudes of wavevectors (|k|)
-		SumK2,		//< sum of squared magnitudes of wavevectors (|k|^2)
-		SumS,		//< sum of spectral functions
-		SumS2;		//< sum of squared spectral functions
+	double Sum1,	///< count
+		SumK1,		///<	sum of the magnitudes of wavevectors (|k|)
+		SumK2,		///< sum of squared magnitudes of wavevectors (|k|^2)
+		SumS,		///< sum of spectral functions
+		SumS2;		///< sum of squared spectral functions
 	/** \brief Construct an empty bin with all accumulators set to zero. */
 	SkBin() : Sum1(0), SumK1(0), SumK2(0), SumS(0), SumS2(0)
 	{}

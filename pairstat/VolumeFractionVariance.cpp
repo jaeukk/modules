@@ -2,9 +2,11 @@
  *	Email	: phy000.kim@gmail.com
  *	Date	:	April. 2019 */
 
-/** \file VolumeFractionVariance.cpp
- *	\brief Implementation of the local volume-fraction variance sigma_V^2(R) of
- *	sphere packings (split out of NumberVariance.cpp). */
+/**
+ * \file VolumeFractionVariance.cpp
+ * \brief Implementation of the local volume-fraction variance sigma_V^2(R) of
+ * sphere packings (split out of NumberVariance.cpp).
+ */
 
 #include "VolumeFractionVariance.h"
 #include <etc.h>		// v2(), HyperSphere_Volume() — used by the local-volume helpers

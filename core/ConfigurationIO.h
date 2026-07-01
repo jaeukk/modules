@@ -140,18 +140,22 @@ void WriteTJOutput(const std::string & prefix, const SpherePacking & pk);
  *  \param OutputName File name prefix (".txt" is appended). */
 //output Cartesian coordinates of particles with the dimension and basis vectors
 void WriteConfiguration(const Configuration & conf, const std::string & OutputName);
+
 /** \brief Write a SpherePacking (dimension, basis vectors, coordinates and radii) to a .txt file. 
  *  \param conf       SpherePacking to write.
  *  \param OutputName File name prefix (".txt" is appended). */
 void WriteConfiguration(const SpherePacking & conf, const std::string & OutputName);
+
 /** \brief Write a generic PeriodicCellList (dimension, basis vectors, coordinates) to a .txt file. 
  *  \param conf       PeriodicCellList to write.
  *  \param OutputName File name prefix (".txt" is appended). */
 template<typename T> void WriteConfiguration(const PeriodicCellList<T> & conf, const std::string & OutputName);
+
 /** \brief Read a Configuration from a .txt file written by WriteConfiguration. 
  *  \param conf      Configuration to populate.
  *  \param InputName File name prefix (".txt" is appended). */
 void ReadConfiguration(Configuration & conf, const std::string & InputName);
+
 /** \brief Read a SpherePacking from a .txt file written by WriteConfiguration. 
  *  \param conf      SpherePacking to populate.
  *  \param InputName File name prefix (".txt" is appended). */

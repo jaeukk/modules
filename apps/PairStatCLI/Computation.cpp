@@ -3,29 +3,33 @@
  *	Email	: phy000.kim@gmail.com
  *	Date	: March 2022 */
 
-/** \file Computation.h 
+/**
+ * \file Computation.h
  * \brief Source file for a Computation class and its derived classes.
  * It simplified the input and output for some calculations involving an ensemble of point configurations.
- * Computation PairStatisticsCLI code written by Ge.*/
+ * Computation PairStatisticsCLI code written by Ge.
+ */
 
 #include "Computation.h"
 
 /* Functions to write data in grace format.
  *	Taken from Plots.cpp */
-/** \brief Write one or more data sets to a Grace (.agr) project file with explicit axis ranges and ticks. (CLAUDE)
- *  \param presult       Array of NumSet data sets, each a vector of (x, y, ...) points.
- *  \param NumSet        Number of data sets to plot.
- *  \param OutFilePrefix Prefix of the output ".agr" file.
- *  \param xLabel        Label of the x axis.
- *  \param yLabel        Label of the y axis.
- *  \param legends       Legend strings, one per data set.
- *  \param Title         Title of the plot.
- *  \param MinX          Lower bound of the x axis.
- *  \param MaxX          Upper bound of the x axis.
- *  \param TickX         Major tick spacing on the x axis.
- *  \param MinY          Lower bound of the y axis.
- *  \param MaxY          Upper bound of the y axis.
- *  \param TickY         Major tick spacing on the y axis. */
+/**
+ * \brief Write one or more data sets to a Grace (.agr) project file with explicit axis ranges and ticks.
+ * \param presult       Array of NumSet data sets, each a vector of (x, y, ...) points.
+ * \param NumSet        Number of data sets to plot.
+ * \param OutFilePrefix Prefix of the output ".agr" file.
+ * \param xLabel        Label of the x axis.
+ * \param yLabel        Label of the y axis.
+ * \param legends       Legend strings, one per data set.
+ * \param Title         Title of the plot.
+ * \param MinX          Lower bound of the x axis.
+ * \param MaxX          Upper bound of the x axis.
+ * \param TickX         Major tick spacing on the x axis.
+ * \param MinY          Lower bound of the y axis.
+ * \param MaxY          Upper bound of the y axis.
+ * \param TickY         Major tick spacing on the y axis.
+ */
 void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumSet, const std::string & OutFilePrefix, const std::string & xLabel, const std::string & yLabel, const std::vector<std::string> & legends, const std::string & Title, double MinX, double MaxX, double TickX, double MinY, double MaxY, double TickY)
 {
 	const size_t NColor = 14;
@@ -353,14 +357,17 @@ void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumS
 		ofile<<'&';
 	}
 }
-/** \brief Write one or more data sets to a Grace (.agr) project file, choosing axis ranges and ticks automatically from the data. (CLAUDE)
- *  \param presult       Array of NumSet data sets, each a vector of (x, y, ...) points.
- *  \param NumSet        Number of data sets to plot.
- *  \param OutFilePrefix Prefix of the output ".agr" file.
- *  \param xLabel        Label of the x axis.
- *  \param yLabel        Label of the y axis.
- *  \param legends       Legend strings, one per data set.
- *  \param Title         Title of the plot. */
+
+/**
+ * \brief Write one or more data sets to a Grace (.agr) project file, choosing axis ranges and ticks automatically from the data. 
+ * \param presult       Array of NumSet data sets, each a vector of (x, y, ...) points.
+ * \param NumSet        Number of data sets to plot.
+ * \param OutFilePrefix Prefix of the output ".agr" file.
+ * \param xLabel        Label of the x axis.
+ * \param yLabel        Label of the y axis.
+ * \param legends       Legend strings, one per data set.
+ * \param Title         Title of the plot.
+ */
 void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumSet, const std::string & OutFilePrefix, const std::string & xLabel, const std::string & yLabel, const std::vector<std::string> & legends, const std::string & Title)
 {
 	const std::vector<GeometryVector> & result = presult[0];
@@ -404,20 +411,25 @@ void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumS
 
 	PlotFunction_Grace(presult, NumSet, OutFilePrefix, xLabel, yLabel, legends, Title, MinX, MaxX, TickX, MinY, MaxY, TickY);
 }
-/** \brief Write a single data set to a Grace (.agr) project file with no legend. (CLAUDE)
- *  \param result        The data set, a vector of (x, y, ...) points.
- *  \param OutFilePrefix Prefix of the output ".agr" file.
- *  \param xLabel        Label of the x axis.
- *  \param yLabel        Label of the y axis.
- *  \param Title         Title of the plot. */
+
+/**
+ * \brief Write a single data set to a Grace (.agr) project file with no legend.
+ * \param result        The data set, a vector of (x, y, ...) points.
+ * \param OutFilePrefix Prefix of the output ".agr" file.
+ * \param xLabel        Label of the x axis.
+ * \param yLabel        Label of the y axis.
+ * \param Title         Title of the plot.
+ */
 void PlotFunction_Grace(const std::vector<GeometryVector> & result, const std::string & OutFilePrefix, const std::string & xLabel, const std::string & yLabel, const std::string & Title)
 {
 	PlotFunction_Grace(&result, 1, OutFilePrefix, xLabel, yLabel, std::vector<std::string>(), Title);
 }
 
-/** \brief Read data sets from an open Grace-format stream into a list of point sets. (CLAUDE)
- *  \param result  Output; one vector of points per data set found in the stream.
- *  \param ifile   The input stream in Grace (.agr) format. */
+/**
+ * \brief Read data sets from an open Grace-format stream into a list of point sets.
+ * \param result  Output; one vector of points per data set found in the stream.
+ * \param ifile   The input stream in Grace (.agr) format.
+ */
 void ReadGraceData(std::vector<std::vector<GeometryVector> > & result, std::istream & ifile)
 {
 	if (!ifile.good())
@@ -453,9 +465,12 @@ void ReadGraceData(std::vector<std::vector<GeometryVector> > & result, std::istr
 	}
 	result.pop_back();
 }
-/** \brief Read data sets from a Grace (.agr) file given its prefix into a list of point sets. (CLAUDE)
- *  \param result        Output; one vector of points per data set found in the file.
- *  \param InFilePrefix  Prefix of the input ".agr" file. */
+
+/**
+ * \brief Read data sets from a Grace (.agr) file given its prefix into a list of point sets.
+ * \param result        Output; one vector of points per data set found in the file.
+ * \param InFilePrefix  Prefix of the input ".agr" file.
+ */
 void ReadGraceData(std::vector<std::vector<GeometryVector> > & result, const std::string & InFilePrefix)
 {
 	std::string name = InFilePrefix + std::string(".agr");
@@ -584,12 +599,14 @@ void SkComputation::ProcessAdditionalOption(const std::string & option, std::ist
 		output << "Unrecognized command!\n";
 }
 
-/** \brief Compute the distribution of the per-configuration minimal nearest-neighbor distance over an ensemble. (CLAUDE)
- *  \param GetConfigsFunction  A lambda function returning the configuration of index i.
- *  \param NumConfigs          The number of configurations to process.
- *  \param Result              Output probability density of minimal nearest-neighbor distances as (r, p(r), delta r, delta p(r)).
- *  \param ResolutionPreference  >1 to get better r resolution, <1 to get better p(r) resolution.
- *  \param aux                 Output list of every configuration's minimal nearest-neighbor distance. */
+/**
+ * \brief Compute the distribution of the per-configuration minimal nearest-neighbor distance over an ensemble.
+ * \param GetConfigsFunction  A lambda function returning the configuration of index i.
+ * \param NumConfigs          The number of configurations to process.
+ * \param Result              Output probability density of minimal nearest-neighbor distances as (r, p(r), delta r, delta p(r)).
+ * \param ResolutionPreference  >1 to get better r resolution, <1 to get better p(r) resolution.
+ * \param aux                 Output list of every configuration's minimal nearest-neighbor distance.
+ */
 void MinNearestNeighborDistrubution(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, std::vector<GeometryVector> & Result, double ResolutionPreference, std::vector<double> & aux)
 {
 	std::vector<double> distances(NumConfigs, 0);

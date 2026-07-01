@@ -86,6 +86,7 @@ double alpha(DimensionType d, double x);
  *  \param d           Space dimension.
  *  \return            Sphere radius. */
 double R_from_ReducedFraction(double fraction, double NumDensity, DimensionType d);
+
 /** \brief compute the reduced fraction from the given info
  *  \param r           Sphere radius.
  *  \param NumDensity  Number density of spheres.

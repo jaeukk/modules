@@ -104,6 +104,7 @@ protected:
 		for (DimensionType i = 0; i<this->Dimension; i++)
 			this->ParticleRelatives[a].x[i] -= std::floor(this->ParticleRelatives[a].x[i]);
 	}
+
 	/** \brief Convert a dimensional cell index into a flat 1-dimensional cell index.
 	 *  \param index Per-dimension cell indices.
 	 *  \return      Flattened cell index. */
@@ -637,6 +638,7 @@ public:
 		}
 		return std::sqrt(maxdist.Modulus2());
 	}
+
 	/** \brief Allocate and generate internal cell lists, so that calling IterateThroughNeighbors with the same Rc is thread-safe
 	 *  \param Rc Neighbor cutoff radius the internal lists are prepared for. */
 	//allocate and generate internal cell lists, so that calling IterateThroughNeighbors with the same Rc is thread-safe
@@ -831,6 +833,7 @@ public:
 			}
 		}
 	}
+
 	/** \brief Move particle Num to a new relative coordinate, updating its cell assignment.
 	 *  \param Num                   Index of the particle to move.
 	 *  \param newRelativeCoordinate Target position in relative (box) coordinates. */
@@ -946,6 +949,7 @@ public:
 					temp.MinusFrom((*iter)*((temp.Dot(*iter)) / (iter->Modulus2())));
 				ortho.push_back(temp);
 			}
+
 			////////////////////////////////////////////
 
 			for (auto iter = ortho.begin(); iter != ortho.end(); iter++)
@@ -1255,6 +1259,7 @@ public:
 		this->vol = ::Volume(this->BasisVector, this->Dimension);
 	}
 
+	//TODO: Find an appropriate place
 	/** \brief Rotate the box to a standard lower-triangular orientation with descending basis-vector lengths. */
 	//rotate the current structure so that
 	//the 1st basis vector is (c11, 0, 0, ...)
@@ -1558,6 +1563,7 @@ public:
 	void Clear(void);
 };
 
+//TODO: Find an appropriate place
 //VoxelType should be either char or bool. Char is faster, while bool can work with smaller memory.
 typedef char VoxelType;
 /** \brief Pixelizing the configuration to MeshSide pixes in each side
@@ -1580,6 +1586,7 @@ inline std::vector<VoxelType> DigitizeConfiguration(const Configuration & c, dou
 	return result;
 }
 
+	//TODO: Find an appropriate place
 /** \brief Calculate volume fraction if each particle is replaced with a hypersphere of certain radius; do this by pixelizing the configuration to MeshSide pixes in each side
  *  \param c        Configuration whose occupied volume is measured.
  *  \param radius   Sphere radius placed on each particle.
@@ -1598,6 +1605,7 @@ double Volume(const Configuration & c, double radius, size_t MeshSide, std::vect
  *  \return  Minimum sphere diameter D that connects particles a and b. */
 //return the minimum D such that if each particle is replaced with a sphere with diameter D, particles a and b will be connected.
 double MinConnectDiameter(const Configuration & c, size_t a, size_t b);
+
 /** \brief Return the minimum D such that if each particle is replaced with a sphere with diameter D, particle n will connect to its periodic image in direction dir.
  *  \param c   Configuration of particles.
  *  \param n   Index of the particle.

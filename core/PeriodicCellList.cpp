@@ -47,6 +47,7 @@ Configuration MultiplicateStructure(const Configuration & src, size_t NumberInEa
 	}
 	return result;
 }
+
 /** \brief Tile a Configuration with per-direction replication counts. 
  *  \param src             Source configuration to tile.
  *  \param NumberInEachSide Per-direction number of replicas.
@@ -97,6 +98,7 @@ Configuration MultiplicateStructure(const Configuration & src, const std::vector
 	}
 	return result;
 }
+
 /** \brief Return an empty unit cubic box configuration of dimension d. 
  *  \param d        Spatial dimension of the box.
  *  \param CellSize Target linear cell size.
@@ -133,11 +135,13 @@ void ConfigurationPack::Open(const std::string & prefix)
 	else
 		NConfig = 0;
 }
+
 /** \brief Return the number of configurations currently in the pack. */
 long long ConfigurationPack::NumConfig(void)
 {
 	return NConfig;
 }
+
 /** \brief Append a configuration to the pack files. 
  *  \param c Configuration to append. */
 void ConfigurationPack::AddConfig(const Configuration & c)

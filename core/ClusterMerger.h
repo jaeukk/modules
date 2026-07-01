@@ -81,6 +81,7 @@ public:
 		_LargestClusterSize = 1;
 		next = vBond.begin();
 	}
+
 	/** \brief Merge _clusters until distances of any cluster is larger than r
 	 *  \param r Connection distance up to which particles are merged into clusters. */
 	//merge _clusters until distances of any cluster is larger than r

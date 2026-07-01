@@ -2,8 +2,10 @@
  *	Email	: phy000.kim@gmail.com
  *	Date	:	April. 2019 */
 
-/** \file NumberVariance.cpp
- *	\brief Function implementations of computing local number variances of point patterns under the periodic boundary conditions. */
+/**
+ * \file NumberVariance.cpp
+ * \brief Function implementations of computing local number variances of point patterns under the periodic boundary conditions.
+ */
 
 #include "NumberVariance.h"
 #include <etc.h>		// progress_display
@@ -200,10 +202,12 @@ void MC_NV_Ensemble(const std::function<Configuration(size_t i)> &GetConfigsFunc
 
 }
 
-/** \brief A function to generate a random rotation matrix in d dimensions.
-*	\param[in] d	Dimension
-*	\param[out] R	A random rotation matrix.
-*	\param[in] gen	A random number generator. */
+/**
+ * \brief A function to generate a random rotation matrix in d dimensions.
+ * \param[in] d	Dimension
+ * \param[out] R	A random rotation matrix.
+ * \param[in] gen	A random number generator.
+ */
 // 3D case is incomplete
 inline void RandomRotation(DimensionType d, std::vector<GeometryVector> & R, RandomGenerator & gen) {
 	R.resize(0);

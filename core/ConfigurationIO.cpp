@@ -35,6 +35,7 @@ void Output(std::ostream & out, const Configuration & List)
 	//}
 	//double Rc=2*std::sqrt(temp.Modulus2())/std::pow(list->NumParticle(), 1.0/list->GetDimension());
 	double Rc=std::pow(100*list->PeriodicVolume()/list->NumParticle(), 1.0/list->GetDimension());
+
 	//////////////////////////////////////
 	GeometryVector origin(list->GetDimension());
 	size_t count=0;
@@ -506,6 +507,7 @@ Configuration ReadGro(std::istream & file)
 
 	return result;
 }
+
 /** \brief Read a Configuration from a stealth-format input stream with the given side length. 
  *  \param file       Input stream in stealth format.
  *  \param SideLength Side length used for the (cubic) box basis vectors.
@@ -574,6 +576,7 @@ Configuration ReadStealthOutput(std::istream & file, double SideLength)
 
 	return result;
 }
+
 /** \brief Read a Configuration from a stealth-format input stream (unit side length). 
  *  \param file Input stream in stealth format.
  *  \return     The Configuration read from the stream. */
@@ -653,6 +656,7 @@ SpherePacking ReadTJOutput(std::istream & inFile)
 	return packing; //Got a packing!
 
 }
+
 /** \brief Read a SpherePacking from a TJ-format .dat file with the given prefix. 
  *  \param prefix File name prefix (".dat" is appended).
  *  \return       The SpherePacking read from file. */
@@ -792,6 +796,7 @@ template<typename T> void WriteConfiguration(const PeriodicCellList<T> & conf, c
 	}
 	ofile.close();
 }
+
 /** \brief Read a Configuration from a .txt file written by WriteConfiguration (assume # columns = 4).
  *  \param conf      Configuration to populate.
  *  \param InputName File name prefix (".txt" is appended). */
