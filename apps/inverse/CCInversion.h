@@ -70,16 +70,19 @@ public:
 		this->ParallelNumThread = 1;
 		this->Shift = 0.0;
 	}
+
 	/** \brief Destructor. (CLAUDE) */
 	virtual ~FrankInvertCCPotential()
 	{
 	}
+
 	/** \brief Return a heap-allocated copy of this potential. (CLAUDE)
 	 *  \return  A new FrankInvertCCPotential that copies this one. */
 	FrankInvertCCPotential * clone()
 	{
 		return new FrankInvertCCPotential(*this);
 	}
+
 	/** \brief Return the total potential energy of the given configuration. */
 	virtual double Energy()//return the total potential energy of the given configuration
 	{
@@ -107,6 +110,7 @@ public:
 
 		return result + this->Shift;
 	}
+
 	/** \brief Calculate the force for the ith Particle.
 	 *  \param[out] result  Force on particle i.
 	 *  \param i            Particle index. */
@@ -130,6 +134,7 @@ public:
 			result.AddFrom(k*(-2.0*(ckr*dRhoImag - skr*dRhoReal)));
 		}
 	}
+
 	/** \brief Compute the forces on all particles. (CLAUDE)
 	 *  \param[out] results  Resized to hold the force on every particle. */
 	virtual void AllForce(std::vector<GeometryVector> & results)
@@ -145,6 +150,7 @@ public:
 			this->Force(results[i], i);
 		std::swap(tempNumThread, this->ParallelNumThread);
 	}
+
 	/** \brief Set the configuration to evaluate and invalidate the cached structure factors. (CLAUDE)
 	 *  \param Position  Configuration whose collective coordinates are constrained; its dimension must match. */
 	virtual void SetConfiguration(const Configuration & Position)

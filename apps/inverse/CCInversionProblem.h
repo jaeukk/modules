@@ -29,6 +29,7 @@ extern std::string masterDir;
  *  \param method         Optimization method ("NLOP+MINOP", "SteepestDescent", "ConjugateGradient", "LocalGradientDescent"; null defaults to NLOPT+MINOP).
  *  \return               True if every reconstruction stays within Tolerance of the target (unique), false otherwise. */
 bool FrankInvCCUniqueTest(const Configuration & target, size_t Nc, size_t N_kPoints, std::vector<double> &results, std::fstream & outFile, double Tolerance = 1e-4, size_t NKPointsSkip = 0, bool RealImagParts = true, char *method = nullptr);
+
 /** \brief Convenience overload of FrankInvCCUniqueTest that discards the results vector. (CLAUDE)
  *  \param target        Configuration to reconstruct.
  *  \param Nc            Number of random initial configurations to relax.
