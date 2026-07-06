@@ -28,6 +28,7 @@
  *  \param ofile   The output stream to write into.
  *  \param fields  Header/comment lines prepended to the output. */
 void WriteFunction(const std::vector<GeometryVector> & result, std::ostream & ofile, const std::vector<std::string> & fields);
+
 /** \brief Write a table of GeometryVector data to a file named by a prefix, with header fields. (CLAUDE)
  *  \param result         The table of GeometryVector rows to write.
  *  \param OutFilePrefix  Prefix of the output file name.
@@ -73,7 +74,7 @@ public:
 
 	/** \brief A copy constructor. */
 	LocalNumber(const LocalNumber & source) :
-		max(source.max), min(source.min), totalCount(source.totalCount), counts(source.counts),
+		min(source.min), max(source.max), totalCount(source.totalCount), counts(source.counts),
 		CDF(source.CDF), CDF_uptodate(source.CDF_uptodate)
 	{}
 
@@ -116,12 +117,15 @@ public:
 
 	/** \brief Get an estimated mean of this distribution. */
 	double GetMean() const;
+
 	/** \brief Get a standard error in the estimated mean.
 	 * \param[out]	mean	An estimated mean value.
 	 * \return a standard error in mean. */
 	double GetSE_Mean(double & mean) const;
+
 	/** \brief Get an estimated variance. */
 	double GetVariance() const;
+
 	/** \brief Get a standard error in the estimated variance.
 	 * Bootstrap method is used.
 	 * \param Bootstrap_Size	The number of bootstrap replica.
@@ -147,7 +151,7 @@ public:
 	 *	\param[in] sample_size	The size of a Bootstrap sample. ("0" means the BootstrapSample has the same size as the original sample.)
 	 *	\return	A unique pointer of a Bootstrap sample.  */
 	std::unique_ptr<LocalNumber> GetBootstrapSample(int seed = 0, size_t sample_size = 0) {
-		std::unique_ptr<LocalNumber> BootstrapSample(new LocalNumber(this->min, this->max));
+		std::unique_ptr<LocalNumber> BootstrapSample = std::make_unique<LocalNumber>(this->min, this->max);
 		RandomGenerator rng(seed);
 		if(sample_size <= this->totalCount){
 			size_t SampleSize = sample_size;
@@ -173,7 +177,7 @@ public:
 	 *	\param[in] sample_size	The size of a Bootstrap sample. ("0" means the BootstrapSample has the same size as the original sample.)
 	 *	\return	A unique pointer of a Bootstrap sample. */
 	std::unique_ptr<LocalNumber> GetBootstrapSample(int seed = 0, size_t sample_size = 0) const {
-		std::unique_ptr<LocalNumber> BootstrapSample(new LocalNumber(this->min, this->max));
+		std::unique_ptr<LocalNumber> BootstrapSample = std::make_unique<LocalNumber>(this->min, this->max);
 		RandomGenerator rng(seed);
 		if(sample_size <= this->totalCount){
 			size_t SampleSize = sample_size;
@@ -212,7 +216,7 @@ public:
 	void ComputeEstimator_Bootstrap(const std::function<double(double)> & f, double & mean, double & SE, size_t Bootstrap_Size = 50) const {
 		mean = 0.0; SE = 0.0;
 #pragma omp parallel for schedule(guided)
-		for (int i = 0; i < Bootstrap_Size; i++) {
+		for (size_t i = 0; i < Bootstrap_Size; i++) {
 			double val = GetBootstrapSample(i)->ComputeAverageOf(f);
 #pragma omp atomic
 			mean += val;
@@ -330,6 +334,7 @@ struct BootstrapSetup {
 		ComputeSkewness = false;  ComputeKurtosis = false;
 		prefix = "";	SaveData = false;
 	}
+
 	/** \brief A constructor by prefix of files
 	 *	\param file_prefix	Prefix used for both the data and output file names. */
 	BootstrapSetup(const std::string & file_prefix) : BootstrapSetup() {
@@ -438,4 +443,4 @@ std::vector<GeometryVector> GetSamplingPoints(DimensionType dim, size_t NumPoint
 
 
 
-#endif
+#endif

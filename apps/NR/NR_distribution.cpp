@@ -34,29 +34,31 @@ bool LocalNumber::CheckSum() {
 double LocalNumber::GetMean() const {
 	double mean = 0;// guessed_av = 0.5*(this->min + this->max);
 #pragma omp parallel for reduction(+:mean)
-	for (int i = 0; i < this->counts.size(); i++)
+	for (size_t i = 0; i < this->counts.size(); i++)
 		mean += ((double)i) * (double)this->counts[i] / this->totalCount;
 
 	return this->min + mean;
 }
+
 /** \brief Get a standard error in the estimated mean. */
 double LocalNumber::GetSE_Mean(double & mean) const {
 	mean = this->GetMean();
 	double SE = 0.0, mean_i = mean - this->min;
 #pragma omp parallel for reduction(+:SE)
-	for (int i = 0; i < this->counts.size(); i++)
+	for (size_t i = 0; i < this->counts.size(); i++)
 		SE += i * i*(double)this->counts[i] / this->totalCount;
 
 	SE = (SE - mean_i * mean_i) / (this->totalCount - 1);
 	SE = (SE > 0) ? sqrt(SE) : 0.0;
 	return SE;
 }
+
 /** \brief Get an estimated variance. */
 double LocalNumber::GetVariance() const {
 	double mean = this->GetMean() - this->min;	//Mean of the indices.
 	double variance = 0.0;
 #pragma omp parallel for reduction(+:variance)
-	for (int i = 0; i < this->counts.size(); i++) {
+	for (size_t i = 0; i < this->counts.size(); i++) {
 		double dx = (double)i - mean;
 		variance += dx * dx*(double)this->counts[i] / this->totalCount;
 	}
@@ -65,6 +67,7 @@ double LocalNumber::GetVariance() const {
 //	variance = (variance - mean * mean) * (1.0 + 1.0 / (this->totalCount - 1));
 	return std::max(0.0, variance);
 }
+
 /** \brief Get a standard error in the estimated variance.
  * Bootstrap method is used.
  * \param Bootstrap_Size	The number of bootstrap replica.
@@ -96,7 +99,7 @@ void LocalNumber::UpdateCDF() {
 		// this->counts is not empty
 		if (counts.size() > 0) {
 			// The number of bins changed (it always increases) => increases the size of CDF.
-			if (max - min + 1 > CDF.size()) {
+			if (static_cast<size_t>(max - min + 1) > CDF.size()) {
 				this->CDF.resize(max - min + 1);
 			}
 			//Recompute this->CDF
@@ -118,7 +121,7 @@ void LocalNumber::UpdateCDF() {
 void LocalNumber::UpdateCDF() const {
 	if (!CDF_uptodate) {
 		if (counts.size() > 0) {
-			if (max - min + 1 > CDF.size()) {
+			if (static_cast<size_t>(max - min + 1) > CDF.size()) {
 				this->CDF.resize(max - min + 1);
 			}
 			size_t i = 0;
@@ -151,7 +154,7 @@ void LocalNumber::GetHistogram(std::vector<GeometryVector> & result, size_t widt
 		for (idx = 0; idx < counts.size(); idx += width) {
 			double x = min + idx + 0.5*(width - 1), x_error = 0.5*width, y_error = 0.0L;
 			double y = 0;
-			for (int j = 0; j < width; j++) {
+			for (size_t j = 0; j < width; j++) {
 				if (idx + j < counts.size()) {
 					y += counts[idx + j];
 				}
@@ -176,6 +179,7 @@ void LocalNumber::WriteBinary(std::ostream & ofile) const {
 		ofile.write((char *)(&this->counts[i]), sizeof(this->counts[i]));
 	}
 }
+
 /** \brief A constructor by loading data written by WriteBinary(). */
 LocalNumber::LocalNumber(std::istream & ifile) {
 	ifile.read((char *)(&this->min), sizeof(this->min));
@@ -275,7 +279,7 @@ void BootstrapSetup::Compute(const LocalNumber & data,
 			return val; };
 
 #pragma omp parallel for schedule(guided)
-		for (int i = 0; i < BootstrapSize; i++) {
+		for (size_t i = 0; i < BootstrapSize; i++) {
 			std::unique_ptr<LocalNumber> ptr = data.GetBootstrapSample(i,SampleSize);
 			if (ComputeVariance) {
 				//Bootstrap sample variance
@@ -303,7 +307,7 @@ void BootstrapSetup::Compute(const LocalNumber & data,
 			}
 		}
 
-		double val, error, sigma = -1;
+		double val, error;
 		if (ComputeMean) {
 			val = mean + data.GetMin();
 			error = data.GetSE_Mean(val);
@@ -363,7 +367,7 @@ void BootstrapSetup::Compute(const LocalNumber & data,
 
 			/*Bootstrap sampling*/
 #pragma omp parallel for schedule(guided)
-			for (int i = 0; i < BootstrapSize; i++) {
+			for (size_t i = 0; i < BootstrapSize; i++) {
 				std::vector<GeometryVector> CDF_temp, PDF_temp;
 				std::unique_ptr<LocalNumber> ptr = data.GetBootstrapSample(i,SampleSize);
 				
@@ -376,7 +380,7 @@ void BootstrapSetup::Compute(const LocalNumber & data,
 					ptr->UpdateCDF();
 					ptr->GetCDF(CDF_temp);
 
-					for (int j=0; j<CDF.size(); j++){
+					for (size_t j=0; j<CDF.size(); j++){
 #pragma omp atomic
 						CDF[j].x[2] += CDF_temp[j].x[1];
 #pragma omp atomic
@@ -392,7 +396,7 @@ void BootstrapSetup::Compute(const LocalNumber & data,
 				if(PrintPDF){
 					ptr->GetHistogram(PDF_temp, 1);
 
-					for (int j=0; j<PDF.size(); j++){
+					for (size_t j=0; j<PDF.size(); j++){
 #pragma omp atomic
 						PDF[j].x[2] += PDF_temp[j].x[1];
 #pragma omp atomic
@@ -409,7 +413,7 @@ void BootstrapSetup::Compute(const LocalNumber & data,
 
 			/*summarize*/
 			if(PrintCDF){
-				for(int i=0; i<CDF.size(); i++){
+				for(size_t i=0; i<CDF.size(); i++){
 					double mean = CDF[i].x[2]/(double)BootstrapSize;
 					double SE_mean = CDF[i].x[3]/(double)BootstrapSize - mean*mean;
 					SE_mean = std::max(0.0, SE_mean); /* it prevents the error from being negative due to round-off errors. */
@@ -432,7 +436,7 @@ void BootstrapSetup::Compute(const LocalNumber & data,
 
 			if(PrintPDF){
 				/* Unscaled one */
-				for(int i=0; i<PDF.size(); i++){
+				for(size_t i=0; i<PDF.size(); i++){
 					double mean = PDF[i].x[2]/(double)BootstrapSize;
 					double SE_mean = PDF[i].x[3]/(double)BootstrapSize - mean*mean;
 					SE_mean = std::max(0.0, SE_mean); /* it prevents the error from being negative due to round-off errors. */
@@ -458,7 +462,7 @@ void BootstrapSetup::Compute(const LocalNumber & data,
 					double var_ = variance.x[0], SE_var_ = variance.x[1];
 
 #pragma omp parallel for
-					for (int i = 0; i < PDF.size(); i++) {
+					for (size_t i = 0; i < PDF.size(); i++) {
 						PDF[i].x[0] = (PDF[i].x[0] - mean) / sqrt(var_);
 						PDF[i].x[1] *= sqrt(var_);
 
@@ -516,7 +520,7 @@ void BootstrapSetup::ComputeMetrics(const LocalNumber & data, std::vector<Geomet
 		if(sigma_data >1e-20){
 
 	#pragma omp parallel for schedule(guided)
-			for (int i = 0; i < BootstrapSize; i++){
+			for (size_t i = 0; i < BootstrapSize; i++){
 				std::vector<GeometryVector> PDF_test, CDF_test;
 				std::vector<GeometryVector> PDF_ref, CDF_ref;	/* Gaussian distribution. */
 
@@ -548,12 +552,11 @@ void BootstrapSetup::ComputeMetrics(const LocalNumber & data, std::vector<Geomet
 						/* compute the CDFs. */
 						ptr->GetCDF(CDF_test);
 						CDF_ref.resize((size_t)(N_max - N_min + 1), GeometryVector(0.0,0.0)) ;
-						double CDF_left = cdf(gauss_ref, N_min);
-						for(int j = 0; j < CDF_ref.size(); j++){
+						for(size_t j = 0; j < CDF_ref.size(); j++){
 							CDF_ref[j].x[0] = (double)(N_min + j);
 							CDF_ref[j].x[1] = pdf(gauss_ref, CDF_ref[j].x[0]) / norm_factor;
 						}
-						for (int j = 1; j < CDF_ref.size(); j++){
+						for (size_t j = 1; j < CDF_ref.size(); j++){
 							CDF_ref[j].x[1] += CDF_ref[j-1].x[1];
 						}
 						double val = Compute_L2_norm(CDF_test, CDF_ref, 1.0 / sigma_bootstrap);
@@ -574,7 +577,7 @@ void BootstrapSetup::ComputeMetrics(const LocalNumber & data, std::vector<Geomet
 						/* compute the PDFs */
 						ptr->GetHistogram(PDF_test, 1);
 						PDF_ref.resize((size_t)(N_max - N_min + 1), GeometryVector(0.0,0.0,0.0,0.0)) ;
-						for(int j = 0; j < PDF_ref.size(); j++){
+						for(size_t j = 0; j < PDF_ref.size(); j++){
 							PDF_ref[j].x[0] = (double)(N_min + j);
 							PDF_ref[j].x[1] = pdf(gauss_ref, PDF_ref[j].x[0]) / norm_factor;
 						}
@@ -709,7 +712,6 @@ void MC_nv(const std::function<Configuration(size_t i)> & GetConfig, size_t NumC
 	std::vector<GeometryVector> & Result, double Rmax, double dR, const std::vector<GeometryVector> & WindowCenters) {
 
 	Configuration CurrConfig = GetConfig(0);
-	DimensionType dim = CurrConfig.GetDimension();
 
 	//Centers of sampling windows.
 	std::vector<GeometryVector> x0(WindowCenters);
@@ -747,7 +749,7 @@ void MC_nv(const std::function<Configuration(size_t i)> & GetConfig, size_t NumC
 			Configuration c(CurrConfig);
 
 #pragma omp for schedule(guided)
-			for (int num_samp = 0; num_samp < x0.size(); num_samp++) {
+			for (size_t num_samp = 0; num_samp < x0.size(); num_samp++) {
 				std::vector<size_t> NR;
 				GetN(c, NR, Rmax, dR, x0[num_samp]);
 
@@ -821,7 +823,6 @@ void MC_nv_distribution(const std::function<Configuration(size_t i)> & GetConfig
 	const std::vector<GeometryVector> & WindowCenters) {
 
 	Configuration CurrConfig = GetConfig(0);
-	DimensionType dim = CurrConfig.GetDimension();
 
 	//Centers of sampling windows.
 	std::vector<GeometryVector> x0(WindowCenters);
@@ -857,7 +858,7 @@ void MC_nv_distribution(const std::function<Configuration(size_t i)> & GetConfig
 		CurrConfig.PrepareIterateThroughNeighbors(Rmax);
 
 #pragma omp parallel for schedule( guided)
-		for (int idx_x0 = 0; idx_x0 < x0.size(); idx_x0++) {
+		for (size_t idx_x0 = 0; idx_x0 < x0.size(); idx_x0++) {
 			std::vector<size_t> NR;
 			GetN(CurrConfig, NR, Rmax, dR, x0[idx_x0]);
 
@@ -1002,7 +1003,7 @@ void MC_nv_distribution_PostSampling(const std::function<Configuration(size_t i)
 		tot_num_prts += (double)CurrConfig.NumParticle();
 		rho_overall += (double)CurrConfig.NumParticle()/CurrConfig.PeriodicVolume();
 #pragma omp parallel for schedule( guided)
-		for (int idx_x0 = 0; idx_x0 < x0.size(); idx_x0++) {
+		for (size_t idx_x0 = 0; idx_x0 < x0.size(); idx_x0++) {
 			std::vector<size_t> NR;
 			GetN(CurrConfig, NR, Rmax, dR, x0[idx_x0]);
 
@@ -1187,8 +1188,8 @@ double Compute_L2_norm(const std::vector<GeometryVector> & CDF_test,
 	if(CDF_test.size() <= CDF_ref.size()){
 		double sum = 0.0L, delta = 0.0;
 		
-		int j=0;
-		for(int i=0; i< CDF_ref.size(); i++){
+		size_t j=0;
+		for(size_t i=0; i< CDF_ref.size(); i++){
 			
 			if( (j < CDF_test.size()) && 
 				(abs(CDF_test[j].x[0] - CDF_ref[i].x[0]) < 1e-3) ){
@@ -1212,8 +1213,8 @@ double Compute_KullbackLeibler_distance(const std::vector<GeometryVector> & PDF_
 	if(PDF_test.size() <= PDF_ref.size()){
 		double KL = 0.0L, temp = 0.0L;
 		
-		int j=0;
-		for(int i=0; i < PDF_ref.size(); i++){
+		size_t j=0;
+		for(size_t i=0; i < PDF_ref.size(); i++){
 
 			if( (j < PDF_test.size()) && 
 				(abs(PDF_test[j].x[0] - PDF_ref[i].x[0]) < 1e-3)  ){

@@ -28,11 +28,13 @@ size_t Verbosity = 2;
 
 void WriteFunction(const std::vector<GeometryVector> & result, std::ostream & ofile, const std::vector<std::string> & fields);
 void WriteFunction(const std::vector<GeometryVector> & result, const std::string & OutFilePrefix, const std::vector<std::string> & fields);
+
 /** \brief Read a table of GeometryVector data from an input stream. (CLAUDE)
  *  \param[out] result	The table of GeometryVector rows read from the stream.
  *  \param ifile		The input stream to read from.
  *  \param NumColumns	The number of columns to read per row. */
 void ReadFunction(std::vector<GeometryVector> & result, std::istream & ifile, size_t NumColumns);
+
 /** \brief Read a table of GeometryVector data from a file named by a prefix. (CLAUDE)
  *  \param[out] result		The table of GeometryVector rows read from the file.
  *  \param InFilePrefix	Prefix of the input file name.
@@ -62,7 +64,6 @@ void Example_NV_RSA(std::istream & ifile, std::ostream & ofile);
  *	\return 0 on success. */
 int main(int argc, char ** argv) {
 	std::string tempStr;
-	char tempstring[1000];
 	std::istream & ifile = std::cin;
 	std::ostream & ofile = std::cout;
 	char name[200] = {};
@@ -110,7 +111,7 @@ int main(int argc, char ** argv) {
 		size_t NumSampWindow = 1000, startIndex = 0, NumConfigs = 200;
 		int seed_window, num_threads;
 
-		double Rmax = 3, dR = 0.01, rho = 27;
+		double Rmax = 3, dR = 0.01;
 
 		/* set configurations */
 		ofile << "Configurations to analyze = ";
@@ -121,7 +122,7 @@ int main(int argc, char ** argv) {
 		ifile >> NumConfigs;
 
 		ConfigurationPack configs(name);
-		if (configs.NumConfig() < NumConfigs + startIndex) {
+		if (static_cast<size_t>(configs.NumConfig()) < NumConfigs + startIndex) {
 			NumConfigs = configs.NumConfig() - startIndex;
 			ofile << "The number of available configurations is " << configs.NumConfig() << " in total.\n"
 				<< "NumConfigs is set to be " << NumConfigs << "\n";
@@ -172,8 +173,8 @@ int main(int argc, char ** argv) {
 				}
 
 #pragma omp parallel for 
-				for (int i=0; i<samp_center.size(); i++){
-					int val = i, index=0;
+				for (size_t i = 0; i < samp_center.size(); i++){
+					size_t val = i, index = 0;
 					for (int j = 0; j<dim; j++){
 						index = val % Nx;
 						val /= Nx;
@@ -203,7 +204,7 @@ int main(int argc, char ** argv) {
 					std::cerr << "2*Rmax must be smaller than simulation box\n";
 
 	#pragma omp parallel for 
-				for (int i = 0; i < samp_center.size(); i++) {
+				for (size_t i = 0; i < samp_center.size(); i++) {
 					samp_center[i] = samp_center[i] - x_center;	
 					samp_center[i] = factor * samp_center[i];
 					samp_center[i] = samp_center[i] + x_center;
@@ -223,8 +224,8 @@ int main(int argc, char ** argv) {
 				}
 
 #pragma omp parallel for 
-				for (int i=0; i<samp_center.size(); i++){
-					int val = i, index=0;
+				for (size_t i = 0; i < samp_center.size(); i++){
+					size_t val = i, index = 0;
 					for (int j = 0; j<dim; j++){
 						index = val % Nx;
 						val /= Nx;

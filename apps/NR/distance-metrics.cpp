@@ -1,3 +1,13 @@
+// distance-metrics.cpp — scratch helpers for N(R) distribution distance metrics.
+// Not wired into the NR build; kept for reference.
+#include <cmath>
+#include <vector>
+#include <utility>
+#include <gsl/gsl_randist.h>
+
+#if 0  // orphan driver fragment: references undeclared locals (N_R, dR, N,
+       // mean, LNV2, out_distances, ...) and forward-calls the helpers below;
+       // disabled so this scratch TU compiles. Restore inside a real function.
   for(int ri = 0; ri < N_R; ri++){
     double r = (ri+1)*dR;
     unsigned fn = first_nonzero(N[ri]);
@@ -23,6 +33,8 @@
 		  << " " << l2_and_kl.second
 		  << std::endl;
   }
+
+#endif
 
 /** \brief Evaluate the Gaussian probability density at x for a given mean and variance. (CLAUDE)
  *  \param x	The point at which to evaluate the density.
