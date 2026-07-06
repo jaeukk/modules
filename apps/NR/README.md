@@ -39,8 +39,14 @@ Please cite the relevant paper when using this code.
 
 ## Dependencies
 
-- **Modules:** `core`, `pairstat` (`NumberVariance`), `models` (`GenerateConfigs`,
-  `RandomSequentialAddition`, `HardSphereFluids`).
+- **The app itself** (`main.cpp` + `NR_distribution.{h,cpp}`) depends on **`core`
+  only** — it has its own `GetN` / $N(R)$ machinery and references no other module.
+- **`examples.cpp` alone** adds `pairstat` (`NumberVariance::MC_NV_Ensemble`, used
+  as a cross-check) and `models` (`RandomSequentialAddition`, `GenerateConfigs`,
+  `HardSphereFluids`, to build test ensembles). Because `examples.cpp` is in the
+  default `SRCS`, the linked `NR.out` pulls those objects in even though `main`
+  never calls the `Example_*` routines. Drop `examples.cpp` from the makefile's
+  `SRCS` and the binary needs `core` only.
 - **External:** GSL, OpenMP.
 
 All include/library paths come from `../../config.mk`.
