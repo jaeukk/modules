@@ -117,16 +117,19 @@ public:
 		this->ParallelNumThread=1;
 		this->Shift=0.0;
 	}
+
 	/** \brief Destructor. (CLAUDE) */
 	virtual ~ShiftedCCPotential()
 	{
 	}
+
 	/** \brief Return a heap-allocated copy of this potential. (CLAUDE)
 		\return A new clone of this potential. */
 	ShiftedCCPotential * clone()
 	{
 		return new ShiftedCCPotential(*this);
 	}
+
 	/** \brief return the total potential energy of the given configuration.
 		\return The collective-coordinate energy plus Shift. (CLAUDE) */
 	virtual double Energy()//return the total potential energy of the given configuration
@@ -151,6 +154,7 @@ public:
 
 		return result/(Volume)+this->Shift;
 	}
+
 	/** \brief calculate the force for the ith Particle.
 		\param[out] result  Force on particle i. (CLAUDE)
 		\param i            Index of the particle. (CLAUDE) */
@@ -172,6 +176,7 @@ public:
 
 		result.MultiplyFrom(1.0/Volume);
 	}
+
 	/** \brief Compute the force on every particle. (CLAUDE)
 		\param[out] results  Resized list of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results)
@@ -217,6 +222,7 @@ public:
 	ShiftedCCPotential_withWeight(const ShiftedCCPotential & Pot, const std::vector<double> & weights) : ShiftedCCPotential(Pot), weights(weights)
 	{
 	}
+
 	/** \brief Compute and cache the weighted complex collective density rho(k). (CLAUDE) */
 	virtual void GetRho(void)
 	{
@@ -272,6 +278,7 @@ public:
 
 		result.MultiplyFrom(weights[i] / Volume);
 	}
+
 	/** \brief Compute the force on every particle. (CLAUDE)
 		\param[out] results  Resized list of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results)
@@ -287,6 +294,7 @@ public:
 			this->Force(results[i], i);
 		std::swap(tempNumThread, this->ParallelNumThread);
 	}
+
 	/** \brief Bind the configuration and invalidate the cached collective density. (CLAUDE)
 		\param Position  Configuration to bind. */
 	virtual void SetConfiguration(const Configuration & Position)
@@ -309,12 +317,14 @@ public:
 	LogCCPotential( const ShiftedCCPotential & pot ) : ShiftedCCPotential(pot)
 	{
 	}
+
 	/** \brief Return the logarithm of the base potential's energy. (CLAUDE)
 		\return The log-transformed energy. */
 	virtual double Energy()
 	{
 		return std::log( ShiftedCCPotential::Energy() );
 	}
+
 	/** \brief Compute the force of the log potential on particle i. (CLAUDE)
 		\param[out] result  Force on particle i.
 		\param i            Index of the particle. */
@@ -385,6 +395,7 @@ public:
 
 		return result;
 	}
+
 	/** \brief calculate the force for the ith Particle.
 		\param[out] result  Force on particle i. (CLAUDE)
 		\param i            Index of the particle. (CLAUDE) */
@@ -415,6 +426,7 @@ public:
 		for(auto iter=threadresult.begin(); iter!=threadresult.end(); iter++)
 			result.AddFrom(*iter);
 	}
+
 	/** \brief Bind the configuration and record the particle count N. (CLAUDE)
 		\param Position  Configuration to bind. */
 	virtual void SetConfiguration(const Configuration & Position)
@@ -443,6 +455,7 @@ public:
 	ShiftedCCPotential_S2_MultiConfig(DimensionType d, size_t NSubConfig) : ShiftedCCPotential(d), NSubConfig(NSubConfig)
 	{
 	}
+
 	/** \brief Compute rho(k) per sub-configuration and the sub-configuration-averaged S(k). (CLAUDE) */
 	void GetRho_MultiConfig(void)
 	{
@@ -480,11 +493,13 @@ public:
 			this->Snow[i] /= (Np*NSubConfig);
 		this->RhoValid = true;
 	}
+
 	/** \brief Compute and cache the collective density (delegates to GetRho_MultiConfig). (CLAUDE) */
 	virtual void GetRho(void)
 	{
 		GetRho_MultiConfig();
 	}
+
 	/** \brief return the total potential energy of the given configuration.
 		\return The weighted sum of squared deviations of the averaged S(k) from S0(k) plus Shift. (CLAUDE) */
 	virtual double Energy() //return the total potential energy of the given configuration
@@ -515,6 +530,7 @@ public:
 
 		return result;
 	}
+
 	/** \brief calculate the force for the ith Particle.
 		\param[out] result  Force on particle i. (CLAUDE)
 		\param i            Index of the particle. (CLAUDE) */
@@ -547,6 +563,7 @@ public:
 			result.AddFrom(*iter);
 		result.MultiplyFrom(1.0/this->NSubConfig);
 	}
+
 	/** \brief Bind the configuration, validating that the particle count splits evenly into sub-configurations. (CLAUDE)
 		\param Position  Configuration to bind. */
 	virtual void SetConfiguration(const Configuration & Position)
@@ -606,6 +623,7 @@ public:
 		std::swap(this->RhoReal, this->RhoReal_AfterMove);
 		return AfterE - PrevE;
 	}
+
 	/** \brief Commit the last trial move by adopting its cached collective density. (CLAUDE) */
 	virtual void AcceptMove(void)
 	{
@@ -690,6 +708,7 @@ protected:
 
 		return result;
 	}
+
 	/** \brief d \mathbf k_i / da_{ lm }: derivative of every constrained k-point w.r.t. a basis-vector component. (CLAUDE)
 		\param l  Index of the basis vector being varied.
 		\param m  Coordinate component of that basis vector being varied.
@@ -718,6 +737,7 @@ public:
 		for (DimensionType i = 0; i < MaxDimension; i++)
 			CachedBasisVector[i] = GeometryVector(d);
 	}
+
 	/** \brief Bind the configuration, regenerating the constrained k-point list if the cell changed. (CLAUDE)
 		\param config  Configuration to bind. */
 	virtual void SetConfiguration(const Configuration & config)
@@ -835,6 +855,7 @@ public:
 			this->Shift = nbr*(nbr - 1) / v / 2.0 - nbr / v*SumVk;
 		}
 	}
+
 	/** \brief Energy derivative with respect to the cell basis vectors. (CLAUDE)
 		\param[out] grad  Array of size dim*dim; grad[n*dim+m] is the energy derivative w.r.t. component m of basis vector n.
 		\param Pressure   Imposed pressure used to form the enthalpy-like derivative. */
@@ -894,6 +915,7 @@ protected:
 		double temp = 1.0 - kl;
 		return temp*temp;
 	}
+
 	/** \brief gradient of tildeVk.
 		\param k  Wavevector. (CLAUDE)
 		\return The gradient of tildeV(k). (CLAUDE) */
@@ -924,6 +946,7 @@ protected:
 		double temp = 1 / kl - 1;
 		return temp*temp;
 	}
+
 	/** \brief gradient of tildeVk.
 		\param k  Wavevector. (CLAUDE)
 		\return The gradient of tildeV(k). (CLAUDE) */
@@ -953,6 +976,7 @@ protected:
 		double temp = 1 / kl - 1;
 		return temp*temp*temp;
 	}
+
 	/** \brief gradient of tildeVk.
 		\param k  Wavevector. (CLAUDE)
 		\return The gradient of tildeV(k). (CLAUDE) */
@@ -982,6 +1006,7 @@ protected:
 		double temp = 1 / kl - 1;
 		return temp*temp*temp*temp;
 	}
+
 	/** \brief gradient of tildeVk.
 		\param k  Wavevector. (CLAUDE)
 		\return The gradient of tildeV(k). (CLAUDE) */
@@ -1021,6 +1046,7 @@ protected:
 		else
 			return 0.0;
 	}
+
 	/** \brief gradient of tildeVk.
 		\param k  Wavevector. (CLAUDE)
 		\return The gradient of the lemniscate weight (zero outside the lemniscate region). (CLAUDE) */
@@ -1065,6 +1091,7 @@ protected:
 		\param k  Wavevector.
 		\return The target S0(k). */
 	virtual double S0k(const GeometryVector & k) = 0;
+
 	/** \brief gradient of S0k.
 		\param k  Wavevector. (CLAUDE)
 		\return The gradient of S0(k). (CLAUDE) */
@@ -1090,6 +1117,7 @@ public:
 				this->S0[i] = S0k(this->constraints[i].k);
 		}
 	}
+
 	/** \brief Energy derivative with respect to the cell basis vectors. (CLAUDE)
 		\param[out] grad  Array of size dim*dim; grad[n*dim+m] is the energy derivative w.r.t. component m of basis vector n.
 		\param Pressure   Imposed pressure used to form the enthalpy-like derivative. */
@@ -1152,6 +1180,7 @@ protected:
 		\param k  Wavevector.
 		\return The target S0(k). */
 	virtual double S0k(const GeometryVector & k) = 0;
+
 	/** \brief gradient of S0k.
 		\param k  Wavevector. (CLAUDE)
 		\return The gradient of S0(k). (CLAUDE) */
@@ -1182,6 +1211,7 @@ public:
 			}
 		}
 	}
+
 	/** \brief Energy derivative with respect to the cell basis vectors. (CLAUDE)
 		\param[out] grad  Array of size dim*dim; grad[n*dim+m] is the energy derivative w.r.t. component m of basis vector n.
 		\param Pressure   Imposed pressure used to form the enthalpy-like derivative. */
@@ -1240,6 +1270,7 @@ protected:
 	{
 		return k.Modulus2();
 	}
+
 	/** \brief Gradient of the target S0(k). (CLAUDE)
 		\param k  Wavevector.
 		\return The gradient of S0(k). */
@@ -1267,6 +1298,7 @@ protected:
 	{
 		return std::pow(k.Modulus2(), 0.5*n);
 	}
+
 	/** \brief Gradient of the target S0(k). (CLAUDE)
 		\param k  Wavevector.
 		\return The gradient of S0(k). */
@@ -1295,6 +1327,7 @@ protected:
 	{
 		return 0.5*(std::pow(k.Modulus2(), 0.5*n)+1);
 	}
+
 	/** \brief Gradient of the target S0(k). (CLAUDE)
 		\param k  Wavevector.
 		\return The gradient of S0(k). */
@@ -1323,6 +1356,7 @@ protected:
 		double temp = 1 / kl - 1;
 		return temp*temp;
 	}
+
 	/** \brief Gradient of the target S0(k).
 		\param k  Wavevector. (CLAUDE)
 		\return The gradient of S0(k). (CLAUDE) */
@@ -1352,6 +1386,7 @@ protected:
 		double kl2 = k.Modulus2();
 		return -0.5*std::log(kl2);
 	}
+
 	/** \brief Gradient of the target S0(k).
 		\param k  Wavevector. (CLAUDE)
 		\return The gradient of S0(k). (CLAUDE) */

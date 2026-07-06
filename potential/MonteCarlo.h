@@ -61,6 +61,7 @@ public:
 		this->RecordEnergy=Energy;
 		this->LockStepSize=false;
 	}
+
 	/** \brief Destructor. (CLAUDE) */
 	virtual ~MonteCarlo()
 	{
@@ -122,12 +123,14 @@ public:
 		}
 		this->SIncrease=1.0;
 	}
+
 	/** \brief Reset the visit histogram to zero. (CLAUDE) */
 	void ClearHistogram(void)
 	{
 		for(auto iter=this->Histogram.begin(); iter!=this->Histogram.end(); iter++)
 			*iter=0;
 	}
+
 	/** \brief Return the visit histogram as (bin-center energy, count) pairs. (CLAUDE)
 		\return A vector of 2D points: bin-center energy and visit count. */
 	std::vector<GeometryVector> GetHistogram(void)
@@ -142,6 +145,7 @@ public:
 		}
 		return result;
 	}
+
 	/** \brief Return the estimated entropy (log density of states) as (bin-center energy, entropy) pairs. (CLAUDE)
 		\return A vector of 2D points: bin-center energy and entropy. */
 	std::vector<GeometryVector> GetEntropy(void)
@@ -156,6 +160,7 @@ public:
 		}
 		return result;
 	}
+
 	/** \brief Perform Wang-Landau trial moves, updating the entropy estimate and histogram. (CLAUDE)
 		\param Repeat         Number of trial moves to perform.
 		\param move           Definition of a trial move.
@@ -259,6 +264,7 @@ public:
 		this->SwapFailCount=0;
 		this->SwapSuccessCount=0;
 	}
+
 	/** \brief Destructor; frees the replica systems allocated by this class. (CLAUDE) */
 	~ParallelTempering()
 	{
@@ -289,6 +295,7 @@ public:
 		for(signed long i=0; i<(signed long)stop; i++)
 			this->vMonteCarlos[i].Move(Temperature/this->vEnergyFactors[i], Repeat, *moves[i], add);
 	}
+
 	/** \brief Perform parallel-tempering moves, mixing replica swaps and individual moves. (CLAUDE)
 		\param Temperature  Base temperature controlling swap acceptance and replica temperatures.
 		\param Repeat       Number of moves to perform.
@@ -387,6 +394,7 @@ public:
 			}
 		}
 	}
+
 	/** \brief Perform parallel-tempering moves using a single move template cloned per replica. (CLAUDE)
 		\param Temperature  Base temperature controlling swap acceptance and replica temperatures.
 		\param Repeat       Number of moves to perform.
@@ -403,6 +411,7 @@ public:
 		for(auto iter=moves.begin(); iter!=moves.end(); iter++)
 			delete *iter;
 	}
+
 	/** \brief Run parallel-tempering simulated annealing with a cooling schedule. (CLAUDE)
 		\param add       Additional information (e.g. the interaction potential) passed to the moves.
 		\param cool      Cooling schedule that controls the temperature sequence.
@@ -468,6 +477,7 @@ public:
 		this->Temperature=Tinit;
 		this->NumTry=StageSize;
 	}
+
 	/** \brief Advance the temperature exponentially after a cooling stage. (CLAUDE)
 		\param Energy  Current energy (unused by this schedule). */
 	virtual void Report(double Energy)
@@ -510,6 +520,7 @@ public:
 		this->Continue=true;
 		this->NumReport=0;
 	}
+
 	/** \brief Stop after a fixed number of reports. (CLAUDE)
 		\param Energy  Current energy (unused by this schedule). */
 	virtual void Report(double Energy)
@@ -559,6 +570,7 @@ public:
 
 		this->AnalyzeSize=InitAnalyzeSize;
 	}
+
 	/** \brief Sample the energy and adaptively lower the temperature based on the estimated heat capacity. (CLAUDE)
 		\param Energy  Current energy sample to add to the analysis buffer. */
 	virtual void Report(double Energy)

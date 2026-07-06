@@ -52,6 +52,7 @@ public:
 	{
 		this->ParallelNumThread=1;
 	}
+
 	/** \brief Destructor. (CLAUDE) */
 	virtual ~Potential();
 
@@ -137,6 +138,7 @@ public:
 		//, NParticles(0)
 	{
 	}
+
 	/** \brief Set the configuration, inserting the additional fixed particles before delegating to the base potential. (CLAUDE)
 		\param Position  Configuration of the mobile particles. */
 	virtual void SetConfiguration(const Configuration & Position)
@@ -164,22 +166,28 @@ public:
 		\param dimension  Spatial dimension of the system.
 		\param Rcut       Cutoff distance beyond which the pair interaction vanishes. */
 	PairPotential(DimensionType dimension, double Rcut);
+
 	/** \brief Compute the pair force for a given separation offset. (CLAUDE)
 		\param offset      Separation vector between the two particles.
 		\param[out] result Resulting force vector (zero if beyond the cutoff). */
 	void PairForce(const GeometryVector & offset, GeometryVector & result);
+
 	/** \brief Compute the pair energy for a given separation offset. (CLAUDE)
 		\param offset  Separation vector between the two particles.
 		\return The pair interaction energy (zero if beyond the cutoff). */
 	double PairEnergy(const GeometryVector & offset);
+
 	/** \brief Destructor. (CLAUDE) */
 	virtual ~PairPotential();
+
 	/** \brief Set the configuration for which energy and force are computed. (CLAUDE)
 		\param Position  Configuration to bind; it must remain alive while energy and force are evaluated. */
 	virtual void SetConfiguration(const Configuration & Position);
+
 	/** \brief Compute the total pair-potential energy of the bound configuration. (CLAUDE)
 		\return The total potential energy. */
 	virtual double Energy();
+
 	/** \brief calculate the force for the ith Particle.
 		\param[out] result Resulting force on particle i. (CLAUDE)
 		\param i           Index of the particle. (CLAUDE) */
@@ -200,14 +208,17 @@ public:
 	/** \brief Compute the force on every particle of the bound configuration. (CLAUDE)
 		\param[out] results  Resized list of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results);
+
 	/** \brief Pair-energy formula as a function of the separation offset. (CLAUDE)
 		\param offset  Separation vector between the two particles.
 		\return The pair interaction energy. */
 	virtual double EnergyFormula(const GeometryVector &) =0;
+
 	/** \brief Pair-force formula as a function of the separation offset. (CLAUDE)
 		\param offset      Separation vector between the two particles.
 		\param[out] result Resulting pair force vector. */
 	virtual void ForceFormula(const GeometryVector & offset, GeometryVector & result) =0;
+
 	/** \brief (dFi)/(dxj), recommended to rewrite it.
 		\param offset  Separation vector between the two particles. (CLAUDE)
 		\param i       Force component index. (CLAUDE)
@@ -221,6 +232,7 @@ public:
 		\param[out] grad  Array of size dim*dim; grad[n*dim+m] is the energy derivative of the mth component of the nth basis vector. (CLAUDE)
 		\param Pressure   Imposed pressure used to form the enthalpy-like derivative. (CLAUDE) */
 	virtual void EnergyDerivativeToBasisVectors(double * grad, double Pressure);
+
 	/** \brief Energy derivative respect to basis vectors for a given configuration. (CLAUDE)
 		\param conf       Configuration to bind before computing the derivative.
 		\param[out] grad  Array of size dim*dim; grad[n*dim+m] is the energy derivative of the mth component of the nth basis vector.
@@ -239,8 +251,10 @@ public:
 		\param dimension  Spatial dimension of the system. (CLAUDE)
 		\param Rcut       Cutoff distance of the potential. (CLAUDE) */
 	IsotropicPairPotential(DimensionType dimension, double Rcut);
+
 	/** \brief Set this->Ecut and this->EcutUnset = false. */
 	void SetEcut(void);
+
 	/** \brief Destructor. (CLAUDE) */
 	virtual ~IsotropicPairPotential();
 
@@ -248,6 +262,7 @@ public:
 		\param offset  Separation vector between the two particles.
 		\return The pair interaction energy. */
 	virtual double EnergyFormula(const GeometryVector & offset);
+
 	/** \brief Pair-force formula as a function of the separation offset. (CLAUDE)
 		\param offset      Separation vector between the two particles.
 		\param[out] result Resulting pair force vector. */
@@ -257,6 +272,7 @@ public:
 		\param distance  Separation between the two particles. (CLAUDE)
 		\return potential.	 */
 	virtual double IsotropicEnergyFormula(double distance) =0;
+
 	/** \brief Compute the force. By default, it performes numerical differentiation.
 		It is strongly recommanded to redefine this function!.
 		\param distance  Separation between the two particles. (CLAUDE)
@@ -294,6 +310,7 @@ public:
 		for(size_t i=0; i<this->data.size(); i++)
 			this->data[i]=src.IsotropicPairEnergy(Start+i*this->stepsize);
 	}
+
 	/** \brief Linearly interpolated pair energy at a given separation. (CLAUDE)
 		\param distance  Separation between the two particles.
 		\return The interpolated pair energy. */
@@ -339,6 +356,7 @@ namespace
 				}
 			}
 		}
+
 		/** \brief Correction energy applied within the correction window. (CLAUDE)
 			\param distance  Separation between the two particles.
 			\return The correction energy (zero outside the correction window). */
@@ -390,6 +408,7 @@ public:
 		Correction corr(original);
 		this->correction = new LinearInterpolationIsotropicPairPotential(corr, CorrectionCenter-2*CorrectionWidth, 500);
 	}
+
 	/** \brief Corrected pair energy: source energy plus correction within the correction window. (CLAUDE)
 		\param distance  Separation between the two particles.
 		\return The corrected pair energy. */
@@ -401,6 +420,7 @@ public:
 
 		return result;
 	}
+
 	/** \brief Destructor; frees the correction table and the owned source potential. (CLAUDE) */
 	~CorrectedIsotropicPairPotential()
 	{
@@ -425,6 +445,7 @@ public:
 		this->p1=p1;
 		this->p2=p2;
 	}
+
 	/** \brief Sum of the two component pair energies at a given separation. (CLAUDE)
 		\param distance  Separation between the two particles.
 		\return The combined pair energy. */
@@ -432,6 +453,7 @@ public:
 	{
 		return p1->IsotropicPairEnergy(distance)+p2->IsotropicPairEnergy(distance);
 	}
+
 	/** \brief Destructor; frees both owned component potentials. (CLAUDE) */
 	~CombinedIsotropicPairPotential()
 	{
@@ -458,18 +480,21 @@ public:
 		this->Weight1=1.0;
 		this->Weight2=1.0;
 	}
+
 	/** \brief Destructor; does not free the component potentials. (CLAUDE) */
 	virtual ~CombinedPotential()
 	{
 		//delete this->p1;
 		//delete this->p2;
 	}
+
 	/** \brief return the total potential energy of the given configuration.
 		\return The weighted sum of the two component energies. (CLAUDE) */
 	virtual double Energy()//return the total potential energy of the given configuration
 	{
 		return this->p1->Energy()*this->Weight1 + this->p2->Energy()*this->Weight2;
 	}
+
 	/** \brief calculate the force for the ith Particle.
 		\param[out] result  Weighted sum of the two component forces on particle i. (CLAUDE)
 		\param i            Index of the particle. (CLAUDE) */
@@ -480,6 +505,7 @@ public:
 		this->p2->Force(f2, i);
 		result= f1*this->Weight1 + f2*this->Weight2;
 	}
+
 	/** \brief calculate the force for all Particles.
 		\param[out] results  Weighted sum of the two component force lists. (CLAUDE) */
 	virtual void AllForce(std::vector<GeometryVector> & results)//calculate the force for all Particles
@@ -505,6 +531,7 @@ public:
 			grad[i]=grad[i]*this->Weight1+temp[i]*this->Weight2;
 		delete [] temp;
 	}
+
 	/** \brief Set the same configuration on both component potentials. (CLAUDE)
 		\param Position  Configuration to bind. */
 	virtual void SetConfiguration(const Configuration & Position)
@@ -533,6 +560,7 @@ public:
 	{
 		return c*std::pow(Distance, power);
 	}
+
 	/** \brief Magnitude of the power-law pair force. (CLAUDE)
 		\param distance  Separation between the two particles.
 		\return The magnitude of the force. */

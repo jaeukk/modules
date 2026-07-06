@@ -47,16 +47,20 @@ public:
 	/** \brief Initialize the Nose-Hoover thermostat. (CLAUDE)
 		\param Q  Thermostat mass parameter (effective inertia of the heat bath). */
 	void InitNoseHoover(double Q);
+
 	/** \brief Construct from a configuration with a uniform particle mass. (CLAUDE)
 		\param Position  Initial particle configuration.
 		\param TimeStep  Integration time step.
 		\param Mass      Mass assigned to every particle. */
 	ParticleMolecularDynamics(const Configuration & Position, double TimeStep, double Mass);
+
 	/** \brief Destructor. (CLAUDE) */
 	~ParticleMolecularDynamics();
+
 	/** \brief Construct by reading the MD state from a binary input stream. (CLAUDE)
 		\param ifile  Input stream produced by WriteBinary. */
 	ParticleMolecularDynamics(std::istream & ifile);
+
 	/** \brief Write the MD state to a binary output stream. (CLAUDE)
 		\param ofile  Output stream to write the state to. */
 	void WriteBinary(std::ostream & ofile);
@@ -65,6 +69,7 @@ public:
 		\param potential  Potential used to evaluate the energy.
 		\return The potential energy. */
 	double GetPotentialEnergy(Potential & potential);
+
 	/** \brief microcanonical ensemble.
 		\param repeat     Number of integration steps to perform. (CLAUDE)
 		\param potential  Potential providing the forces. (CLAUDE) */
@@ -74,10 +79,12 @@ public:
 		\param potential             Potential providing the forces.
 		\param DeltaLogEnergyPerStep  Target magnitude of the per-step change in log total energy. */
 	void Evolve_AutoTimeStep(size_t repeat, Potential & potential, double DeltaLogEnergyPerStep);
+
 	/** \brief Evolve while recording the maximum per-step change in force (into MaxDeltaForce). (CLAUDE)
 		\param repeat     Number of integration steps to perform.
 		\param potential  Potential providing the forces. */
 	void Evolve_RecordDeltaForce(size_t repeat, Potential & potential);
+
 	/** \brief Evolve in the canonical ensemble using the Nose-Hoover thermostat. (CLAUDE)
 		\param repeat     Number of integration steps to perform.
 		\param potential  Potential providing the forces.
@@ -91,13 +98,16 @@ public:
 		\param ResetSpeedProbability  Per-step expected number of particle velocity resets.
 		\param gen                   Random number generator. */
 	void AndersonEvolve(size_t repeat, Potential & potential, double kT, double ResetSpeedProbability, RandomGenerator & gen);
+
 	/** \brief Return the total kinetic energy of the system. (CLAUDE)
 		\return The kinetic energy. */
 	double GetKineticEnergy(void);
+
 	/** \brief Draw particle velocities from the Maxwell-Boltzmann distribution at the given temperature. (CLAUDE)
 		\param kT   Target temperature (in energy units).
 		\param gen  Random number generator. */
 	void SetRandomSpeed(double kT, RandomGenerator & gen);
+
 	/** \brief Subtract the mean velocity so the total momentum vanishes. (CLAUDE) */
 	void RemoveOverallMomentum(void);
 
@@ -148,6 +158,7 @@ public:
 		\param CoolingScheduleRescale  >1: slower cooling, <1: faster cooling.
 		\param UseSortedList          TODO(CLAUDE): unclear - review */
 	ParticleMDAnnealing(const Configuration & pInitConfig, int RandomSeed, double Pressure, Potential & pot, bool BoxMCMove = false, std::ostream * output = nullptr, double CoolingScheduleRescale = 1, bool UseSortedList=false);
+
 	/** \brief Run the MD simulated-annealing procedure to find a low-energy configuration. (CLAUDE)
 		\param pot       Potential defining the interaction.
 		\param Callback  Function invoked once per temperature step (e.g. for progress reporting). */

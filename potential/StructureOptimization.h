@@ -39,6 +39,7 @@ public:
 	NotANumberFound()
 	{
 	}
+
 	/** \brief Return the exception's descriptive message. (CLAUDE)
 		\return A C-string describing the error. */
 	virtual const char * what() const throw()
@@ -97,6 +98,7 @@ void RelaxStructure_NLOPT_Emin(Configuration & List, Potential & pot, double Pre
 	\param MinDistance        Reject moves that bring particles closer than this distance.
 	\param MaxStep            Maximum number of optimization steps. */
 void RelaxStructure_SteepestDescent(Configuration & List, Potential & pot, double Pressure, int Switch, double MinDistance, size_t MaxStep=10000);
+
 /** \brief Minimize the energy using conjugate-gradient descent. (CLAUDE)
 	\param[in,out] List       Initial configuration; replaced by the optimized one.
 	\param pot                Interaction potential to minimize.
@@ -106,6 +108,7 @@ void RelaxStructure_SteepestDescent(Configuration & List, Potential & pot, doubl
 	\param MaxStep            Maximum number of optimization steps.
 	\param minG               Gradient-norm threshold for convergence. */
 void RelaxStructure_ConjugateGradient(Configuration & List, Potential & pot, double Pressure, int Switch, double MinDistance, size_t MaxStep=10000, double minG=1e-13);
+
 /** \brief Minimize the energy using a local gradient-descent scheme. (CLAUDE)
 	\param[in,out] List       Initial configuration; replaced by the optimized one.
 	\param pot                Interaction potential to minimize.

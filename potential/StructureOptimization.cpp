@@ -169,23 +169,27 @@ public:
 					for(DimensionType l=0; l<d; l++)
 						this->x[i*d*d*d+j*d*d+k*d+l]=ElasticConstant(p, c, i, j, k, l, Pressure);
 	}
+
 	/** \brief Construct a zero elastic tensor of a given dimension. (CLAUDE)
 		\param d  Spatial dimension. */
 	AllElasticConstants(DimensionType d) : BigVector(d*d*d*d)
 	{
 		this->d=d;
 	}
+
 	/** \brief Construct from a flat BigVector, inferring the dimension from its length. (CLAUDE)
 		\param src  Source vector holding dimension^4 entries. */
 	AllElasticConstants(const BigVector & src) : BigVector(src)
 	{
 		this->d=std::floor(0.5+std::pow(src.dim, 0.25));
 	}
+
 	/** \brief Copy constructor. (CLAUDE)
 		\param src  Source elastic tensor to copy. */
 	AllElasticConstants(const AllElasticConstants & src) : BigVector(src), d(src.d)
 	{
 	}
+
 	/** \brief Return the elastic tensor rotated by a given rotation matrix. (CLAUDE)
 		\param rot  d-by-d rotation matrix.
 		\return The rotated elastic tensor. */
@@ -287,6 +291,7 @@ public:
 	InvalidStructure()
 	{
 	}
+
 	/** \brief Return the exception's descriptive message. (CLAUDE)
 		\return A C-string describing the error. */
 	virtual const char * what() const throw()
@@ -532,6 +537,7 @@ namespace
 			return ::MaxEnergy;
 		}
 	}
+
 	/** \brief Optimizer gradient callback: fill grad with the gradient of the enthalpy at x. (CLAUDE)
 		\param n     Number of optimization variables.
 		\param x     Optimization parameter vector.
@@ -1023,6 +1029,7 @@ double my_f (const gsl_vector  * x, void * params)
 	Aux * pParam = reinterpret_cast<Aux *>(params);
 	return Objective(pParam->NumParam, x->data, nullptr, params);
 }
+
 /** \brief GSL multimin adapter: evaluate the gradient at x. (CLAUDE)
 	\param x       Parameter vector.
 	\param params  Pointer to the Aux state.
@@ -1032,6 +1039,7 @@ void my_df (const gsl_vector * x, void * params,gsl_vector * df)
 	Aux * pParam = reinterpret_cast<Aux *>(params);
 	Gradient(pParam->NumParam, x->data, df->data, params);
 }
+
 /** \brief GSL multimin adapter: evaluate both the objective and gradient at x. (CLAUDE)
 	\param x       Parameter vector.
 	\param params  Pointer to the Aux state.
@@ -1260,6 +1268,7 @@ public:
 		\param input  Parameter vector.
 		\return The objective value. */
 	double evalF(const gsl_vector* input) const;
+
 	/** \brief Evaluate the gradient of the objective at a parameter vector. (CLAUDE)
 		\param input        Parameter vector.
 		\param[out] output  Output gradient vector. */

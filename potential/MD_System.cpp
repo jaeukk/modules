@@ -308,12 +308,14 @@ void ParticleMolecularDynamics::NoseHooverEvolve(size_t repeat, Potential & pote
 	//SnapShot * halfvelocity, * newvelocity;
 	double oldxi, temp;
 	std::vector<GeometryVector> halfvelocity, newvelocity(this->NumParticle, GeometryVector(this->Dimension));
+
 ////#pragma omp parallel default(shared)
 	{
 		for(size_t u=0; u<repeat; u++)
 		{
 ////#pragma omp master
 			halfvelocity = std::vector<GeometryVector>(this->NumParticle, GeometryVector(this->Dimension));
+
 ////#pragma omp barrier
 			//calculate v(t+0.5dt)
 ////#pragma omp for
@@ -528,6 +530,7 @@ ParticleMDAnnealing::ParticleMDAnnealing(const Configuration & InitConfig, int R
 	double LengthScale = std::pow(InitConfig.PeriodicVolume() / InitConfig.NumParticle(), 1.0 / (InitConfig.GetDimension()));
 	double defaultTimeStep = 0.01*LengthScale / std::sqrt(Tinit / 2.0);
 	this->pSys = new ParticleMolecularDynamics(InitConfig, defaultTimeStep, 1.0);
+
 	//////////////////////
 	//initialize this->pList
 	this->pList=&this->pSys->Position;

@@ -21,16 +21,19 @@ public:
 
 	/** \brief Destructor. (CLAUDE) */
 	virtual ~LJPotential();
+
 	/** \brief A default constructor.
 		\param Dimension  Spatial dimension of the system. (CLAUDE)
 		\param epsilon    Depth of the potential well. (CLAUDE)
 		\param sigma      Length scale of the potential. (CLAUDE)
 		\param Rcut       Cutoff distance of the potential. (CLAUDE) */
 	LJPotential(DimensionType Dimension, double epsilon, double sigma, double Rcut);
+
 	/** \brief LJ potential.
 		\param distance	Separation.
 		\return energy. */
 	virtual double IsotropicEnergyFormula(double distance);
+
 	/** \brief Force via the LJ potential.
 		\param distance	Separation.
 		\return the magnitude of force.	 */

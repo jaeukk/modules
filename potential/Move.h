@@ -222,6 +222,7 @@ public:
 			this->AcceptCheck(pComb->p2);
 		}
 	}
+
 	/** \brief Accept the last trial displacement, applying it to the configuration. (CLAUDE)
 		\param list  Configuration to update with the accepted move.
 		\param pot   Interaction potential to notify of the acceptance. */
@@ -233,6 +234,7 @@ public:
 
 		this->AcceptCheck(pot);
 	}
+
 	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
 		\return A new clone of this AtomMove. */
 	virtual MCMove<Configuration, Potential *> * clone()
@@ -261,6 +263,7 @@ public:
 		this->Pressure=0;
 		this->MinDistance=0;
 	}
+
 	/** \brief Construct a cell move at a given pressure. (CLAUDE)
 		\param pressure  Pressure used to form the enthalpy in the acceptance criterion. */
 	CellMove(double pressure)
@@ -271,6 +274,7 @@ public:
 		this->Pressure=pressure;
 		this->MinDistance=0;
 	}
+
 	/** \brief Generate a random change of the cell basis vectors and return the enthalpy difference. (CLAUDE)
 		\param list	Current point configuration.
 		\param pot	Interaction potential.
@@ -390,6 +394,7 @@ public:
 		//std::cout <<" \t"<< PreFactor << " \t" << DeltaE << '\n';
 		return DeltaE;
 	}
+
 	/** \brief Accept the last trial cell move, applying the new basis vectors. (CLAUDE)
 		\param list  Configuration to update with the accepted basis vectors.
 		\param pot   Interaction potential (unused here). */
@@ -399,6 +404,7 @@ public:
 		list.TryRefineBasisVectors();
 		this->AcceptCount++;
 	}
+
 	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
 		\return A new clone of this CellMove. */
 	virtual MCMove<Configuration, Potential *> * clone()
@@ -429,12 +435,14 @@ public:
 		assert(Move1Probability>=0);
 		assert(Move1Probability<=1);
 	}
+
 	/** \brief Destructor; frees the two owned sub-moves. (CLAUDE) */
 	~CombinedMove()
 	{
 		delete this->m1;
 		delete this->m2;
 	}
+
 	/** \brief Randomly select one sub-move, perform it, and return the energy difference. (CLAUDE)
 		\param sys	Current system state.
 		\param add	Additional information (e.g. the interaction potential).
@@ -456,6 +464,7 @@ public:
 			return m2->DeltaEnergy(sys, add, gen, PreFactor, LockStepSize, CurrentEnergy);
 		}
 	}
+
 	/** \brief Accept the most recently selected sub-move. (CLAUDE)
 		\param sys  System to update.
 		\param add  Additional information (e.g. the interaction potential). */
@@ -466,6 +475,7 @@ public:
 		else
 			this->m2->Accept(sys, add);
 	}
+
 	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
 		\return A new clone of this CombinedMove. */
 	virtual MCMove<System, AdditionalInfo> * clone()
