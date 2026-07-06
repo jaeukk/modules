@@ -55,6 +55,7 @@ public:
 		this->d = dimension; this->numPrts = numPrts; this->rho = numberdensity;
 		this->rng.seed((int)GetPreciseClock());
 	}
+
 	/** \brief Reset the number density. (CLAUDE) \param r  New number density. */
 	virtual void SetRho(double r) { this->rho = r; }
 	/** \brief Generate a Poisson sphere packing (radius-0 points) in a cubic box. (CLAUDE)
@@ -72,6 +73,7 @@ public:
 			p.Insert(0.0, rel);
 		}
 	}
+
 	/** \brief Generate a Poisson point configuration. (CLAUDE)
 	 *  \param[out] c  Output point configuration. */
 	virtual void GenerateC(Configuration & c) {

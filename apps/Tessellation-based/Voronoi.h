@@ -28,12 +28,14 @@ void GetVoronoiCell(const PeriodicCellList<Empty> & c, std::vector<GeometryVecto
  *  \param d         Spatial dimension.
  *  \return          Volume of the polytope. */
 double PolygonVolume(const std::vector<GeometryVector> & Vertices, DimensionType d);
+
 /** \brief Plot the 2D Voronoi diagram of a point configuration. (CLAUDE)
  *  \param prefix     Output filename prefix.
  *  \param List       Configuration to plot.
  *  \param edgeColor  edge color.
  *  \param remark     Annotation text drawn on the figure. */
 void PlotVoronoi2D(std::string prefix, const Configuration & List, const char * edgeColor = "r-", const std::string & remark = "");
+
 /** \brief Plot the 2D Voronoi diagram of a sphere packing (plot hardsphere at the same time). (CLAUDE)
  *  \param prefix       Output filename prefix.
  *  \param List         Sphere packing to plot.
@@ -47,6 +49,7 @@ void PlotVoronoi2D(std::string prefix, const SpherePacking & List, const char * 
  *  \param Radius  Sphere radius used for rendering particles (0 = automatic).
  *  \param Num     Num=-1 : display voronoi of all particles; Num>=0 : display voronoi of a specific particle. */
 void DisplayConfiguration_3D_WithVoronoi(const Configuration & list, double Radius=0.0, long Num=-1);
+
 /** \brief Display a 3D sphere packing together with its Voronoi cells. (CLAUDE)
  *  \param list    Sphere packing to display.
  *  \param Radius  Sphere radius used for rendering particles (0 = automatic).
@@ -90,6 +93,7 @@ void VoronoiVolumeCorrelation(std::function<const Configuration(size_t i)> GetCo
  *  \param faces       Optional output: per-particle face counts.
  *  \param centroids   Optional output: per-particle cell centroids. */
 void VoronoiCellRoutine(const PeriodicCellList<Empty> &c, int numThreads, std::vector<double> * cellVolume, std::vector<int> * vertices, std::vector<int> * faces, std::vector<GeometryVector> * centroids);
+
 /** \brief Voronoi cell routine for a sphere packing, optionally radical (radial) tessellation. (CLAUDE)
  *  \param c           Sphere packing whose Voronoi cells are computed.
  *  \param numThreads  Number of threads used for the computation.
@@ -152,6 +156,7 @@ public:
 	 *  \param nz        Number of grid blocks along z.
 	 *  \param mem       Initial per-block memory allocation. */
 	container_leak(const PeriodicCellList<Empty> & cInit, const std::vector<GeometryVector> & newBasis, bool trans, int nx, int ny, int nz, int mem=6);
+
 	/** \brief Copy constructor that re-inserts all particles of the source. (CLAUDE)
 	 *  \param source  Container to copy. */
 	container_leak(const container_leak & source);
@@ -188,6 +193,7 @@ public:
  *  \param[out] nz     Number of grid blocks along z.
  *  \param mem         Target number of particles per grid block. */
 void GetConversionParam(const PeriodicCellList<Empty> &c, std::vector<GeometryVector> & basis, bool &trans, int & nx, int & ny, int &nz, int mem=6);
+
 /** \brief Derive container basis and grid resolution for an approximate particle count. (CLAUDE)
  *  \param c            Configuration to convert.
  *  \param approxNumPrts  Approximate number of particles used to size the grid.
@@ -198,6 +204,7 @@ void GetConversionParam(const PeriodicCellList<Empty> &c, std::vector<GeometryVe
  *  \param[out] nz      Number of grid blocks along z.
  *  \param mem          Target number of particles per grid block. */
 void GetConversionParam(const PeriodicCellList<Empty> &c, int approxNumPrts, std::vector<GeometryVector> & basis, bool &trans, int & nx, int & ny, int &nz, int mem = 6);
+
 /** \brief Build a voro++ container_leak from a configuration. (CLAUDE)
  *  \param c  Configuration to load into the container.
  *  \return   Container holding the configuration's particles. */

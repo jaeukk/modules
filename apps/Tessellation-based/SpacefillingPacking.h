@@ -37,6 +37,7 @@ public:
 	/** \brief Construct from an initial packing; sets phi=0 and a default voxel size. (CLAUDE)
 	 *  \param config  Initial sphere packing used as the substrate. */
 	SpacefillingPacking(const SpherePacking& config);
+
 	/** \brief Construct and derive N and maxR from the scaling-function parameters. (CLAUDE)
 	 *  \param config  Initial sphere packing used as the substrate.
 	 *  \param param   param[0] = maximum particle volume, param[1] = scaling exponent/ratio.
@@ -54,13 +55,16 @@ public:
 	/** \brief Set the number of spheres added per stage. (CLAUDE)
 	 *  \param N  Number of spheres to insert at each stage. */
 	void setN(int N);
+
 	/** \brief Set the maximum (stage-1) particle radius. (CLAUDE)
 	 *  \param Rmax  Maximum particle radius. */
 	void setRmax(double Rmax);
+
 	/** \brief set the scaling function of radius
 	 *  \param param   param[0] = max volume, param[1] = parameter.
 	 *  \param fnName  "Zeta": f(n) = 1/n^param[1]; "Power": f(n) = 1/param[1]^(n-1). */
 	void setScalingFunction(const std::vector<double> & param, const char * fnName);
+
 	/** \brief Set the per-stage volume scaling function directly. (CLAUDE)
 	 *  \param function  Callable mapping stage index n to the relative particle volume. */
 	void setScalingFunction(const std::function <double(int n)> & function);
@@ -75,10 +79,12 @@ public:
 	 *  \param numSteps  Number of successive stages to run.
 	 *  \param n0        Stage index of the first step. */
 	void RepeatAddition(int numSteps, int n0);
+
 	/** \brief Compute the packing fraction, when one can insert "N" particles at each stage from 1~stage.
 	 *  \param stage  Final stage up to which the theoretical packing fraction is summed.
 	 *  \return       Theoretical packing fraction accumulated through the given stage. */
 	double GetTheoreticalPackingFraction(int stage);
+
 	/** \brief Return the current packing fraction.
 	 *  \return  Current packing fraction of the configuration. */
 	double getPackingFraction();
@@ -108,6 +114,7 @@ double getSpacefillingPacking(SpherePacking & c, int numStages, double & maxPrtV
  *  \param outputIndex  Stage indices at which to write a configuration.
  *  \return             Difference between the achieved and the theoretical packing fraction. */
 double getSpacefillingPacking2(SpherePacking & c, int numStages, double & maxPrtVol, double parameter, const char * fnName, const char * prefix, int randomSeed, int numThreads=1, const std::vector<int> & outputIndex = std::vector<int>());
+
 /** \brief Stage-ranged variant of getSpacefillingPacking2 running stages initStage..finStages. (CLAUDE)
  *  \param c            Initial packing; the result accumulates here.
  *  \param initStage    First stage to fill.

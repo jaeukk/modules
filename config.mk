@@ -59,6 +59,12 @@ FFTW_CANDIDATES  := $(HOME)/install /usr/local /usr
 FFTW_PREFIX      ?= $(firstword $(foreach d,$(FFTW_CANDIDATES),\
                       $(if $(wildcard $(d)/include/fftw3.h),$(d))))
 
+# voro++ (optional; used by apps/Tessellation-based with USE_VORO=1). Requires the
+# dev headers voro++/voro++.hh (the voro++-dev package), not just libvoro++.so.
+VORO_CANDIDATES  := $(HOME)/install /usr/local /usr
+VORO_PREFIX      ?= $(firstword $(foreach d,$(VORO_CANDIDATES),\
+                      $(if $(wildcard $(d)/include/voro++/voro++.hh),$(d))))
+
 ifeq ($(GSL_PREFIX),)
   $(warning config.mk: could not auto-detect GSL; set GSL_PREFIX=/path manually)
 endif
@@ -70,6 +76,10 @@ NLOPT_INC := $(if $(NLOPT_PREFIX),-I$(NLOPT_PREFIX)/include)
 NLOPT_LIB := $(if $(NLOPT_PREFIX),-L$(NLOPT_PREFIX)/lib -lnlopt)
 FFTW_INC  := $(if $(FFTW_PREFIX),-I$(FFTW_PREFIX)/include)
 FFTW_LIB  := $(if $(FFTW_PREFIX),-L$(FFTW_PREFIX)/lib -lfftw3 -lfftw3_omp)
+# voro++ (header included as <voro++/voro++.hh>). Like NLOPT/FFTW, these are set
+# when the prefix is found; a consumer references them only under USE_VORO=1.
+VORO_INC  := $(if $(VORO_PREFIX),-I$(VORO_PREFIX)/include)
+VORO_LIB  := $(if $(VORO_PREFIX),-L$(VORO_PREFIX)/lib -lvoro++)
 # rpath so the produced binary finds the shared libs without LD_LIBRARY_PATH.
 # Built with ifneq (not $(if ...)) because the commas in -Wl,-rpath,DIR would
 # otherwise be parsed as extra arguments to the make $(if) function.

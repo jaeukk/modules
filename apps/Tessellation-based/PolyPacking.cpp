@@ -165,6 +165,7 @@ double MakeMono2Poly_parallel(const SpherePacking & config, SpherePacking & resu
 // delegates to the CGAL-only MakeMono2Poly above.
 //-----------------------------------------------------------------------------
 double MakeMono2Poly(DimensionType d, size_t numParticles, double boxSize, double phi0, SpherePacking &resultConfig, double targetPhi, std::vector<double> &Volumes, int seed) {
+#ifdef USE_CGAL
 	RSA setting(d, numParticles);
 	setting.gen.seed(std::time(NULL)+seed);
 	double r = pow(phi0/((double) numParticles *HyperSphere_Volume(d, 1.0)), 1.0 / d);
@@ -173,4 +174,10 @@ double MakeMono2Poly(DimensionType d, size_t numParticles, double boxSize, doubl
 	SpherePacking substrate(*setting.pSpheres);
 	substrate.Rescale(boxSize);
 	return MakeMono2Poly(substrate, resultConfig, targetPhi, Volumes);
+#else
+	(void)d; (void)numParticles; (void)boxSize; (void)phi0;
+	(void)resultConfig; (void)targetPhi; (void)Volumes; (void)seed;
+	std::cerr << "MakeMono2Poly (RSA-substrate overload) requires USE_CGAL.\n";
+	return 0.0;
+#endif
 }

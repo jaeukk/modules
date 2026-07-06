@@ -68,7 +68,6 @@ SpacefillingPacking::~SpacefillingPacking(){//Identical to that of RSA
 void SpacefillingPacking::setN(int n) { this->N = n; }
 void SpacefillingPacking::setScalingFunction(const std::vector<double> & param, const char * fnName) {
 	double r = param[1];
-	double r0 = this->maxR;
 	if (r > 1.0) {
 		if (strcmp(fnName, "Zeta") == 0)
 			this->f = [r](int n)->double {	return 1.0 / pow(round((double)n), r); };
@@ -250,7 +249,7 @@ double getSpacefillingPacking(SpherePacking & c, int numStages, double & maxPrtV
 	}
 
 	double r = 0.0;
-	int tick = 0;
+	size_t tick = 0;
 	for (int j = 1; j < numStages+1; j++) {
 		r = info.maxR*pow(info.f(j), 1.0 / (double)info.dimension);
 		info.AddSpheres(r, info.N);
@@ -295,7 +294,7 @@ double getSpacefillingPacking2(SpherePacking & c, int initStages, int finStages,
 		
 	info.ReplaceConfig(c);
 	double r = 0.0;
-	int tick = 0;
+	size_t tick = 0;
 
 	double PHI_THEORY = info.GetTheoreticalPackingFraction(initStages-1);
 	double PHI_RESIDUE = 0.0;

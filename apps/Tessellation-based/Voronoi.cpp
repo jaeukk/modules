@@ -1026,6 +1026,7 @@ void GetVoronoiCell(const PeriodicCellList<Empty> & c, size_t i, std::vector<Geo
 	std::cerr << "Error : CGAL not enabled!\n";
 	return;
 }
+
 /** \brief CGAL-disabled stub of PolygonVolume; prints an error and returns 0. (CLAUDE)
  *  \param Vertices  Unused (CGAL not enabled).
  *  \param d         Unused (CGAL not enabled).
@@ -1035,6 +1036,7 @@ double PolygonVolume(std::vector<GeometryVector> Vertices, DimensionType d)
 	std::cerr << "Error : CGAL not enabled!\n";
 	return 0;
 }
+
 /** \brief CGAL-disabled stub of PlotVoronoi2D; prints an error and returns. (CLAUDE)
  *  \param prefix  Unused (CGAL not enabled).
  *  \param List    Unused (CGAL not enabled).
@@ -1121,7 +1123,6 @@ bool transformBasis(const PeriodicCellList<Empty> & input, Configuration & outpu
 			double bx = sqrt(b[0].Modulus2());
 			double bxy = b[0].Dot(b[1]) / sqrt(b[0].Modulus2()), byy = sqrt(b[1].Modulus2() - bxy * bxy);
 
-			double z_x = 0.0, z_y = 0.0, z_z = 1.0; //strip...
 													//Final basis vectors!!
 			std::vector<GeometryVector> b_(d, GeometryVector(0.0, 0.0, 0.0));
 
@@ -1234,8 +1235,8 @@ container_leak::container_leak(const PeriodicCellList<Empty> & cInit, const std:
 	}
 	if (d == 2 || d == 3) {
 		//Input particles
-		int ijk; double x, y, z;	GeometryVector temp;
-		for (int i = 0; i < cInit.NumParticle(); i++) {
+		int ijk;	GeometryVector temp;
+		for (size_t i = 0; i < cInit.NumParticle(); i++) {
 			if (trans) { temp = c_.RelativeCoord2CartesianCoord(cInit.GetRelativeCoordinates(i)); }
 			else { temp = cInit.GetCartesianCoordinates(i); }
 
@@ -1251,7 +1252,7 @@ container_leak::container_leak(const PeriodicCellList<Empty> & cInit, const std:
 			//	count++;
 			//}
 		}
-		for (int i = 0; i < id_leak.size(); i++)
+		for (size_t i = 0; i < id_leak.size(); i++)
 			this->id_leak[i].order--;
 
 		//std::cout << "overflow = ?" << count << "\n";
@@ -1339,8 +1340,8 @@ container_leak Config2Container(const PeriodicCellList<Empty> & c) {
 		unitCell.transform = trans;
 		unitCell.id_leak = std::vector<IDs>(c.NumParticle(), IDs());
 		//Input particles
-		int ijk; double x, y, z;	GeometryVector temp;
-		for (int i = 0; i < c.NumParticle(); i++) {
+		int ijk;	GeometryVector temp;
+		for (size_t i = 0; i < c.NumParticle(); i++) {
 			if (trans) { temp = c_.RelativeCoord2CartesianCoord(c.GetRelativeCoordinates(i)); }
 			else { temp = c.GetCartesianCoordinates(i); }
 
@@ -1538,7 +1539,7 @@ void VoronoiCellRoutine(const PeriodicCellList<Empty> &c, int numThreads, std::v
 						int region = 0;
 						int region_idx;
 						double projLength;
-						for (int i = 0; i < unitbasisVectors.size(); i++) {
+						for (size_t i = 0; i < unitbasisVectors.size(); i++) {
 							projLength = fabs(unitbasisVectors[i].Dot(cartesianCoord));
 							if (projLength <= region0[i])
 								region_idx = 0;
@@ -1578,7 +1579,7 @@ void VoronoiCellRoutine(const PeriodicCellList<Empty> &c, int numThreads, std::v
 					}
 					Configuration c_(d, &basis_subdomain_standard[0], 1);
 #pragma omp parallel for  schedule(guided) num_threads(numThreads)
-					for (int i = 0; i < centerDomain.size(); i++) {
+					for (size_t i = 0; i < centerDomain.size(); i++) {
 						int numprts = 0;
 						GeometryVector x0 = C.CartesianCoord2RelativeCoord(centerDomain[i]);
 						//container_leak con(subdomain_template, basis_subdomain_standard, trans, nx, ny, nz, mem);
@@ -1727,6 +1728,7 @@ void VoronoiCellRoutine_radial(const SpherePacking &c, int numThreads, std::vect
 	void VoronoiCellRoutine(const PeriodicCellList<Empty> &c, std::vector<double> &cellVolume, std::vector<int> & vertices, std::vector<int> & faces, std::vector<GeometryVector> & centroids) {
 		std::cout << "Please include \"VORO++\"\n";
 	}
+
 	/** \brief voro++-disabled stub of VoronoiCellRoutine_radial; prints an error. (CLAUDE)
 	 *  \param c           Unused (voro++ not enabled).
 	 *  \param cellVolume  Unused (voro++ not enabled).
@@ -1751,7 +1753,7 @@ std::complex<double> Psi6(const PeriodicCellList<Empty> & Config, size_t j, int 
 		std::vector<GeometryVector> neighbors;
 		double TypicalLength = std::pow(Config.PeriodicVolume() / Config.NumParticle(), 1.0 / Config.GetDimension())*1.5;
 		double l = TypicalLength;
-		size_t Nneighbor;
+		size_t Nneighbor = 0;
 		if (dim == 2)
 			Nneighbor = 6;
 		else if (dim == 3)
@@ -1772,7 +1774,7 @@ std::complex<double> Psi6(const PeriodicCellList<Empty> & Config, size_t j, int 
 			return left.Modulus2() < right.Modulus2();
 		};
 		std::sort(neighbors.begin(), neighbors.end(), CompareFunc);
-		for (int i = 1; i < Nneighbor + 1; i++)
+		for (size_t i = 1; i < Nneighbor + 1; i++)
 			NeighborDisplacements.push_back(neighbors[i]);
 	}
 	else if (NeighborType == 1)
@@ -1807,7 +1809,6 @@ std::complex<double> Psi6(const PeriodicCellList<Empty> & Config, size_t j, int 
 
 		//new code
 		{
-			DimensionType Dimension = Config.GetDimension();
 			std::vector<GeometryVector> vertices;
 			std::vector<signed long> Linkage;
 			std::set<size_t> Neighbors;
