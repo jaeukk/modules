@@ -37,7 +37,7 @@ void ContactNumbers(std::function<const Configuration(size_t i)> GetConfigsFunct
  * \param r_max               Largest distance up to which Z(r) is computed.
  * \param dr                  Bin width in distance (initial bin width when logscale is used).
  * \param Result              Output cumulative coordination number as (r, Z(r), error in Z(r)).
- * \param logscale            If true, use logarithmically growing (geometric) bin widths. (CLAUDE)
+ * \param logscale            If true, use logarithmically growing (geometric) bin widths.
  * \return                    The actual minimum distance used as r_min.
  */
 double CumulativeCoordinationNumber(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double r_min, double r_max, double dr, std::vector<GeometryVector> &Result, bool logscale=false);

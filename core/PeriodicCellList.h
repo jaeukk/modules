@@ -370,6 +370,11 @@ public:
 			this->ReciprocalBasisVectorValid[i] = false;
 	}
 
+	/** \brief Copy-assign (member-wise; identical to the previously implicit one).
+	 *  Declared explicitly (defaulted) because the user-declared copy constructor
+	 *  above would otherwise leave the copy-assignment implicit and deprecated. */
+	PeriodicCellList & operator=(const PeriodicCellList<OtherCharacteristics> & source) = default;
+
 	/** \brief Construct from another list while assigning a uniform characteristic.
 	 *  \param source Source list providing geometry and particle positions.
 	 *  \param cha    Characteristic value assigned to every particle. */

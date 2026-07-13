@@ -95,7 +95,7 @@ void GetN(const Configuration & config, std::vector<double> &results,
 void MC_NV_single(const Configuration &  config, std::vector<GeometryVector> & results, double Rmax, double dR, const std::vector<GeometryVector> &  window_centers, const std::function<double(const GeometryVector & )> WindowSizeFunct = radius_in_Sphere);
 
 /**
- * \brief Monte Carlo calculation of the local number variance of a single configuration using randomly generated window centers. (CLAUDE)
+ * \brief Monte Carlo calculation of the local number variance of a single configuration using randomly generated window centers.
  * \param config 	A Configuration object.
  * \param results 	results[i] = {R, variance}
  * \param Rmax 	Largest window size

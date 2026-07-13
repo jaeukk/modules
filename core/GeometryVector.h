@@ -146,6 +146,11 @@ public:
 			this->x[i]=src.x[i];
 	}
 
+	/** \brief Copy-assign from another vector (member-wise; matches the copy ctor).
+	 *  Declared explicitly (defaulted) because the user-declared copy constructor
+	 *  above would otherwise leave the copy-assignment implicit and deprecated. */
+	GeometryVector & operator=(const GeometryVector & src) = default;
+
 	/** \brief Add components from another vector in-place.
 	 *  \param right  Vector whose components are added to this one. */
 	void AddFrom(const GeometryVector & right)
