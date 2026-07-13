@@ -17,7 +17,7 @@
 #include <vector>
 
 //-------Core part--------
-#include <etc.h>
+//#include <etc.h>
 #include <GeometryVector.h>
 #include <PeriodicCellList.h>
 #include <RandomGenerator.h>
@@ -25,14 +25,10 @@
 
 
 
-//The following functions are useful for file IO
-void WriteFunction(const std::vector<GeometryVector> & result, std::ostream & ofile, const std::vector<std::string> & fields);
-void WriteFunction(const std::vector<GeometryVector> & result, const std::string & OutFilePrefix, const std::vector<std::string> & fields);
-void ReadFunction(std::vector<GeometryVector> & result, std::istream & ifile, size_t NumColumns);
-void ReadFunction(std::vector<GeometryVector> & result, const std::string & InFilePrefix, size_t NumColumns);
 
 //#include <Windows.h>
 #include <algorithm>
+
 /** \brief Entry point dispatching ConfigurationPack <-> txt conversion utilities by option code. (CLAUDE)
  *  \param argc  Argument count; argv[1] selects the mode and the remaining entries are mode-specific parameters.
  *  \param argv  Argument vector: argv[1] is the option (0=CheckCP statistics, 1=CP2txt, 2=txt2CP), followed by the parameters required for that option.
@@ -47,6 +43,10 @@ int main(int argc, char ** argv) {
 	
 
 
+	if (argc < 2) {
+		ofile << "Usage: CPmanager <option: 0=CheckCP, 1=CP2txt, 2=txt2CP> [parameters]\n";
+		return 1;
+	}
 	int option = std::atoi(argv[1]);
 
 	switch (option){
@@ -62,7 +62,8 @@ int main(int argc, char ** argv) {
 					<< "\t\tStatistics in " << cp_name <<"\n"
 					<< "\n\n";
 
-			int num_config = 0, dim = 0;
+			long long num_config = 0;
+			int dim = 0;
 			double num_prts = 0, num_density = 0;
 			
 			ConfigurationPack cp(cp_name);
@@ -111,7 +112,7 @@ int main(int argc, char ** argv) {
 		if(argc == num_param+2){
 			std::string cp_name(argv[2]);
 			ConfigurationPack cp(cp_name);
-			int num_tot_configs = cp.NumConfig();
+			long long num_tot_configs = cp.NumConfig();
 			int start_idx = std::atoi(argv[3]), num_configs = std::atoi(argv[4]),
 				i = 0;
 
@@ -121,11 +122,11 @@ int main(int argc, char ** argv) {
 
 			for(i=0; (i<num_configs) && (i+start_idx < num_tot_configs); i++){
 				Configuration c = cp.GetConfig(i+start_idx);
-				sprintf(name, "%s__%04d", cp_name.c_str(), i);
+				snprintf(name, sizeof(name), "%s__%04d", cp_name.c_str(), i);
 				WriteConfiguration(c, name);
 			}
 
-			ofile << i+1 <<" (out of " << num_tot_configs <<  ") configurations are sucessfully converted\n";
+			ofile << i <<" (out of " << num_tot_configs <<  ") configurations are sucessfully converted\n";
 			
 
 		}
@@ -149,7 +150,7 @@ int main(int argc, char ** argv) {
 
 			int start_index = std::atoi(argv[3]), num_configs = std::atoi(argv[4]);
 			std::string prefix(argv[2]);
-			sprintf(name, "%s", argv[5]);
+			snprintf(name, sizeof(name), "%s", argv[5]);
 
 			ofile << "prefix = "<<  prefix <<"\n";
 			ofile << "start index = "<< start_index<<"\n";
@@ -157,11 +158,12 @@ int main(int argc, char ** argv) {
 			ofile << "save prefix = "	<< name<<"\n";
 
 			ConfigurationPack save(name);
-			int i=0, num_conf_prev = save.NumConfig();
+			int i=0;
+			long long num_conf_prev = save.NumConfig();
 			for (i=0; i<num_configs; i++){
 					int idx = start_index + i;
 					Configuration c;
-					sprintf(name, prefix.c_str(), idx);
+					snprintf(name, sizeof(name), prefix.c_str(), idx);
 					ReadConfiguration (c, name);
 					if(c.GetDimension()>0){
 						save.AddConfig(c);
