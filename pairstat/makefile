@@ -15,7 +15,8 @@ include ../config.mk
 ODIR   := obj/
 
 SRCS := PairCorrelation.cpp StructureFactor.cpp SpectralDensity.cpp \
-        NumberVariance.cpp VolumeFractionVariance.cpp ContactStatistics.cpp
+        NumberVariance.cpp VolumeFractionVariance.cpp ContactStatistics.cpp \
+        LinealPathFunction.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I$(pairstat)

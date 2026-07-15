@@ -22,6 +22,7 @@ high-level `Computation` driver and its CLI now live in
 | `NumberVariance.{h,cpp}` | Local number variance σ²(R) (uses Boost gamma). |
 | `VolumeFractionVariance.{h,cpp}` | Local volume-fraction variance σ_V²(R) of sphere packings (the `MC_vfv` family). Split out of `NumberVariance`. |
 | `ContactStatistics.{h,cpp}` | Contact-number / nearest-neighbour statistics. |
+| `LinealPathFunction.{h,cpp}` | Lineal-path function L(z) and chord-length distribution of sphere packings / two-phase media. |
 
 ### Why the splits
 

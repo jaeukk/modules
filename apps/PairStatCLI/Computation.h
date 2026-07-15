@@ -32,7 +32,7 @@
 #include "ContactStatistics.h"
 
 /**
- * @brief Base Computation class to interface computating codes to PairStatCLI. 
+ * @brief Base Computation class to provide a common platform to compute statistical descriptors from an ensemble of configurations, which is interfaced to PairStatCLI. 
  */
 class Computation
 {

@@ -42,7 +42,7 @@ public:
 	SpherePacking operator() (size_t i)
 	{
 		SpherePacking result;
-		sprintf(tempstring, this->filename.c_str(), this->start_idx + i);
+		snprintf(tempstring, sizeof(tempstring), this->filename.c_str(), this->start_idx + i);
 		ReadConfiguration(result, tempstring);
 		
 		if (this->target_phi2 > 0.0){
@@ -108,9 +108,8 @@ int PairStatisticsCLI();
  *  \param argc  Number of command-line arguments (unused).
  *  \param argv  Command-line argument values (unused).
  *  \return      Always 0. */
-int main(int argc, char ** argv){
-	int signal;
-	signal = PairStatisticsCLI();
+int main(int, char **){
+	PairStatisticsCLI();
 
 	return 0;
 }
@@ -125,7 +124,6 @@ int PairStatisticsCLI(){
 	size_t NumConfig =0;
 	size_t NumThreads = 1;
 	size_t StartIdx = 0;
-	int rng_seed = 0;
 	std::string OutputPrefix;
 	std::function<const SpherePacking(size_t i)> GetConfigsFunction = nullptr;	
 

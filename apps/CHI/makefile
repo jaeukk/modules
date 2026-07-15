@@ -12,23 +12,27 @@ include ../../config.mk
 ODIR   := obj/
 TARGET := CHI.out
 
-SRCS := main.cpp LinealPathFunction.cpp SpectralDensity.cpp \
-        VolumeFractionVariance.cpp
+SRCS := main.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
-INC := -I$(core) -I.
+INC := -I$(core) -I$(pairstat) -I.
 
 CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
 
-.PHONY: all clean core-objs
+PAIRSTAT_OBJS := $(pairstat)/obj/SpectralDensity.o $(pairstat)/obj/StructureFactor.o $(pairstat)/obj/LinealPathFunction.o
+
+.PHONY: all clean core-objs pairstat-objs
 all: $(TARGET)
 
 core-objs:
 	$(MAKE) -C $(core) objs
 
-$(TARGET): $(OBJS) core-objs
-	$(CC) -o $@ $(OBJS) $(CORE_OBJS) $(LFLAGS)
+pairstat-objs:
+	$(MAKE) -C $(pairstat) objs
+
+$(TARGET): $(OBJS) core-objs pairstat-objs
+	$(CC) -o $@ $(OBJS) $(CORE_OBJS) $(PAIRSTAT_OBJS) $(LFLAGS)
 
 $(ODIR)%.o: %.cpp | $(ODIR)
 	$(CC) $(CFLAGS) $(INC) -o $@ $<

@@ -28,8 +28,8 @@
 //#include <StructureFactor.h>
 
 //#include "NumberVariance.h"
-#include "./LinealPathFunction.h"
-#include "./SpectralDensity.h"
+#include <LinealPathFunction.h>
+#include <SpectralDensity.h>
 
 //TODO: implement functions for the dipsersion class
 //TODO: implement various times of calculations (S2, local volume fraction variance, and so on.)
@@ -43,6 +43,7 @@ public:
 	 *  \param GetConfigsFunction  Functor returning the i-th SpherePacking configuration.
 	 *  \param NumConfig           Number of configurations to process. */
 	virtual void Compute(std::function<const SpherePacking(size_t i)> GetConfigsFunction, size_t NumConfig) =0;
+
 	/** \brief Write the computed result to output files. (CLAUDE)
 	 *  \param OutputPrefix  Prefix used to build the output file name(s). */
 	virtual void Write(const std::string OutputPrefix) =0;
@@ -54,7 +55,7 @@ public:
 	 *  \param option  The unrecognized command token.
 	 *  \param input   Stream to read any further parameters from.
 	 *  \param output  Stream to report messages to. */
-	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output)
+	virtual void ProcessAdditionalOption(const std::string &, std::istream &, std::ostream & output)
 	{
 		//by default, accept no additional option.
 		output << "Unrecognized command!\n";
@@ -159,7 +160,7 @@ public:
 	/** \brief Compute the hole probability function over the ensemble (not yet implemented). (CLAUDE)
 	 *  \param GetConfigs  Functor returning the i-th SpherePacking configuration.
 	 *  \param numConfigs  Number of configurations to process. */
-	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
+	virtual void Compute(std::function<const SpherePacking(size_t)>, size_t) {
 		omp_set_num_threads(this->numThreads);
 		// ToDo
 
