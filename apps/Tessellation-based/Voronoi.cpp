@@ -7,6 +7,135 @@
 void PlotDisk2D(mglGraph & graph, double x, double y, double r, const char * MGLOptions, size_t NumLineSegments = 200);
 #endif
 
+// ---------------------------------------------------------------------------
+// Merge-sort helpers copied from the former misc/Discrepancy module so this app
+// is self-contained (Discrepancy.* is otherwise unused here). Sort particles
+// ascending along a chosen coordinate component. File-local (anonymous
+// namespace) => internal linkage, no exported symbol.
+// ---------------------------------------------------------------------------
+namespace {
+
+/** \brief Sort data in stack in ascending order according to the std_col-th component.
+ *  \param stack    Vectors to sort in place.
+ *  \param std_col  Component index used as the sort key. */
+void MergeSort(std::vector<GeometryVector> & stack, int std_col) {
+	if (std_col+1 > stack[0].Dimension) {
+		std::cout << "MergeSort - wrong standard column \n";	return;
+	}
+
+	int size = stack.size();
+
+	int bin = 1;
+	int pre_bin = 1;
+	while (pre_bin < size) {
+		if (bin > 1) {
+			std::vector<GeometryVector> tempList;
+			tempList.reserve(size);
+
+			int j1 = 0; //index for sublist1
+			int j2 = pre_bin; //index for sublist2
+			int j1_max = pre_bin;
+			int j2_max = (bin>size) ? size : bin;
+			while (tempList.size()<(size_t)size && j1 < size) {
+				GeometryVector temp;
+
+				if (j1 < j1_max && j2<j2_max) {
+					if (stack[j1].x[std_col] > stack[j2].x[std_col]) {
+						temp = stack[j2];
+						j2++;
+					}
+					else {
+						temp = stack[j1];
+						j1++;
+					}
+				}
+				else if (j2 == j2_max) {
+					temp = stack[j1]; j1++;
+				}
+				else {
+					temp = stack[j2]; j2++;
+				}
+				tempList.push_back(temp);
+
+				if (j1 == j1_max && j2 == j2_max) {
+					j1_max = ((j1_max + bin)>size) ? size : j1_max + bin;
+					j1 = ((j1 + pre_bin) > size) ? size : j1 + pre_bin;
+					j2_max = ((j2_max + bin) > size) ? size : j2_max + bin;
+					j2 = ((j2 + pre_bin) > size) ? size : j2 + pre_bin;
+				}
+			}
+
+			for (int k = 0; k < size; k++) {
+				stack.at(k) = tempList[k];
+			}
+		}
+
+		pre_bin = bin;
+		bin *= 2;
+	}
+}
+
+/** \brief Sort particles of a PeriodicCellList ascending along the std_col-th
+ *         component of their relative coordinates.
+ *  \tparam T       Per-particle characteristics type stored in the cell list.
+ *  \param stack    Point configuration to reorder in place.
+ *  \param std_col  Relative-coordinate component used as the sort key. */
+template<typename T> void Merge_Sort(PeriodicCellList<T> & stack, int std_col) {
+	if (stack.GetDimension() < std_col + 1) {
+		std::cout << "Merge_Sort - wrong standard column \n";	return;
+	}
+
+	std::vector<GeometryVector> tempConfig;	//relative coordinates
+	std::vector<T> tempCharacteristics;
+	tempConfig.reserve(stack.NumParticle());
+	tempCharacteristics.reserve(stack.NumParticle());
+
+	if (stack.NumParticle() < 1e+6 && stack.GetDimension()>1) {
+		GeometryVector index_vec(stack.GetDimension());
+		const int indexing_dimension = (0 == std_col) ? 1 : 0;
+		for (size_t i = 0; i < stack.NumParticle(); i++) {
+			tempConfig.push_back(stack.GetRelativeCoordinates(i) + index_vec);
+			tempCharacteristics.push_back(stack.GetCharacteristics(i));
+			index_vec.x[indexing_dimension]++;
+		}
+
+		MergeSort(tempConfig, std_col);
+		stack.RemoveParticles();
+		int t = 0;
+		for (size_t i = 0; i < tempConfig.size(); i++) {
+			t = (int)floor(tempConfig[i].x[indexing_dimension]);
+			tempConfig[i].x[indexing_dimension] -= (double)t;
+			stack.Insert(tempCharacteristics[t], tempConfig[i]);
+		}
+		tempConfig.clear();
+		tempCharacteristics.clear();
+	}
+	else if (stack.GetDimension() == 1 && std_col == 0) {//1D system
+		GeometryVector index_vec(2);
+		const int indexing_dimension = 1;
+		for (size_t i = 0; i < stack.NumParticle(); i++) {
+			tempConfig.push_back(GeometryVector(stack.GetRelativeCoordinates(i).x[0],0) + index_vec);
+			tempCharacteristics.push_back(stack.GetCharacteristics(i));
+			index_vec.x[indexing_dimension]++;
+		}
+
+		MergeSort(tempConfig, std_col);
+		stack.RemoveParticles();
+		int t = 0;
+		for (size_t i = 0; i < tempConfig.size(); i++) {
+			t = (int)round(tempConfig[i].x[indexing_dimension]);
+			stack.Insert(tempCharacteristics[t], GeometryVector(tempConfig[i].x[0]));
+		}
+		tempConfig.clear();
+		tempCharacteristics.clear();
+	}
+	else {
+		std::cout << "Merge_Sort - consider the case where 1D configuration and the number of particles is more than 1 million.";
+	}
+}
+
+} // anonymous namespace
+
 //#ifdef USE_Voro++
 #ifdef USE_CGAL
 

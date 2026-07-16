@@ -27,14 +27,18 @@
 include ../../config.mk
 
 ODIR   := obj/
+# The default (and only) built binary is the ANALYSIS-ONLY CLI: it is compiled
+# from TessellationAnalysisCLI.cpp (config-reading; decoupled from the models
+# generators). The generator-coupled driver main.cpp is intentionally NOT built.
 TARGET := TessellationCLI.out
 
 LIB_SRCS := SpacefillingPacking.cpp Computation.cpp PolyPacking.cpp Voronoi.cpp
 LIB_OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(LIB_SRCS))
+# Analysis-only CLI object (initial configs loaded from files, no internal
+# RSA_Gen / HardSphereFluids / HSF_Gen generation).
 CLI_OBJ  := $(ODIR)TessellationAnalysisCLI.o
-MISC_OBJ := $(ODIR)Discrepancy.o          # MergeSort (misc), used under USE_VORO
 
-INC := -I$(core) -I$(pairstat) -I$(models) -I$(misc) -I$(visualization) -I. $(VORO_INC)
+INC := -I$(core) -I$(pairstat) -I$(models) -I$(visualization) -I. $(VORO_INC)
 
 # MathGL is gated by USE_MATHGL in the legacy sources (not the config.mk flags).
 USE_MATHGL ?= 0
@@ -59,14 +63,10 @@ deps:
 	$(MAKE) -C $(pairstat) objs
 	$(MAKE) -C $(models) objs
 
-$(TARGET): $(CLI_OBJ) $(LIB_OBJS) $(MISC_OBJ) deps
-	$(CC) -o $@ $(CLI_OBJ) $(LIB_OBJS) $(MISC_OBJ) $(CORE_OBJS) $(PAIR_OBJS) $(MODEL_OBJS) $(VORO_LIB) $(LFLAGS)
+$(TARGET): $(CLI_OBJ) $(LIB_OBJS) deps
+	$(CC) -o $@ $(CLI_OBJ) $(LIB_OBJS) $(CORE_OBJS) $(PAIR_OBJS) $(MODEL_OBJS) $(VORO_LIB) $(LFLAGS)
 
 $(ODIR)%.o: %.cpp | $(ODIR)
-	$(CC) $(CFLAGS) $(INC) -o $@ $<
-
-# misc-module source compiled into this app's obj dir.
-$(ODIR)Discrepancy.o: $(misc)/Discrepancy.cpp | $(ODIR)
 	$(CC) $(CFLAGS) $(INC) -o $@ $<
 
 $(ODIR):

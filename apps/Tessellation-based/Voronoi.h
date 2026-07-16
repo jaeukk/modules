@@ -110,7 +110,6 @@ void VoronoiCellRoutine_radial(const SpherePacking &c, int numThreads, std::vect
  *  \return             true if the basis vectors were changed, false otherwise. */
 bool transformBasis(const PeriodicCellList<Empty> & input, Configuration & output);
 #if defined(USE_VORO)
-#include <Discrepancy.h>
 #if defined(DELLA)
 #include <voro++.hh>
 #else
