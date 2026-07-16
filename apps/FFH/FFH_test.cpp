@@ -8,11 +8,13 @@
  *  \param num_pixels       Number of grid pixels per side.
  *  \param rng              Random number generator. */
 void RandomCheckerBoard(TwoPhaseDispersion &, int num_domains, int num_pixels, RandomGenerator & rng);
+
 /** \brief Build a periodic checkerboard two-phase dispersion. (CLAUDE)
  *  \param[out] dispersion  The resulting two-phase dispersion.
  *  \param num_domains      Number of checkerboard domains per side (must be even).
  *  \param num_pixels       Number of grid pixels per side. */
 void PeriodicCheckerBoard(TwoPhaseDispersion &, int num_domains, int num_pixels);
+
 /** \brief Build a periodic alternating-strip two-phase dispersion. (CLAUDE)
  *  \param[out] dispersion  The resulting two-phase dispersion.
  *  \param num_domains      Number of strip domains per side (must be even).

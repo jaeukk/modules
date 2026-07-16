@@ -153,7 +153,7 @@ void TwoPhaseDispersion::ComputeIndicator() {
 
 	/* iterate over all grid points */
 #pragma omp parallel for schedule(dynamic)
-	for (int idx = 0; idx < tot_num_grids; idx++) {
+	for (size_t idx = 0; idx < tot_num_grids; idx++) {
 		/* convert index of a grid point to the position of the grid */
 		std::vector<size_t> comp_grid;
 		this->Index2Components(idx, comp_grid);
@@ -208,7 +208,7 @@ void TwoPhaseDispersion::Print(const std::string & prefix) const {
 	}
 
 	std::vector<size_t> comp;
-	for (int i = 0; i < prt_indicator.size(); i++) {
+	for (size_t i = 0; i < prt_indicator.size(); i++) {
 		this->Index2Components(prt_indicator[i], comp);
 		for (int j = 0; j < d; j++) {
 			output << comp[j] << "\t";
@@ -321,12 +321,12 @@ TensorField TwoPhaseDispersion::GetKs() const
 		L.push_back(sqrt(packing.GetBasisVector(i).Modulus2()));
 	}
 
-	for (int k_idx = 0; k_idx < result.num_total_pixels; k_idx++) {
+	for (size_t k_idx = 0; k_idx < result.num_total_pixels; k_idx++) {
 		std::vector<size_t> comp;
 		Index2Components(k_idx, comp);
 		GeometryVector k(static_cast<int>(comp.size()));
 
-		for (int i = 0; i < comp.size(); i++) {
+		for (size_t i = 0; i < comp.size(); i++) {
 			k.x[i] = (double)comp[i];
 			if (2*comp[i] > result.num_points[i])
 				k.x[i] -= (double)result.num_points[i];

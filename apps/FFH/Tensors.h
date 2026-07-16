@@ -46,10 +46,12 @@ struct ConstantTensor {
 
 	/** \brief Construct an empty constant tensor (dimension 0, rank 0). (CLAUDE) */
 	ConstantTensor();
+
 	/** \brief Construct a zero-initialized constant tensor of given dimension and rank. (CLAUDE)
 	 *  \param dimension  Spatial dimension d.
 	 *  \param rank       Tensor rank (number of indices). */
 	ConstantTensor(size_t dimension, size_t rank);
+
 	/** \brief Copy constructor. (CLAUDE)
 	 *  \param src  The constant tensor to copy. */
 	ConstantTensor(const ConstantTensor & src);
@@ -77,6 +79,7 @@ struct ConstantTensor {
 			return std::complex<double>(0, 0);
 		}
 	}
+
 	/** \brief Copy-assignment operator. (CLAUDE)
 	 *  \param rhs  The constant tensor to assign from.
 	 *  \return     Reference to this tensor. */
@@ -90,11 +93,13 @@ struct ConstantTensor {
  *  \param right  Right operand.
  *  \return       The element-wise sum. */
 ConstantTensor operator + (const ConstantTensor & left, const ConstantTensor & right);
+
 /** \brief Component-wise difference of two constant tensors. (CLAUDE)
  *  \param left   Left operand.
  *  \param right  Right operand.
  *  \return       The element-wise difference (left - right). */
 ConstantTensor operator - (const ConstantTensor & left, const ConstantTensor & right);
+
 /** \brief Scalar multiplication of a constant tensor. (CLAUDE)
  *  \param left   Complex scalar factor.
  *  \param right  The constant tensor.
@@ -122,7 +127,7 @@ ConstantTensor Identity(size_t dimension);
 inline std::complex<double> Trace(const ConstantTensor & src) {
 	std::complex<double> out(0.0L, 0.0L);
 	if (src.rank == 2) {
-		for (int i = 0; i < src.d; i++) {
+		for (size_t i = 0; i < src.d; i++) {
 			out += src[i*(1 + src.d)];
 		}
 	}
@@ -141,14 +146,17 @@ struct TensorField {
 
 	/** \brief Construct an empty tensor field. (CLAUDE) */
 	TensorField();
+
 	/** \brief Construct a zero-initialized tensor field over a grid. (CLAUDE)
 	 *  \param dimension   Spatial dimension d.
 	 *  \param rank        Tensor rank (number of indices).
 	 *  \param num_points  Number of grid points along each dimension. */
 	TensorField(size_t dimension, size_t rank, const std::vector<size_t> & num_points);
+
 	/** \brief Copy constructor (deep-copies the fftw buffers). (CLAUDE)
 	 *  \param src  The tensor field to copy. */
 	TensorField(const TensorField & src);
+
 	/** \brief Destructor; frees the allocated fftw buffers. (CLAUDE) */
 	~TensorField();
 
@@ -163,6 +171,7 @@ struct TensorField {
 	 *  \param i  Per-index component vector.
 	 *  \return   Pointer to the scalar field of that component. */
 	inline fftw_complex * comp(const std::vector<size_t> &i);
+
 	/** \brief directly access to the component of tensor field with components (const overload).
 	 *  i=(1,2) -> index = 2*d + 1.
 	 *  \param i  Per-index component vector.
@@ -173,14 +182,17 @@ struct TensorField {
 	 *  \param rhs  Tensor field to add.
 	 *  \return     Reference to this tensor field. */
 	TensorField & operator += (const TensorField &rhs);
+
 	/** \brief Subtract another tensor field element-wise in place. (CLAUDE)
 	 *  \param rhs  Tensor field to subtract.
 	 *  \return     Reference to this tensor field. */
 	TensorField & operator -= (const TensorField & rhs);
+
 	/** \brief Copy-assignment (reallocates buffers if sizes differ). (CLAUDE)
 	 *  \param src  Tensor field to assign from.
 	 *  \return     Reference to this tensor field. */
 	TensorField & operator = (const TensorField & src);
+
 	/** \brief Multiply every component by a complex scalar in place. (CLAUDE)
 	 *  \param rhs  Complex scalar factor.
 	 *  \return     Reference to this tensor field. */
@@ -209,6 +221,7 @@ struct TensorField {
 			return field[0];
 		}
 	}
+
 	/** \brief return the position index corresponding to the comp.
 	 *  \param comp  Per-dimension grid coordinates.
 	 *  \return      The linearized pixel index. */
@@ -216,7 +229,7 @@ struct TensorField {
 	{
 		assert(comp.size() == d);
 		size_t out = comp[0];
-		for (int i = 1; i < d; i++) {
+		for (size_t i = 1; i < d; i++) {
 			out = comp[i] + this->num_points[i] * out;
 		}
 
@@ -236,6 +249,7 @@ struct TensorField {
 		}
 		out[0] = value;
 	}
+
 	/** \brief Write tensor-field components to text files.
 	 *  \param prefix     Output filename prefix.
 	 *  \param component  Component to print; -1 = all.
@@ -256,7 +270,7 @@ struct TensorField {
 		components = std::vector<size_t>(rank, 0);
 		size_t value = index;
 		if (index < total_comp) {
-			for (int i = 0; i < rank; i++) {
+			for (size_t i = 0; i < rank; i++) {
 				components[i] = value % d;
 				value -= components[i];	value /= d;
 			}
@@ -306,6 +320,7 @@ inline TensorField operator-(const TensorField & left, const TensorField & right
  *  \param B    Second tensor field.
  *  \param num_contraction  Number of indices contracted between A and B. */
 void InnerProduct(TensorField & out, const TensorField & A, const TensorField &B, size_t num_contraction);
+
 /** \brief Per-pixel inner product of A with the complex conjugate of B. (CLAUDE)
  *  \param A    First tensor field.
  *  \param B    Second tensor field (conjugated in the contraction).
@@ -318,6 +333,7 @@ TensorField & InnerProduct_conjugate(const TensorField & A, const TensorField &B
  *  \param rhs    The fftw_complex to fill.
  *  \return       The input stream. */
 std::istream & operator >> (std::istream & input, const fftw_complex & rhs);
+
 /** \brief Stream-insert an fftw_complex value. (CLAUDE)
  *  \param input  Output stream.
  *  \param rhs    The fftw_complex to print.
@@ -358,7 +374,7 @@ ConstantTensor InnerProduct(const ConstantTensor & A, const ConstantTensor & B, 
 inline fftw_complex * TensorField::comp(const std::vector<size_t>& i)
 {	/*i[0] + d*i[1] + d^2 *i[2] + ... */
 	size_t index = 0;
-	for (size_t r = this->rank - 1; r >= 0; r--)
+	for (int r = (int)this->rank - 1; r >= 0; r--)
 		index = this->d*index + i[r];
 
 	//std::cout << index << "\t";
@@ -368,7 +384,7 @@ inline fftw_complex * TensorField::comp(const std::vector<size_t>& i)
 inline const fftw_complex * TensorField::comp(const std::vector<size_t>& i) const
 {
 	size_t index = 0;
-	for (size_t r = this->rank - 1; r >= 0; r--)
+	for (int r = (int)this->rank - 1; r >= 0; r--)
 		index = this->d*index + i[r];
 
 	//std::cout << index << "--\t";

@@ -33,16 +33,22 @@ struct TwoPhaseDispersion {
 
 	/** \brief Construct an empty two-phase dispersion (empty packing, zero resolution). (CLAUDE) */
 	TwoPhaseDispersion() :TwoPhaseDispersion(SpherePacking(), 0) {};
+
 	/** \brief Construct a dispersion from a sphere packing with a uniform per-side resolution. (CLAUDE)
 	 *  \param packing  The sphere packing defining the inclusion phase and simulation box.
 	 *  \param num      Number of voxels along each side of the grid. */
 	TwoPhaseDispersion(const SpherePacking & packing, size_t num);
+
 	/** \brief Copy constructor. (CLAUDE)
 	 *  \param src  The dispersion to copy. */
 	TwoPhaseDispersion(const TwoPhaseDispersion & src) : packing(src.packing), prt_indicator(src.prt_indicator),
 		num_side_voxels(src.num_side_voxels), num_total_voxels(src.num_total_voxels) {
 		this->update_indicator = src.update_indicator;
+		this->weights = src.weights;
+		this->use_weights = src.use_weights;
 	};
+	/** \brief Defaulted copy assignment; the user-declared copy constructor deprecates the implicit one (-Wdeprecated-copy). (CLAUDE) */
+	TwoPhaseDispersion & operator=(const TwoPhaseDispersion &) = default;
 	/** \brief Construct a dispersion by reading a discretized array from a file. (CLAUDE)
 	 *  \param filename  Prefix of the .DisArray file to read. */
 	TwoPhaseDispersion(const std::string & filename): TwoPhaseDispersion()
@@ -54,6 +60,7 @@ struct TwoPhaseDispersion {
 	/** \brief Set the grid resolution from a per-dimension list of voxel counts. (CLAUDE)
 	 *  \param num_voxels  Number of voxels along each side. */
 	void SetResolutions(const std::vector<size_t> & num_voxels);
+
 	/** \brief Set an isotropic grid resolution (same voxel count on every side). (CLAUDE)
 	 *  \param num_side_voxels  Number of voxels along each side. */
 	void SetResolutions(const size_t num_side_voxels) {
@@ -61,6 +68,7 @@ struct TwoPhaseDispersion {
 	};
 	/** \brief Adjust cell sizes to be optimal for FFTW (not yet implemented). (CLAUDE) */
 	void OptimizeSize();
+
 	/** \brief Identify the voxels whose centers lie inside the particle phase. (CLAUDE) */
 	void ComputeIndicator();
 
@@ -68,14 +76,17 @@ struct TwoPhaseDispersion {
 	 *  \param index  Index into the prt_indicator / weights array.
 	 *  \return       The subpixel weight if weights are defined, otherwise 1. */
 	double WeightedPhaseIndicator(size_t index) const;
+
 	/** \brief A function to convert a dD component to an index of 1D array (for fftw).
 	 *  \param[in] component	=[n1,n2,...nd].
 	 *  \return	size_t	Corresponding index.  */
 	inline size_t Components2Index(const std::vector<size_t> & component) const;
+
 	/** \brief A function to convert an index of 1D array (for fftw) to a dD component.
 	 *  \param[in] index	of 1D array (fftw_complex).
 	 *  \param[out]	components	the resulting dD component. */
 	inline void Index2Components(const size_t index, std::vector<size_t> & components) const;
+
 	/** \brief Return the per-side voxel resolutions of the grid. (CLAUDE) */
 	const std::vector<size_t> & GetResolutions() const { return this->num_side_voxels; };
 	/* Save a text file to draw a scatter plot. 
@@ -86,6 +97,7 @@ struct TwoPhaseDispersion {
 	 * # components \t ratio of the inclusion phase.
 	 */
 	void Print(const std::string & prefix) const;
+
 	/** \brief Read a discretized two-phase array (basis, resolution, voxel weights) from a .DisArray file. (CLAUDE)
 	 *  \param prefix  Prefix of the .DisArray file (without extension). */
 	void Read(const std::string & prefix);

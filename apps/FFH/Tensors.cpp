@@ -8,7 +8,7 @@
 #include "Tensors.h"
 
 /* Implementation of ConstantTensor!! */
-ConstantTensor::ConstantTensor() : d(0), rank(0), value(std::vector < std::complex<double> >()) {}
+ConstantTensor::ConstantTensor() : value(std::vector < std::complex<double> >()), d(0), rank(0), total_comp(0) {}
 
 ConstantTensor::ConstantTensor(size_t dimension, size_t rank) : d(dimension), rank(rank), total_comp((size_t)pow(dimension, rank))
 {
@@ -24,7 +24,7 @@ ConstantTensor & ConstantTensor::operator=(const ConstantTensor & rhs)
 {
 	this->d = rhs.d;	this->rank = rhs.rank; this->total_comp = rhs.total_comp;
 	this->value.resize(total_comp);
-	for (int i = 0; i < total_comp; i++)
+	for (size_t i = 0; i < total_comp; i++)
 		this->value[i] = rhs.value[i];
 
 	return *this;
@@ -88,7 +88,7 @@ ConstantTensor Lambda_s(size_t dimension) {
 ConstantTensor Identity(size_t dimension)
 {
 	ConstantTensor out(dimension, 2);
-	for (int i = 0; i < out.d; i++) {
+	for (size_t i = 0; i < out.d; i++) {
 		out[i*(1 + dimension)] = std::complex<double>(1.0L, 0.0);
 	}
 	return out;
@@ -102,7 +102,7 @@ std::complex<double> InnerProduct(size_t position, size_t component, const Const
 
 		/* component = A_front_index + d^(rank of A - contracted ranks) *(B_back_index)  */
 		size_t A_fixed_index = A.total_comp, dummy_index = 1;
-		for (int i = 0; i < num_contraction; i++) {
+		for (size_t i = 0; i < num_contraction; i++) {
 			A_fixed_index /= A.d;
 			dummy_index *= A.d;
 		}
@@ -120,6 +120,7 @@ std::complex<double> InnerProduct(size_t position, size_t component, const Const
 	}
 	else {
 		std::cerr << "Inner product is not available.\n";
+		return result;
 	}
 }
 
@@ -137,7 +138,7 @@ void InnerProduct(TensorField & out, const ConstantTensor & A, const TensorField
 		= \sum _{i_{n-num_contraction + 1 ... i_n}} A_{i_0 ... i_n} B_{j_0 ... j_m}
 		*/
 #pragma omp parallel for schedule(guided)
-		for (int x = 0; x < out.num_total_pixels; x++) {
+		for (size_t x = 0; x < out.num_total_pixels; x++) {
 			for (size_t a_free = 0; a_free < A_free_index; a_free++) {
 				for (size_t b_free = 0; b_free < B_free_index; b_free++) {
 					size_t index_of_result = a_free + A_free_index * b_free;
@@ -181,7 +182,7 @@ ConstantTensor InnerProduct(const ConstantTensor & A, const ConstantTensor & B, 
 		= \sum _{i_{n-num_contraction + 1 ... i_n}} A_{i_0 ... i_n} B_{j_0 ... j_m}
 		*/
 #pragma omp parallel for schedule(guided)
-		for (int a_free = 0; a_free < A_free_index; a_free++) {
+		for (size_t a_free = 0; a_free < A_free_index; a_free++) {
 			for (size_t b_free = 0; b_free < B_free_index; b_free++) {
 				size_t index_of_result = a_free + A_free_index * b_free;
 				for (size_t dummy = 0; dummy < dummy_index; dummy++) {
@@ -206,25 +207,25 @@ ConstantTensor InnerProduct(const ConstantTensor & A, const ConstantTensor & B, 
 /* Function implementations of TensorField!! */
 
 TensorField::TensorField() : field(std::vector<fftw_complex *>()),
-d(0), rank(0), num_points(std::vector<size_t>(0)), num_total_pixels(0), total_comp(0)
+d(0), rank(0), total_comp(0), num_points(std::vector<size_t>(0)), num_total_pixels(0)
 {}
 
 TensorField::TensorField(size_t dimension, size_t rank, const std::vector<size_t>& num_points) :
-	d(dimension), rank(rank), num_points(num_points), total_comp((size_t)pow(dimension, rank))
+	d(dimension), rank(rank), total_comp((size_t)pow(dimension, rank)), num_points(num_points)
 {
 	if (this->d == num_points.size()) {
 		this->num_total_pixels = 1;
-		for (int i = 0; i < this->d; i++)
+		for (size_t i = 0; i < this->d; i++)
 			this->num_total_pixels *= this->num_points[i];
 
 		this->field.resize(this->total_comp);
-		for (int i = 0; i < total_comp; i++) {
+		for (size_t i = 0; i < total_comp; i++) {
 			//if (this->field[i] != nullptr)
 			//	fftw_free(this->field[i]);
 
 			this->field[i] = (fftw_complex*)fftw_malloc(this->num_total_pixels* size_fftw);
 			//this->field[i] = (fftw_complex*)fftw_alloc_complex(this->num_total_pixels);
-			for (int j = 0; j < this->num_total_pixels; j++) {
+			for (size_t j = 0; j < this->num_total_pixels; j++) {
 				this->field[i][j][0] = 0.0L;	this->field[i][j][1] = 0.0L;
 			}
 		}
@@ -238,8 +239,8 @@ TensorField::TensorField(size_t dimension, size_t rank, const std::vector<size_t
 TensorField::TensorField(const TensorField & src) : TensorField(src.d, src.rank, src.num_points)
 {
 #pragma omp parallel for
-	for (int index = 0; index < total_comp; index++) {
-		for (int x = 0; x < num_total_pixels; x++) {
+	for (size_t index = 0; index < total_comp; index++) {
+		for (size_t x = 0; x < num_total_pixels; x++) {
 			this->field[index][x][0] = src.field[index][x][0];
 			this->field[index][x][1] = src.field[index][x][1];
 			//&(this->field[index][x]) = *(src.field[index][x]);
@@ -253,7 +254,7 @@ TensorField::~TensorField()
 
 	if (field.size() > 0) {
 		//	std::cout << "deallocate " << field[0] << "\n";
-		for (int i = 0; i < this->total_comp; i++) {
+		for (size_t i = 0; i < this->total_comp; i++) {
 			if (field[i] != nullptr)
 				fftw_free(field[i]);
 		}
@@ -273,8 +274,8 @@ void TensorField::Plus(TensorField & out, const TensorField & A, const TensorFie
 	assert(A.total_comp == B.total_comp);
 
 	out = TensorField(A);
-	for (int index = 0; index < out.total_comp; index++) {
-		for (int x = 0; x < out.num_total_pixels; x++) {
+	for (size_t index = 0; index < out.total_comp; index++) {
+		for (size_t x = 0; x < out.num_total_pixels; x++) {
 			out.field[index][x][0] += B.field[index][x][0];
 			out.field[index][x][1] += B.field[index][x][1];
 		}
@@ -286,8 +287,8 @@ TensorField & TensorField::operator+=(const TensorField & rhs)
 {
 	if (this->num_total_pixels == rhs.num_total_pixels && this->total_comp == rhs.total_comp) {
 #pragma omp parallel for 
-		for (int i = 0; i < this->total_comp; i++) {
-			for (int x = 0; x < this->num_total_pixels; x++) {
+		for (size_t i = 0; i < this->total_comp; i++) {
+			for (size_t x = 0; x < this->num_total_pixels; x++) {
 #pragma omp atomic
 				this->field[i][x][0] += rhs.field[i][x][0];
 #pragma omp atomic
@@ -305,8 +306,8 @@ TensorField & TensorField::operator-=(const TensorField & rhs)
 {
 	if (this->num_total_pixels == rhs.num_total_pixels && this->total_comp == rhs.total_comp) {
 #pragma omp parallel for 
-		for (int i = 0; i < this->total_comp; i++) {
-			for (int x = 0; x < this->num_total_pixels; x++) {
+		for (size_t i = 0; i < this->total_comp; i++) {
+			for (size_t x = 0; x < this->num_total_pixels; x++) {
 #pragma omp atomic
 				this->field[i][x][0] -= rhs.field[i][x][0];
 #pragma omp atomic
@@ -325,12 +326,12 @@ TensorField & TensorField::operator = (const TensorField & src) {
 	if (d != src.d || rank != src.rank || num_total_pixels != src.num_total_pixels) {
 		d = src.d;	rank = src.rank; num_points = std::vector<size_t>(src.num_points);
 		total_comp = (size_t)pow(d, rank);		num_total_pixels = src.num_total_pixels;
-		for (int i = 0; i < this->field.size(); i++)
+		for (size_t i = 0; i < this->field.size(); i++)
 			if (field[i] != nullptr)
 				fftw_free(field[i]);
 
 		this->field.resize(total_comp);
-		for (int index = 0; index < total_comp; index++) {
+		for (size_t index = 0; index < total_comp; index++) {
 			this->field[index]=(fftw_complex*)fftw_malloc(this->num_total_pixels* size_fftw);
 		}
 
@@ -339,8 +340,8 @@ TensorField & TensorField::operator = (const TensorField & src) {
 
 
 #pragma omp parallel for
-	for (int index = 0; index < total_comp; index++) {
-		for (int x = 0; x < this->num_total_pixels; x++) {
+	for (size_t index = 0; index < total_comp; index++) {
+		for (size_t x = 0; x < this->num_total_pixels; x++) {
 			this->field[index][x][0] = src.field[index][x][0];
 			this->field[index][x][1] = src.field[index][x][1];
 		}
@@ -362,8 +363,8 @@ TensorField & TensorField::operator = (const TensorField & src) {
 TensorField & TensorField::operator*=(const std::complex<double> rhs)
 {
 #pragma omp parallel for
-	for (int index = 0; index < total_comp; index++) {
-		for (int x = 0; x < this->num_total_pixels; x++) {
+	for (size_t index = 0; index < total_comp; index++) {
+		for (size_t x = 0; x < this->num_total_pixels; x++) {
 			std::complex<double> val(this->field[index][x][0], this->field[index][x][1]);
 			val = val * rhs;
 			this->field[index][x][0] = val.real();
@@ -378,11 +379,11 @@ void TensorField::Print(const std::string & prefix, int component, int part) con
 {
 	//TODO: full implementations
 	size_t comp_init=0, comp_fin=0;
-	size_t part_init, part_fin, part_curr = part;
+	size_t part_curr = part;
 	if (component < 0) {
 		comp_init = 0;	comp_fin = this->total_comp;
 	}
-	else if (component < this->total_comp) {
+	else if ((size_t)component < this->total_comp) {
 		comp_init = component; comp_fin = component + 1;
 	}
 	else {
@@ -393,7 +394,7 @@ void TensorField::Print(const std::string & prefix, int component, int part) con
 		std::string component, name;
 		{
 			std::vector<size_t> comp;	this->GetComponent(i, comp);
-			for(int j=0; j<rank; j++)
+			for(size_t j=0; j<rank; j++)
 				component += std::to_string(comp[j]);
 			if (rank == 0)
 				component = std::to_string(0);
@@ -432,11 +433,11 @@ void TensorField::Print(const std::string & prefix, int component, int part) con
 void TensorField::Print_shifted_origin(const std::string & prefix, int component, int part) const
 {
 	size_t comp_init = 0, comp_fin = 0;
-	size_t part_init, part_fin, part_curr = part;
+	size_t part_curr = part;
 	if (component < 0) {
 		comp_init = 0;	comp_fin = this->total_comp;
 	}
-	else if (component < this->total_comp) {
+	else if ((size_t)component < this->total_comp) {
 		comp_init = component; comp_fin = component + 1;
 	}
 	else {
@@ -448,7 +449,7 @@ void TensorField::Print_shifted_origin(const std::string & prefix, int component
 		std::string component, name;
 		{
 			std::vector<size_t> comp;	this->GetComponent(i, comp);
-			for (int j = 0; j < rank; j++)
+			for (size_t j = 0; j < rank; j++)
 				component += std::to_string(comp[j]);
 			if (rank == 0)
 				component = std::to_string(0);
@@ -461,15 +462,15 @@ void TensorField::Print_shifted_origin(const std::string & prefix, int component
 
 		std::fstream output(name, std::fstream::out);		//TODO:: combine these cases....
 		if (d == 1) {
-			int x1 = 0;
-			for (int x = 0; x < this->num_points[0]; x++) {
+			size_t x1 = 0;
+			for (size_t x = 0; x < this->num_points[0]; x++) {
 				x1 = (int)floor(this->num_points[0] / 2.0) + x;
 				x1 = (x1 > this->num_points[0]) ? x1 - this->num_points[0] : x1;
 				output << field[i][x1][part_curr] << "\t";
 			}
 		}
 		else if (d == 2) {
-			int x1=0, x2=0;
+			size_t x1=0, x2=0;
 			std::vector<size_t> comp({ 0,0 });
 			for (size_t y = 0; y < num_points[1]; y++) {
 				x2 = (int)floor(this->num_points[1] / 2.0)+1 + y;
@@ -513,7 +514,7 @@ void InnerProduct(TensorField & result, const TensorField & A, const TensorField
 		= \sum _{i_{n-num_contraction + 1 ... i_n}} A_{i_0 ... i_n} B_{j_0 ... j_m}
 		*/
 #pragma omp parallel for schedule(guided)
-		for (int x = 0; x < result.num_total_pixels; x++) {
+		for (size_t x = 0; x < result.num_total_pixels; x++) {
 			for (size_t a_free = 0; a_free < A_free_index; a_free++) {
 				for (size_t b_free = 0; b_free < B_free_index; b_free++) {
 					size_t index_of_result = a_free + A_free_index * b_free;
@@ -548,9 +549,9 @@ ConstantTensor MeanField(const TensorField & src)
 {
 	ConstantTensor out(src.d, src.rank);
 #pragma omp parallel for
-	for (int i = 0; i < src.total_comp; i++) {
+	for (size_t i = 0; i < src.total_comp; i++) {
 		std::complex<double> sum(0.0L, 0.0L);
-		for (int x = 0; x < src.num_total_pixels; x++) {
+		for (size_t x = 0; x < src.num_total_pixels; x++) {
 			sum += std::complex<double>(src[i][x][0], src[i][x][1]);
 		}
 #pragma omp critical

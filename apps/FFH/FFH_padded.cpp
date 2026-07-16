@@ -10,7 +10,7 @@ DynamicDielectricProblem_padded::DynamicDielectricProblem_padded(const TwoPhaseD
 	this->D = 1.0 / ((double)src.packing.GetDimension() * epsilon1) * Identity(src.packing.GetDimension());
 }
 
-void DynamicDielectricProblem_padded::DefineProblem(const TwoPhaseDispersion & src, const ConstantTensor & matrix_phase, const ConstantTensor & inclusion_phase, const GeometryVector & k1)
+void DynamicDielectricProblem_padded::DefineProblem(const TwoPhaseDispersion & src, const ConstantTensor & /*matrix_phase*/, const ConstantTensor & /*inclusion_phase*/, const GeometryVector & k1)
 {
 	bool SameSimulationBox = this->DefineDispersion(src);
 
@@ -52,7 +52,7 @@ void DynamicDielectricProblem_padded::SetWavevector(const GeometryVector & k1)
 		/* shift ks by k1. */
 		ks = Geometry.GetKs();
 #pragma omp parallel for
-		for (int k_indx = 0; k_indx < ks.num_total_pixels; k_indx++) {
+		for (size_t k_indx = 0; k_indx < ks.num_total_pixels; k_indx++) {
 			for (int i = 0; i < d; i++) {
 #pragma omp atomic
 				ks[i][k_indx][0] += k1.x[i];
@@ -103,8 +103,8 @@ void DynamicDielectricProblem_padded::ComputePropagator_weak()
 {
 	this->ComputePropagator_strong();
 #pragma omp parallel for
-	for (int x = 0; x < Propagator_Fourier.num_total_pixels; x++) {
-		for (int i = 0; i < Propagator_Fourier.total_comp; i++) {
+	for (size_t x = 0; x < Propagator_Fourier.num_total_pixels; x++) {
+		for (size_t i = 0; i < Propagator_Fourier.total_comp; i++) {
 #pragma omp atomic
 			Propagator_Fourier[i][x][0] -= this->D[i].real();
 #pragma omp atomic
@@ -130,7 +130,7 @@ void DynamicDielectricProblem_padded::ComputePropagator_strong()
 	double min_dist = *std::min_element(dx.begin(), dx.end());
 
 #pragma omp parallel for
-	for (int x_idx = 0; x_idx < Propagator_direct.num_total_pixels; x_idx++) {
+	for (size_t x_idx = 0; x_idx < Propagator_direct.num_total_pixels; x_idx++) {
 		std::vector<size_t> x_comp;		Propagator_direct.GetPositionComponent(x_idx, x_comp);
 		GeometryVector pos(static_cast<int>(d));
 
@@ -142,7 +142,7 @@ void DynamicDielectricProblem_padded::ComputePropagator_strong()
 		}
 		ConstantTensor H_ij = Hfunction_direct(pos, k1, d, min_dist);
 
-		for (int i = 0; i < H_ij.total_comp; i++) {
+		for (size_t i = 0; i < H_ij.total_comp; i++) {
 			Propagator_direct[i][x_idx][0] = H_ij[i].real();
 			Propagator_direct[i][x_idx][1] = H_ij[i].imag();
 		}
@@ -157,20 +157,20 @@ void DynamicDielectricProblem_padded::ComputePropagator_strong()
 	std::vector<fftw_plan> fft_H;
 	fft_H.resize(Propagator_direct.total_comp);
 	if (d == 2) {
-		for (int i = 0; i < Propagator_direct.total_comp; i++) {
+		for (size_t i = 0; i < Propagator_direct.total_comp; i++) {
 			fft_H[i] = fftw_plan_dft_2d(Propagator_direct.num_points[0], Propagator_direct.num_points[1],
 				Propagator_direct[i], Propagator_Fourier[i], -1, FFTW_ESTIMATE);
 		}
 	}
 	else if (d == 3) {
-		for (int i = 0; i < Propagator_direct.total_comp; i++) {
+		for (size_t i = 0; i < Propagator_direct.total_comp; i++) {
 			fft_H[i] = fftw_plan_dft_3d(Propagator_direct.num_points[0], Propagator_direct.num_points[1], Propagator_direct.num_points[2],
 				Propagator_direct[i], Propagator_Fourier[i], -1, FFTW_ESTIMATE);
 		}
 	}
 
 	/* Compute its Fourier transform. */
-	for (int i = 0; i < fft_H.size(); i++)
+	for (size_t i = 0; i < fft_H.size(); i++)
 		fftw_execute(fft_H[i]);
 
 	Propagator_Fourier *= dv;
@@ -240,7 +240,7 @@ void DynamicDielectricProblem_padded::ShiftFieldByk1(TensorField & out) const
 
 	/* multiply the phase factor. */
 #pragma omp parallel for
-	for (int x = 0; x < out.num_total_pixels; x++) {
+	for (size_t x = 0; x < out.num_total_pixels; x++) {
 		std::vector<size_t> n_x;
 		Geometry.Index2Components(x, n_x);
 
@@ -263,10 +263,10 @@ void DynamicDielectricProblem_padded::ShiftFieldByk1(TensorField & out) const
 void DynamicDielectricProblem_padded::CropTensorField_direct(TensorField & out, const TensorField & in) const
 {
 	out = TensorField(d, in.rank, Geometry.GetResolutions());
-	for (int x_idx = 0; x_idx < out.num_total_pixels; x_idx++) {
+	for (size_t x_idx = 0; x_idx < out.num_total_pixels; x_idx++) {
 		std::vector<size_t> out_position_comps; out.GetPositionComponent(x_idx, out_position_comps);
 		size_t in_position_idx = in.at(out_position_comps);
-		for (int field_comp = 0; field_comp < in.total_comp; field_comp++) {
+		for (size_t field_comp = 0; field_comp < in.total_comp; field_comp++) {
 			out[field_comp][x_idx][0] = in[field_comp][in_position_idx][0];
 			out[field_comp][x_idx][1] = in[field_comp][in_position_idx][1];
 		}
@@ -276,12 +276,12 @@ void DynamicDielectricProblem_padded::CropTensorField_direct(TensorField & out, 
 void DynamicDielectricProblem_padded::CropTensorField_Fourier(TensorField & out, const TensorField & in) const
 {
 	out = TensorField(d, in.rank, Geometry.GetResolutions());
-	for (int x_idx = 0; x_idx < out.num_total_pixels; x_idx++) {
+	for (size_t x_idx = 0; x_idx < out.num_total_pixels; x_idx++) {
 		std::vector<size_t> out_position_comps;  out.GetPositionComponent(x_idx, out_position_comps);
 		for (int i = 0; i < d; i++)
 			out_position_comps[i] *= 2;
 		size_t in_position_idx = in.at(out_position_comps);
-		for (int field_comp = 0; field_comp < in.total_comp; field_comp++) {
+		for (size_t field_comp = 0; field_comp < in.total_comp; field_comp++) {
 			out[field_comp][x_idx][0] = in[field_comp][in_position_idx][0];
 			out[field_comp][x_idx][1] = in[field_comp][in_position_idx][1];
 		}

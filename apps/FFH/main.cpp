@@ -25,18 +25,18 @@ size_t FFH_verbosity = 2;
  *               [4] output prefix, [5] number of threads.
  *  \return      0 on success. */
 int main(int argc, char ** argv) {
-	char tempstring[1000] = {};
-	std::istream & ifile = std::cin;
-	std::ostream & ofile = std::cout;
 	char name[200] = {};
-	char dir[] = "./results/n1/";
-	
 
+	if (argc < 6) {
+		std::cout << "Usage: " << argv[0]
+			<< " <DisArray prefix (printf format)> <num files> <epsilon2> <output prefix> <num threads>\n";
+		return 1;
+	}
 
 	RandomGenerator rng(0);
 	fftw_init_threads();
 	std::string dump;
-	
+
 	std::string load_prefix(argv[1]);
 	int num_files = atoi(argv[2]);
 	double epsilon1 = 1.0L, epsilon2 = atof(argv[3]);
@@ -44,12 +44,11 @@ int main(int argc, char ** argv) {
 	int num_threads = atoi(argv[5]);
 	omp_set_num_threads(num_threads);
 
-	int num_pixels;
 	std::vector<GeometryVector> epsilon_eff;
 	epsilon_eff.reserve(num_files);
 	
 	for (int i = 0; i < num_files; i++){
-		sprintf(name, load_prefix.c_str(), i);
+		snprintf(name, sizeof(name), load_prefix.c_str(), i);
 		
 		/* read a configuration */
 		TwoPhaseDispersion config(name);

@@ -8,6 +8,7 @@ struct DynamicDielectricProblem_padded : public StaticDielectricProblem {
 	
 	/** \brief Construct an empty zero-padded dynamic dielectric problem. (CLAUDE) */
 	DynamicDielectricProblem_padded();
+
 	/** \brief Construct a zero-padded dynamic dielectric problem from a geometry and two permittivities. (CLAUDE)
 	 *  \param src       The two-phase dispersion (geometry).
 	 *  \param epsilon1  Permittivity of the matrix phase.
@@ -19,17 +20,23 @@ struct DynamicDielectricProblem_padded : public StaticDielectricProblem {
 	~DynamicDielectricProblem_padded() {
 		Propagator_direct.~TensorField();
 	}
+
 	/** \brief Define the problem geometry on a zero-padded grid and set the wavevector. (CLAUDE)
 	 *  \param src              The two-phase dispersion (geometry).
 	 *  \param matrix_phase     Constant tensor for the matrix phase.
 	 *  \param inclusion_phase  Constant tensor for the inclusion phase.
 	 *  \param k1               Wavevector of the field in the reference phase. */
 	virtual void DefineProblem(const TwoPhaseDispersion& src, const ConstantTensor & matrix_phase, const ConstantTensor & inclusion_phase, const GeometryVector & k1);
+
+	/** \brief Make the two-argument base-class overload visible (fixes -Woverloaded-virtual). (CLAUDE) */
+	using StaticDielectricProblem::DefineProperties;
+
 	/** \brief Set the permittivities and the incident wavevector. (CLAUDE)
 	 *  \param epsilon1  Permittivity of the matrix phase.
 	 *  \param epsilon2  Permittivity of the inclusion phase.
 	 *  \param k1        Wavevector of the field in the reference phase. */
 	virtual void DefineProperties(const std::complex<double> & epsilon1, const std::complex<double> & epsilon2, const GeometryVector & k1);
+
 	/** \brief Set the incident wavevector and shift the DFT wavevectors accordingly. (CLAUDE)
 	 *  \param k1  Wavevector of the field in the reference phase. */
 	void SetWavevector(const GeometryVector & k1);
@@ -42,6 +49,7 @@ struct DynamicDielectricProblem_padded : public StaticDielectricProblem {
 	 *  \param[out] out  The cropped field on the physical grid.
 	 *  \param in        The field on the padded grid. */
 	void CropTensorField_direct(TensorField & out, const TensorField & in) const;
+
 	/** \brief Crop a Fourier-space field from the padded grid back to the physical grid. (CLAUDE)
 	 *  \param[out] out  The cropped field on the physical grid.
 	 *  \param in        The field on the padded grid. */
@@ -53,6 +61,7 @@ protected:
 	/** \brief Compute the displacement field D in Fourier space (cropped to the physical grid). (CLAUDE)
 	 *  \param[out] out  The resulting displacement field. */
 	virtual void ComputeDivergenceFreeField_Fourier(TensorField & out) const;
+
 	/** \brief Compute the displacement field D in direct space, cropped and multiplied by e^{ik1*x}. (CLAUDE)
 	 *  \param[out] out  The resulting displacement field. */
 	virtual void ComputeDivergenceFreeField_Direct(TensorField & out) const {
@@ -64,6 +73,7 @@ protected:
 	/** \brief Compute the electric field E in Fourier space (cropped to the physical grid). (CLAUDE)
 	 *  \param[out] out  The resulting electric field. */
 	virtual void ComputeField_Fourier(TensorField & out) const;
+
 	/** \brief Compute the electric field E in direct space, cropped and multiplied by e^{ik1*x}. (CLAUDE)
 	 *  \param[out] out  The resulting electric field. */
 	virtual void ComputeField_Direct(TensorField & out) const {

@@ -44,7 +44,7 @@ bool FFH_base::DefineDispersion(const TwoPhaseDispersion & src)
 /* default iterate method for weak-contrast expansions. */
 void FFH_base::Iterate_common(size_t steps)
 {
-	for (int i = 0; i < steps; i++) {
+	for (size_t i = 0; i < steps; i++) {
 		m++;
 		if (FFH_verbosity > 1) {
 			std::cout << "------------------" << m << " th stage ---------------\n";
@@ -55,7 +55,7 @@ void FFH_base::Iterate_common(size_t steps)
 			 Response(k) <- Response_0(k) + Propagator(k)* P(k).*/
 		InnerProduct(Response_Fourier, Propagator_Fourier, P_Fourier, rank_of_fields);
 		/* Add Response[0] = V * applied */
-		for (int i = 0; i < Appl_field.total_comp; i++) {
+		for (size_t i = 0; i < Appl_field.total_comp; i++) {
 			Response_Fourier[i][0][0] = Appl_field[i].real() * Response_Fourier.num_total_pixels;
 			Response_Fourier[i][0][1] = Appl_field[i].imag() * Response_Fourier.num_total_pixels;
 		}
@@ -64,7 +64,7 @@ void FFH_base::Iterate_common(size_t steps)
 		Response_direct_prev = Response_direct;
 		if (FFH_verbosity > 1)
 			std::cout << "\t\t Inverse Fourier transform of F field\n";
-		for (int j = 0; j < InverseFourierTransform_Response.size(); j++)
+		for (size_t j = 0; j < InverseFourierTransform_Response.size(); j++)
 			fftw_execute(InverseFourierTransform_Response[j]);
 		Response_direct *= (1.0 / P_Fourier.num_total_pixels);	//This step is required because fftw3 do not consider the 1/N factor.
 
@@ -83,7 +83,7 @@ void FFH_base::Iterate_common(size_t steps)
 		/* @ phase 1*/
 		InnerProduct(P_direct, L1, Response_direct, rank_of_fields);
 #pragma omp parallel for
-		for (int i = 0; i < Geometry.prt_indicator.size(); i++) {
+		for (size_t i = 0; i < Geometry.prt_indicator.size(); i++) {
 			/* @ phase 2*/
 			size_t x = Geometry.prt_indicator[i];
 			for (size_t comp = 0; comp < P_direct.total_comp; comp++) {
@@ -99,13 +99,13 @@ void FFH_base::Iterate_common(size_t steps)
 		/*==== 1. Compute FFT of the polarization field P(x). ===*/
 		if (FFH_verbosity > 0)
 			std::cout << "\t\t Fourier transform of P (" << m << " th stage)\n";
-		for (int j = 0; j < FourierTransform_P.size(); j++)
+		for (size_t j = 0; j < FourierTransform_P.size(); j++)
 			fftw_execute(FourierTransform_P[j]);
 
 	}
 }
 
-void FFH_base::DefineProblem(const TwoPhaseDispersion & src, const ConstantTensor & matrix_phase, const ConstantTensor & inclusion_phase)
+void FFH_base::DefineProblem(const TwoPhaseDispersion & src, const ConstantTensor & /*matrix_phase*/, const ConstantTensor & /*inclusion_phase*/)
 {
 	bool SameSimulationBox = this->DefineDispersion(src);
 	
@@ -204,7 +204,7 @@ void FFH_base::Prepare(const ConstantTensor & applied)
 	*	E(x) = e_direction. */
 	Response_direct = TensorField(d, rank_of_fields, Propagator_Fourier.num_points);
 	for (size_t x = 0; x < Response_direct.num_total_pixels; x++) {
-		for (int i = 0; i < Appl_field.total_comp; i++) {
+		for (size_t i = 0; i < Appl_field.total_comp; i++) {
 			Response_direct.field[i][x][0] = Appl_field[i].real();
 			Response_direct.field[i][x][1] = Appl_field[i].imag();
 		}
@@ -232,7 +232,7 @@ void FFH_base::Prepare(const ConstantTensor & applied)
 	/* @ phase 1*/
 	InnerProduct(P_direct, L1, Response_direct, rank_of_fields);
 #pragma omp parallel for
-	for (int i = 0; i < Geometry.prt_indicator.size(); i++) {
+	for (size_t i = 0; i < Geometry.prt_indicator.size(); i++) {
 		/* @ phase 2*/
 		size_t x = Geometry.prt_indicator[i];
 		for (size_t comp = 0; comp < P_direct.total_comp; comp++) {
@@ -245,7 +245,7 @@ void FFH_base::Prepare(const ConstantTensor & applied)
 		}
 	}
 	/* compute the Fourier transform of the polarizability. P^1 */
-	for (int i = 0; i < FourierTransform_P.size(); i++) {
+	for (size_t i = 0; i < FourierTransform_P.size(); i++) {
 		fftw_execute(FourierTransform_P[i]);
 	}
 }
@@ -263,8 +263,8 @@ void FFH_base::Run(double target_tol_field, double target_tol_div, int num_iters
 	bool good_solution = false;
 	this->is_converging = true;
 	double tol_prev = 0.0L;
-	int count = 0;
-	while (!good_solution && (m < num_limit) && is_converging) {
+	int count = 0, m = 0;
+	while (!good_solution && (m < num_iters) && is_converging) {
 		Iterate();
 		tol_prev = Tol_Field;
 		if (CheckConvergence(target_tol_field)) {
@@ -284,8 +284,9 @@ void FFH_base::Run(double target_tol_field, double target_tol_div, int num_iters
 		}
 		if (count > 3)
 			is_converging = false;
+		m ++;
 	}
-	if (m == num_limit)
+	if (m == num_iters)
 		std::cout << "solutions failed to converge!!\n";
 	else if (!is_converging)
 		std::cout << "solutions don't look like converging: quit at the " << m << "-th stage\n";
@@ -303,10 +304,10 @@ bool FFH_base::CheckConvergence(double target_tolerence)
 	double error = 0.0L, mean = 0.0L;
 	/* compute the squared sum of the difference between response fields... */
 #pragma omp parallel for
-	for (int x = 0; x < Response_direct_prev.num_total_pixels; x++) {
+	for (size_t x = 0; x < Response_direct_prev.num_total_pixels; x++) {
 		double sum_over_comp = 0.0L;
 		double sum_over_comp2 = 0.0L;
-		for (int i = 0; i < Response_direct_prev.total_comp; i++) {
+		for (size_t i = 0; i < Response_direct_prev.total_comp; i++) {
 			sum_over_comp += Modulus2(Response_direct_prev[i][x]);
 			sum_over_comp2 += Modulus2(Response_direct[i][x]);
 		}
@@ -335,12 +336,12 @@ bool FFH_base::CheckDivergenceFree(double target_tolereance)
 	InnerProduct(div, this->ks, div_free_field, rank_of_fields);
 	/* compute the squared sum of the divergence in the Fourier space. */
 #pragma omp parallel for schedule(guided)
-	for (int x = 0; x < div.num_total_pixels; x++) {
+	for (size_t x = 0; x < div.num_total_pixels; x++) {
 		double k2 = 0.0L;
-		for (int i = 0; i < ks.total_comp; i++)
+		for (size_t i = 0; i < ks.total_comp; i++)
 			k2 += Modulus2(ks[i][x]);
 
-		for (int i = 0; i < div.total_comp; i++) {
+		for (size_t i = 0; i < div.total_comp; i++) {
 			if (k2 > 1e-10) {
 				double mod2 = Modulus2(div[i][x]) / sqrt(k2);
 #pragma omp atomic
@@ -348,7 +349,7 @@ bool FFH_base::CheckDivergenceFree(double target_tolereance)
 			}
 		}
 
-		for (int i = 0; i < div_free_field.total_comp; i++) {
+		for (size_t i = 0; i < div_free_field.total_comp; i++) {
 			double mod = Modulus2(div_free_field[i][0]);
 #pragma omp atomic
 			mean += mod;
@@ -393,7 +394,7 @@ void FFH_base::Print_Grid(const std::string & prefix) const
 
 void FFH_base::Print_GreenFn_2D(const std::string & prefix) const
 {
-	for (int i = 0; i < Propagator_Fourier.total_comp; i++) {
+	for (size_t i = 0; i < Propagator_Fourier.total_comp; i++) {
 		Propagator_Fourier.Print_shifted_origin(prefix + "_GreenFunction_", i, 0);
 		Propagator_Fourier.Print_shifted_origin(prefix + "_GreenFunction_", i, 1);
 	}
@@ -574,7 +575,7 @@ void StaticDielectricProblem::ComputePropagator_weak()
 	this->Propagator_Fourier = TensorField(d, 2 * rank_of_fields, Geometry.GetResolutions());
 
 #pragma omp parallel for
-	for (int k_index = 0; k_index < Propagator_Fourier.num_total_pixels; k_index++) {
+	for (size_t k_index = 0; k_index < Propagator_Fourier.num_total_pixels; k_index++) {
 		double k2 = 0.0L;
 		for (int i = 0; i < d; i++)
 			k2 += Modulus2(ks[i][k_index]);
@@ -606,7 +607,7 @@ void StaticDielectricProblem::ComputePropagator_strong()
 	//std::complex<double> D = 1.0 / ((double)d * epsilon1);
 
 #pragma omp parallel for
-	for (int k_index = 0; k_index < Propagator_Fourier.num_total_pixels; k_index++) {
+	for (size_t k_index = 0; k_index < Propagator_Fourier.num_total_pixels; k_index++) {
 		for (int i = 0; i < d; i++) {
 #pragma omp atomic
 			this->Propagator_Fourier[i*(1 + d)][k_index][0] += D[i*(1 + d)].real();
@@ -654,7 +655,7 @@ void DynamicDielectricProblem::SetWavevector(const GeometryVector & k1)
 		/* shift ks by k1. */
 		ks = Geometry.GetKs();
 #pragma omp parallel for
-		for (int k_indx = 0; k_indx < ks.num_total_pixels; k_indx++) {
+		for (size_t k_indx = 0; k_indx < ks.num_total_pixels; k_indx++) {
 			for (int i = 0; i < d; i++) {
 #pragma omp atomic
 				ks[i][k_indx][0] += k0.x[i];
@@ -769,10 +770,9 @@ void DynamicDielectricProblem::ComputeG_Fourier_test()
 	double dv = 1.0;
 	for (int i = 0; i < d; i++)
 		dv *= dx[i];
-	std::complex<double> factor = 1.0 / this->epsilon1 * Geometry.packing.PeriodicVolume() / (double)H.num_total_pixels;
 	double min_dist = *std::min_element(dx.begin(), dx.end());
 #pragma omp parallel for
-	for (int x = 0; x < H.num_total_pixels; x++) {
+	for (size_t x = 0; x < H.num_total_pixels; x++) {
 		std::vector<size_t> comp;			H.GetPositionComponent(x, comp);
 
 		GeometryVector pos(static_cast<int>(d));
@@ -789,7 +789,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test()
 		if(x==0)
 			H_ij = H_ij - 1.0/dv * D ;
 	
-		for (int i = 0; i < H_ij.total_comp; i++) {
+		for (size_t i = 0; i < H_ij.total_comp; i++) {
 			H[i][x][0] = H_ij[i].real();
 			H[i][x][1] = H_ij[i].imag();
 		}
@@ -805,24 +805,24 @@ void DynamicDielectricProblem::ComputeG_Fourier_test()
 	std::vector<fftw_plan> fft_G;
 	fft_G.resize(H.total_comp);
 	if (d == 2) {
-		for (int i = 0; i < H.total_comp; i++) {
+		for (size_t i = 0; i < H.total_comp; i++) {
 			fft_G[i] = fftw_plan_dft_2d(H.num_points[0], H.num_points[1], 
 				H[i], Propagator_double[i], -1, FFTW_ESTIMATE);
 		}
 	}
 	else if (d == 3) {
-		for (int i = 0; i < H.total_comp; i++) {
+		for (size_t i = 0; i < H.total_comp; i++) {
 			fft_G[i] = fftw_plan_dft_3d(H.num_points[0], H.num_points[1], H.num_points[2], 
 				H[i], Propagator_double[i], -1, FFTW_ESTIMATE);
 		}
 	}
 	
 	/* Compute its Fourier transform. */
-	for (int i = 0; i < fft_G.size(); i++)
+	for (size_t i = 0; i < fft_G.size(); i++)
 		fftw_execute(fft_G[i]);
 
 #pragma omp parallel for
-	for (int q_idx = 0; q_idx < Propagator_Fourier.num_total_pixels; q_idx++) {
+	for (size_t q_idx = 0; q_idx < Propagator_Fourier.num_total_pixels; q_idx++) {
 		std::vector<size_t> q_comp;
 		Geometry.Index2Components(q_idx, q_comp);
 		for (int i = 0; i < d; i++) {
@@ -831,7 +831,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test()
 			//	q_comp[i] += Propagator_Fourier.num_points[i];
 		}
 		size_t q_idx_doubled = Propagator_double.at(q_comp);
-		for (int j = 0; j < Propagator_double.total_comp; j++) {
+		for (size_t j = 0; j < Propagator_double.total_comp; j++) {
 			Propagator_Fourier[j][q_idx][0] = Propagator_double[j][q_idx_doubled][0];
 			Propagator_Fourier[j][q_idx][1] = Propagator_double[j][q_idx_doubled][1];
 		}
@@ -852,13 +852,12 @@ void DynamicDielectricProblem::ComputeG_Fourier_test2()
 	//TODO:: generalize it
 	double L = 0, k_wave = sqrt(k1.Modulus2());
 	double factor = Geometry.packing.PeriodicVolume() / Propagator_Fourier.num_total_pixels;
-	std::complex<double> D = -1.0 / (double)d / this->epsilon1;
 	for (int i = 0; i < d; i++) {
 		L += Geometry.packing.GetBasisVector(i).Modulus2();
 	}
 	L = sqrt(L);
 
-	for (int k_idx = 0; k_idx < ks.num_total_pixels; k_idx++) {
+	for (size_t k_idx = 0; k_idx < ks.num_total_pixels; k_idx++) {
 		double q = 0;
 		for (int i = 0; i < d; i++)
 			q += Modulus2(ks[i][k_idx]);
@@ -872,7 +871,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test2()
 		//val_at_k = - D*Identity(d) + TruncatedGreenFn_Helmholtz(d, q, L, k_wave)*val_at_k;
 		std::complex<double> val = factor*TruncatedGreenFn_Helmholtz(d, q, L, k_wave);
 		val_at_k = -1.0/this->epsilon0 * Identity(d) + val*val_at_k;
-		for (int i = 0; i < Propagator_Fourier.total_comp; i++) {
+		for (size_t i = 0; i < Propagator_Fourier.total_comp; i++) {
 			Propagator_Fourier[i][k_idx][0] = val_at_k[i].real();
 			Propagator_Fourier[i][k_idx][1] = val_at_k[i].imag();
 		}
@@ -897,7 +896,6 @@ void DynamicDielectricProblem::ComputeG_Fourier_test2()
 
 void DynamicDielectricProblem::ComputeG_Fourier_test3()
 {
-	size_t num_sampling_pts = (size_t)10* pow(2,d);
 	std::vector<double> dk(d, 0.0L);
 	for (int i = 0; i < d; i++)
 		dk[i] = 1.0*pi / sqrt(Geometry.packing.GetBasisVector(i).Modulus2());
@@ -906,7 +904,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test3()
 	Propagator_Fourier = TensorField(d, 2 * rank_of_fields, Geometry.GetResolutions());
 	/* Note that ks is already shifted by k1. */
 #pragma omp parallel for
-	for (int q_indx = 0; q_indx < ks.num_total_pixels; q_indx++) {
+	for (size_t q_indx = 0; q_indx < ks.num_total_pixels; q_indx++) {
 		GeometryVector q(static_cast<int> (d));
 		for (int i = 0; i < d; i++)
 			q.x[i] = ks[i][q_indx][0];
@@ -926,6 +924,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test3()
 			val = val -1.0 / (this->epsilon0)*Identity(d);
 			//double count = 0, qq_sample;
 			//GeometryVector q_sample(static_cast<int>(d));
+
 			///* Compute the average via the Monte Carlo method */
 			//for (int i = 0; i < num_sampling_pts; i++) {
 			//	/* */
@@ -947,7 +946,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test3()
 			val = DyadicGreenFunction_Fourier(q, qq, kk);
 		}
 
-		for (int i = 0; i < val.total_comp; i++) {
+		for (size_t i = 0; i < val.total_comp; i++) {
 			Propagator_Fourier[i][q_indx][0] = val[i].real() + this->D[i].real();
 			Propagator_Fourier[i][q_indx][1] = val[i].imag() + this->D[i].imag();
 		}	
@@ -960,16 +959,15 @@ void DynamicDielectricProblem::ComputeG_Fourier_test3()
 
 void DynamicDielectricProblem::ComputeG_Fourier_test4(double epsilon)
 {
-	size_t num_sampling_pts = (size_t)10 * pow(2, d);
 	std::vector<double> dk(d, 0.0L);
 	for (int i = 0; i < d; i++)
 		dk[i] = 1.0*pi / sqrt(Geometry.packing.GetBasisVector(i).Modulus2());
 
-	double kk = k1.Modulus2(), dk2 = 0.25*dk[0] * dk[0], qq;
+	double kk = k1.Modulus2(), qq;
 	Propagator_Fourier = TensorField(d, 2 * rank_of_fields, Geometry.GetResolutions());
 	/* Note that ks is already shifted by k1. */
 #pragma omp parallel for
-	for (int q_indx = 0; q_indx < ks.num_total_pixels; q_indx++) {
+	for (size_t q_indx = 0; q_indx < ks.num_total_pixels; q_indx++) {
 		GeometryVector q(static_cast<int> (d));
 		for (int i = 0; i < d; i++)
 			q.x[i] = ks[i][q_indx][0];
@@ -979,7 +977,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test4(double epsilon)
 		
 		val = DyadicGreenFunction_Fourier_regularized(q, qq, kk, epsilon);
 		
-		for (int i = 0; i < val.total_comp; i++) {
+		for (size_t i = 0; i < val.total_comp; i++) {
 			Propagator_Fourier[i][q_indx][0] = val[i].real();
 			Propagator_Fourier[i][q_indx][1] = val[i].imag();
 		}
@@ -997,7 +995,7 @@ void DynamicDielectricProblem::ComputePropagator_weak()
 	Propagator_Fourier = TensorField(d, 2 * rank_of_fields, Geometry.GetResolutions());
 	/* Note that ks is already shifted by k1. */
 #pragma omp parallel for
-	for (int q_indx = 0; q_indx < ks.num_total_pixels; q_indx++) {
+	for (size_t q_indx = 0; q_indx < ks.num_total_pixels; q_indx++) {
 		GeometryVector q(static_cast<int> (d));
 		for (int i = 0; i < d; i++)
 			q.x[i] = ks[i][q_indx][0];
@@ -1011,7 +1009,7 @@ void DynamicDielectricProblem::ComputePropagator_weak()
 			val = DyadicGreenFunction_Fourier(q, qq, kk);
 		}
 
-		for (int i = 0; i < val.total_comp; i++) {
+		for (size_t i = 0; i < val.total_comp; i++) {
 			Propagator_Fourier[i][q_indx][0] = val[i].real();
 			Propagator_Fourier[i][q_indx][1] = val[i].imag();
 		}
@@ -1027,8 +1025,8 @@ void DynamicDielectricProblem::ComputePropagator_strong()
 {
 	this->ComputePropagator_weak();
 #pragma omp parallel for
-	for (int x = 0; x < Propagator_Fourier.num_total_pixels; x++) {
-		for (int i = 0; i < Propagator_Fourier.total_comp; i++) {
+	for (size_t x = 0; x < Propagator_Fourier.num_total_pixels; x++) {
+		for (size_t i = 0; i < Propagator_Fourier.total_comp; i++) {
 #pragma omp atomic
 			Propagator_Fourier[i][x][0] += this->D[i].real();
 #pragma omp atomic
@@ -1046,7 +1044,7 @@ void DynamicDielectricProblem::ShiftFieldByk1(TensorField & out) const
 
 	/* multiply the phase factor. */
 #pragma omp parallel for
-	for (int x = 0; x < out.num_total_pixels; x++) {
+	for (size_t x = 0; x < out.num_total_pixels; x++) {
 		std::vector<size_t> n_x;
 		Geometry.Index2Components(x, n_x);
 
@@ -1057,7 +1055,7 @@ void DynamicDielectricProblem::ShiftFieldByk1(TensorField & out) const
 		std::complex<double> phase_factor = std::exp(std::complex<double>(0.0L, k1.Dot(pos)));
 
 		for (int i = 0; i < d; i++) {
-			std::complex<double> value = std::complex<double>(out[i][x][0], out[i][x][0]);
+			std::complex<double> value = std::complex<double>(out[i][x][0], out[i][x][1]);
 			value *= phase_factor;
 			out[i][x][0] = value.real();
 			out[i][x][1] = value.imag();
@@ -1273,8 +1271,8 @@ void Homo_ElasticProblem_static::Prepare(const ConstantTensor & external_strain)
 	*	E(x) = e_direction. */
 	Response_direct = TensorField(d, 2, Geometry.GetResolutions());
 #pragma omp parallel for
-	for (int x = 0; x < Response_direct.num_total_pixels; x++) {
-		for (int i = 0; i < applied_strain.total_comp; i++) {
+	for (size_t x = 0; x < Response_direct.num_total_pixels; x++) {
+		for (size_t i = 0; i < applied_strain.total_comp; i++) {
 			Response_direct[i][x][0] = applied_strain[i].real();
 			Response_direct[i][x][1] = applied_strain[i].imag();
 		}
@@ -1287,7 +1285,7 @@ void Homo_ElasticProblem_static::Prepare(const ConstantTensor & external_strain)
 		Geometry.ComputeIndicator();
 
 	//#pragma omp parallel for 
-	for (int i = 0; i < Geometry.prt_indicator.size(); i++) {
+	for (size_t i = 0; i < Geometry.prt_indicator.size(); i++) {
 		size_t x = Geometry.prt_indicator[i];
 		for (size_t comp = 0; comp < P_direct.total_comp; comp++) {
 			std::complex<double> P = InnerProduct(x, comp, this->L, Response_direct, 2);
@@ -1320,9 +1318,9 @@ bool Homo_ElasticProblem_static::CheckConvergence(double tol_field)
 {
 	Response_direct_prev -= Response_direct;
 	double error = 0.0L;
-	for (int x = 0; x < Response_direct_prev.num_total_pixels; x++) {
+	for (size_t x = 0; x < Response_direct_prev.num_total_pixels; x++) {
 		double sum_over_comp = 0.0L;
-		for (int i = 0; i < Response_direct_prev.total_comp; i++) {
+		for (size_t i = 0; i < Response_direct_prev.total_comp; i++) {
 			sum_over_comp += Modulus2(Response_direct_prev.field[i][x]);
 		}
 		error += sqrt(sum_over_comp);
@@ -1347,7 +1345,7 @@ bool Homo_ElasticProblem_static::CheckDivergenceFree(double tol_div)
 		/* sigma(x) = C1:f(x) + (I - C1: D ):P(x) */
 		ConstantTensor I_C1D = Lambda_h(this->d) + Lambda_s(this->d) - InnerProduct(C1, D, 2);
 
-		for (int x = 0; x < sigma_Fourier.num_total_pixels; x++) {
+		for (size_t x = 0; x < sigma_Fourier.num_total_pixels; x++) {
 			for (size_t i = 0; i < sigma_Fourier.total_comp; i++) {
 				std::complex<double> sigma;
 				sigma = InnerProduct(x, i, C1, Response_Fourier, 2) + InnerProduct(x, i, I_C1D, P_Fourier, 2);
@@ -1359,7 +1357,7 @@ bool Homo_ElasticProblem_static::CheckDivergenceFree(double tol_div)
 	else {
 		/* sigma(x) = C1:epsilon(x) + P(x) */
 		//TODO:: simplify it...
-		for (int x = 0; x < sigma_Fourier.num_total_pixels; x++) {
+		for (size_t x = 0; x < sigma_Fourier.num_total_pixels; x++) {
 			for (size_t i = 0; i < sigma_Fourier.total_comp; i++) {
 				std::complex<double> sigma;
 				sigma = InnerProduct(x, i, C1, Response_Fourier, 2);
@@ -1372,7 +1370,7 @@ bool Homo_ElasticProblem_static::CheckDivergenceFree(double tol_div)
 	TensorField Div_sigma;
 	InnerProduct(Div_sigma, k, sigma_Fourier, 1);
 	double error = 0.0L;
-	for (int x = 0; x < Div_sigma.num_total_pixels; x++) {
+	for (size_t x = 0; x < Div_sigma.num_total_pixels; x++) {
 		double abs_div = 0.0L;
 		for (int i = 0; i < d; i++) {
 			abs_div += Modulus2(Div_sigma[i][x]);
@@ -1380,7 +1378,7 @@ bool Homo_ElasticProblem_static::CheckDivergenceFree(double tol_div)
 		error += abs_div;
 	}
 	double sigma0 = 0.0L;
-	for (int i = 0; i < sigma_Fourier.total_comp; i++)
+	for (size_t i = 0; i < sigma_Fourier.total_comp; i++)
 		sigma0 += (sigma_Fourier[i][0][0] * sigma_Fourier[i][0][0] + sigma_Fourier[i][0][1] * sigma_Fourier[i][0][1]);
 
 	error = sqrt(error/(double)sigma_Fourier.num_total_pixels) / sqrt(sigma0);
@@ -1411,7 +1409,7 @@ void Homo_ElasticProblem_static::ComputeEffectiveProperties(std::vector<std::com
 		{
 			std::complex<double> B(0.0L, 0.0L);
 			double count = 0;
-			for (int i = 0; i < f_av.total_comp; i++) {
+			for (size_t i = 0; i < f_av.total_comp; i++) {
 				if (abs(f_av[i]) > Tol_Field && abs(P_av[i]) > Tol_Field) {
 					B += P_av[i] / f_av[i];
 					count++;
@@ -1439,7 +1437,7 @@ void Homo_ElasticProblem_static::ComputeEffectiveProperties(std::vector<std::com
 		
 		ConstantTensor C1 = d * K1*Lambda_h(this->d) + 2.0*G1*Lambda_s(this->d);
 		//TODO:: simplify it...
-		for (int x = 0; x < stress.num_total_pixels; x++) {
+		for (size_t x = 0; x < stress.num_total_pixels; x++) {
 			for (size_t i = 0; i < stress.total_comp; i++) {
 				std::complex<double> sigma;
 				sigma = InnerProduct(x, i, C1, Response_direct, 2);
@@ -1450,8 +1448,8 @@ void Homo_ElasticProblem_static::ComputeEffectiveProperties(std::vector<std::com
 
 		/* compute the means of stress and strain. */
 #pragma omp parallel for 
-		for (int idx = 0; idx < stress.total_comp; idx++) {
-			for (int x_idx = 0; x_idx < stress.num_total_pixels; x_idx++) {
+		for (size_t idx = 0; idx < stress.total_comp; idx++) {
+			for (size_t x_idx = 0; x_idx < stress.num_total_pixels; x_idx++) {
 #pragma omp critical
 				{//TODO:: check whether this is thread-safe.
 					stress_av[idx] += std::complex<double>(stress[idx][x_idx][0], stress[idx][x_idx][1]);
@@ -1476,7 +1474,7 @@ void Homo_ElasticProblem_static::ComputeEffectiveProperties(std::vector<std::com
 		strain_av = strain_av - strain_h / d * HydrostaticStrain(this->d);
 		
 		double count = 0;
-		for (int i = 0; i < strain_av.total_comp; i++) {
+		for (size_t i = 0; i < strain_av.total_comp; i++) {
 			if (abs(stress_av[i]) > 1e-10) {
 				Ge += (stress_av[i] / strain_av[i]);
 				count++;
@@ -1491,7 +1489,7 @@ void Homo_ElasticProblem_static::ComputeEffectiveProperties(std::vector<std::com
 
 void Homo_ElasticProblem_static::Print(const std::string & prefix) const
 {
-		for (int i = 0; i < Response_direct.total_comp; i++) {
+		for (size_t i = 0; i < Response_direct.total_comp; i++) {
 			if (Use_StrongContrast) 
 				Response_direct.Print((prefix + "_f").c_str(), i);
 			else
@@ -1502,7 +1500,7 @@ void Homo_ElasticProblem_static::Print(const std::string & prefix) const
 
 void Homo_ElasticProblem_static::Print_Fourier(const std::string & prefix) const
 {
-	for (int i = 0; i < Response_Fourier.total_comp; i++) {
+	for (size_t i = 0; i < Response_Fourier.total_comp; i++) {
 		if (Use_StrongContrast)
 			Response_Fourier.Print_shifted_origin((prefix + "_f").c_str(), i);
 		else
@@ -1513,7 +1511,7 @@ void Homo_ElasticProblem_static::Print_Fourier(const std::string & prefix) const
 
 void Homo_ElasticProblem_static::Print_GreenFn_2D(const std::string & prefix) const
 {
-	for (int i = 0; i < Propagator_Fourier.total_comp; i++) {
+	for (size_t i = 0; i < Propagator_Fourier.total_comp; i++) {
 		Propagator_Fourier.Print_shifted_origin(prefix + "_GreenFunction", i);
 	}
 }
@@ -1524,11 +1522,11 @@ void Homo_ElasticProblem_static::Iterate_weak_contrast(size_t steps)
 	TensorField & epsilon_Fourier = Response_Fourier;
 	TensorField & epsilon_direct = Response_direct;
 
-	for (int i = 0; i < steps; i++) {
+	for (size_t i = 0; i < steps; i++) {
 		/*1. Compute FFT of P(x) */
 		if (FFH_verbosity > 0)
 			std::cout << "\t\t Fourier transform of P (" << m << " th stage)\n";
-		for (int j = 0; j<P_direct.total_comp; j++)
+		for (size_t j = 0; j<P_direct.total_comp; j++)
 			fftw_execute(FourierTransform_P[j]);
 
 		m++;
@@ -1541,7 +1539,7 @@ void Homo_ElasticProblem_static::Iterate_weak_contrast(size_t steps)
 		\tilde{E}(k) = \tilde{E_0} */
 		InnerProduct(epsilon_Fourier, G_Fourier, P_Fourier, 2);
 		/* Add \tilde{epsilon_0} */
-		for (int i = 0; i < applied_strain.total_comp; i++) {
+		for (size_t i = 0; i < applied_strain.total_comp; i++) {
 			Response_Fourier[i][0][0] = applied_strain[i].real() * epsilon_Fourier.num_total_pixels;
 			Response_Fourier[i][0][1] = applied_strain[i].imag() * epsilon_Fourier.num_total_pixels;
 		}
@@ -1550,7 +1548,7 @@ void Homo_ElasticProblem_static::Iterate_weak_contrast(size_t steps)
 		Response_direct_prev = Response_direct;
 		if (FFH_verbosity > 0)
 			std::cout << "\t\t Inverse Fourier transform of F field\n";
-		for (int j = 0; j<epsilon_direct.total_comp; j++)
+		for (size_t j = 0; j<epsilon_direct.total_comp; j++)
 			fftw_execute(InverseFourierTransform_Response[j]);
 		epsilon_direct *= (1.0 / P_Fourier.num_total_pixels);	//This step is required because fftw3 do not consider the 1/N factor.
 
@@ -1558,7 +1556,7 @@ void Homo_ElasticProblem_static::Iterate_weak_contrast(size_t steps)
 		if (FFH_verbosity > 0)
 			std::cout << "\t\t Compute P field\n";
 #pragma omp parallel for 
-		for (int i = 0; i < Geometry.prt_indicator.size(); i++) {
+		for (size_t i = 0; i < Geometry.prt_indicator.size(); i++) {
 			size_t x = Geometry.prt_indicator[i];
 			for (size_t comp = 0; comp < P_direct.total_comp; comp++) {
 				std::complex<double> P = InnerProduct(x, comp, this->delta_C, Response_direct, 2);
@@ -1577,7 +1575,7 @@ void Homo_ElasticProblem_static::ComputeG_Fourier()
 	Propagator_Fourier = TensorField(d, 4, k.num_points);
 
 #pragma omp parallel for
-	for (int k_idx = 0; k_idx < k.num_total_pixels; k_idx++) {	//Wavevectork
+	for (size_t k_idx = 0; k_idx < k.num_total_pixels; k_idx++) {	//Wavevectork
 		std::vector<size_t> H_comp;
 		double k2 = 0.0L;
 		for (int i = 0; i < d; i++)
@@ -1615,11 +1613,11 @@ void Homo_ElasticProblem_static::Iterate_strong_contrast(size_t steps)
 	TensorField & f_Fourier = Response_Fourier;
 	TensorField & f_direct = Response_direct;
 
-	for (int i = 0; i < steps; i++) {
+	for (size_t i = 0; i < steps; i++) {
 		/*1. Compute FFT of P(x) */
 		if (FFH_verbosity > 0)
 			std::cout << "\t\t Fourier transform of P (" << m << " th stage)\n";
-		for (int j = 0; j<P_direct.total_comp; j++)
+		for (size_t j = 0; j<P_direct.total_comp; j++)
 			fftw_execute(FourierTransform_P[j]);
 
 		m++;
@@ -1632,7 +1630,7 @@ void Homo_ElasticProblem_static::Iterate_strong_contrast(size_t steps)
 		\tilde{E}(k) = \tilde{E_0} */
 		InnerProduct(f_Fourier, H_Fourier, P_Fourier, 2);
 		/* Add \tilde{E_0} */
-		for (int i = 0; i < applied_strain.total_comp; i++) {
+		for (size_t i = 0; i < applied_strain.total_comp; i++) {
 			Response_Fourier[i][0][0] = applied_strain[i].real() * Response_Fourier.num_total_pixels;
 			Response_Fourier[i][0][1] = applied_strain[i].imag() * Response_Fourier.num_total_pixels;
 		}
@@ -1641,7 +1639,7 @@ void Homo_ElasticProblem_static::Iterate_strong_contrast(size_t steps)
 		Response_direct_prev = Response_direct;
 		if (FFH_verbosity > 0)
 			std::cout << "\t\t Inverse Fourier transform of F field\n";
-		for (int j = 0; j<f_direct.total_comp; j++)
+		for (size_t j = 0; j<f_direct.total_comp; j++)
 			fftw_execute(InverseFourierTransform_Response[j]);
 		f_direct *= (1.0 / P_Fourier.num_total_pixels);	//This step is required because fftw3 do not consider the 1/N factor.
 
@@ -1649,7 +1647,7 @@ void Homo_ElasticProblem_static::Iterate_strong_contrast(size_t steps)
 		if (FFH_verbosity > 0)
 			std::cout << "\t\t Compute P field\n";
 #pragma omp parallel for 
-		for (int i = 0; i < Geometry.prt_indicator.size(); i++) {
+		for (size_t i = 0; i < Geometry.prt_indicator.size(); i++) {
 			size_t x = Geometry.prt_indicator[i];
 			for (size_t comp = 0; comp < P_direct.total_comp; comp++) {
 				std::complex<double> P = InnerProduct(x, comp, this->L, Response_direct, 2);
@@ -1665,8 +1663,8 @@ void Homo_ElasticProblem_static::ComputeH_Fourier()
 	ComputeG_Fourier();
 	
 	/* Exclude the contribution from polarized phase at the position. */
-	for (int x = 0; x < Propagator_Fourier.num_total_pixels; x++) {
-		for (int i = 0; i < Propagator_Fourier.total_comp; i++) {
+	for (size_t x = 0; x < Propagator_Fourier.num_total_pixels; x++) {
+		for (size_t i = 0; i < Propagator_Fourier.total_comp; i++) {
 			Propagator_Fourier[i][x][0] += D[i].real();
 			Propagator_Fourier[i][x][1] += D[i].imag();
 		}
@@ -1781,7 +1779,7 @@ bool DynamicElasticProblem::CheckDivergenceFree(double target_tolerance)
 	this->ComputeField_Fourier(strain);
 
 	double mean = 0.0L;
-	for (int i = 0; i < strain.total_comp; i++)
+	for (size_t i = 0; i < strain.total_comp; i++)
 		mean += Modulus2(strain[i][0]);
 	mean = sqrt(mean);
 
@@ -1791,7 +1789,7 @@ bool DynamicElasticProblem::CheckDivergenceFree(double target_tolerance)
 	InnerProduct(projection, this->qq, stress, 1);
 	/* Symmetrize projection. */
 #pragma omp parallel for
-	for (int q_indx = 0; q_indx < projection.num_total_pixels; q_indx++) {
+	for (size_t q_indx = 0; q_indx < projection.num_total_pixels; q_indx++) {
 		for (int i = 0; i < d; i++) {
 			for (int j = i; j < d; j++) {
 				int idx1 = i + d * j, idx2 = j + d * i;
@@ -1813,10 +1811,10 @@ bool DynamicElasticProblem::CheckDivergenceFree(double target_tolerance)
 
 	/* compute the squared sum of the divergence in the Fourier space. */
 #pragma omp parallel for schedule(guided)
-	for (int x = 0; x < strain.num_total_pixels; x++) {
+	for (size_t x = 0; x < strain.num_total_pixels; x++) {
 		double diff = 0.0L, value = 0.0L;
 
-		for (int i = 0; i < strain.total_comp; i++) {
+		for (size_t i = 0; i < strain.total_comp; i++) {
 			double mod2 = 0.0L;
 
 			for (int part = 0; part < 2; part++) {
@@ -1848,7 +1846,7 @@ bool DynamicElasticProblem::CheckDivergenceFree(double target_tolerance)
 		TensorField div;
 		InnerProduct(div, this->ks, stress, 1);
 		double error = 0.0L;
-		for (int x = 0; x < div.num_total_pixels; x++) {
+		for (size_t x = 0; x < div.num_total_pixels; x++) {
 			double abs_div = 0.0L;
 			for (int i = 0; i < d; i++) {
 				abs_div += Modulus2(div[i][x]);
@@ -1856,7 +1854,7 @@ bool DynamicElasticProblem::CheckDivergenceFree(double target_tolerance)
 			error += abs_div;
 		}
 		double sigma0 = 0.0L;
-		for (int i = 0; i < stress.total_comp; i++)
+		for (size_t i = 0; i < stress.total_comp; i++)
 			sigma0 += Modulus2(stress[i][0]);
 
 		error = sqrt(error / (double)stress.num_total_pixels) / sqrt(sigma0);
@@ -1897,7 +1895,7 @@ void DynamicElasticProblem::Prepare(const ConstantTensor & applied)
 		}
 		/* shift ks by k0. */
 #pragma omp parallel for
-		for (int k_indx = 0; k_indx < ks.num_total_pixels; k_indx++) {
+		for (size_t k_indx = 0; k_indx < ks.num_total_pixels; k_indx++) {
 			for (int i = 0; i < d; i++) {
 #pragma omp atomic
 				ks[i][k_indx][0] += k0.x[i];
@@ -1908,7 +1906,7 @@ void DynamicElasticProblem::Prepare(const ConstantTensor & applied)
 
 		this->qq = TensorField(d, 2, Geometry.GetResolutions());
 #pragma omp parallel for 
-		for (int k_indx = 0; k_indx < ks.num_total_pixels; k_indx++) {
+		for (size_t k_indx = 0; k_indx < ks.num_total_pixels; k_indx++) {
 			for (int i = 0; i < d; i++) {
 				for (int j = 0; j < d; j++) {
 					qq[i+d*j][k_indx][0] = ks[i][k_indx][0]*ks[j][k_indx][0];
@@ -1946,7 +1944,7 @@ void DynamicElasticProblem::ComputeEffectiveModuli(std::vector<std::complex<doub
 		{
 			std::complex<double> B(0.0L, 0.0L);
 			double count = 0;
-			for (int i = 0; i < f_av.total_comp; i++) {
+			for (size_t i = 0; i < f_av.total_comp; i++) {
 				if (abs(f_av[i]) > Tol_Field && abs(P_av[i]) > Tol_Field) {
 					B += P_av[i] / f_av[i];
 					count++;
@@ -1974,7 +1972,7 @@ void DynamicElasticProblem::ComputeEffectiveModuli(std::vector<std::complex<doub
 
 		ConstantTensor C1 = d * K1*Lambda_h(this->d) + 2.0*G1*Lambda_s(this->d);
 		//TODO:: simplify it...
-		for (int x = 0; x < stress.num_total_pixels; x++) {
+		for (size_t x = 0; x < stress.num_total_pixels; x++) {
 			for (size_t i = 0; i < stress.total_comp; i++) {
 				std::complex<double> sigma;
 				sigma = InnerProduct(x, i, C1, Response_direct, 2);
@@ -1985,8 +1983,8 @@ void DynamicElasticProblem::ComputeEffectiveModuli(std::vector<std::complex<doub
 
 		/* compute the means of stress and strain. */
 #pragma omp parallel for 
-		for (int idx = 0; idx < stress.total_comp; idx++) {
-			for (int x_idx = 0; x_idx < stress.num_total_pixels; x_idx++) {
+		for (size_t idx = 0; idx < stress.total_comp; idx++) {
+			for (size_t x_idx = 0; x_idx < stress.num_total_pixels; x_idx++) {
 #pragma omp critical
 				{//TODO:: check whether this is thread-safe.
 					stress_av[idx] += std::complex<double>(stress[idx][x_idx][0], stress[idx][x_idx][1]);
@@ -2013,7 +2011,7 @@ void DynamicElasticProblem::ComputeEffectiveModuli(std::vector<std::complex<doub
 		strain_av = strain_av - strain_h / d * HydrostaticStrain(this->d);
 
 		double count = 0;
-		for (int i = 0; i < strain_av.total_comp; i++) {
+		for (size_t i = 0; i < strain_av.total_comp; i++) {
 			if (abs(stress_av[i]) > 1e-10) {
 				Ge += (stress_av[i] / strain_av[i]);
 				count++;
@@ -2038,7 +2036,7 @@ void DynamicElasticProblem::ComputeDivergenceFreeField_Fourier(TensorField & out
 		ConstantTensor I_C1D = Lambda_h(this->d) + Lambda_s(this->d) - InnerProduct(C0, D, rank_of_fields);
 
 #pragma omp parallel for
-		for (int x = 0; x < out.num_total_pixels; x++) {
+		for (size_t x = 0; x < out.num_total_pixels; x++) {
 			for (size_t i = 0; i < out.total_comp; i++) {
 				std::complex<double> sigma;
 				sigma = InnerProduct(x, i, C0, Response_Fourier, rank_of_fields) + InnerProduct(x, i, I_C1D, P_Fourier, rank_of_fields);
@@ -2050,7 +2048,7 @@ void DynamicElasticProblem::ComputeDivergenceFreeField_Fourier(TensorField & out
 	else {
 		/* sigma(x) = C1:epsilon(x) + P(x) */
 #pragma omp parallel for
-		for (int x = 0; x < out.num_total_pixels; x++) {
+		for (size_t x = 0; x < out.num_total_pixels; x++) {
 			for (size_t i = 0; i < out.total_comp; i++) {
 				std::complex<double> sigma;
 				sigma = InnerProduct(x, i, C0, Response_Fourier, rank_of_fields);
@@ -2074,7 +2072,7 @@ void DynamicElasticProblem::ComputeDivergenceFreeField_Direct(TensorField & out)
 		ConstantTensor I_C1D = Lambda_h(this->d) + Lambda_s(this->d) - InnerProduct(C0, D, rank_of_fields);
 
 #pragma omp parallel for
-		for (int x = 0; x < out.num_total_pixels; x++) {
+		for (size_t x = 0; x < out.num_total_pixels; x++) {
 			for (size_t i = 0; i < out.total_comp; i++) {
 				std::complex<double> sigma;
 				sigma = InnerProduct(x, i, C0, Response_direct, 2) + InnerProduct(x, i, I_C1D, P_direct, 2);
@@ -2086,7 +2084,7 @@ void DynamicElasticProblem::ComputeDivergenceFreeField_Direct(TensorField & out)
 	else {
 		/* sigma(x) = C1:epsilon(x) + P(x) */
 #pragma omp parallel for
-		for (int x = 0; x < out.num_total_pixels; x++) {
+		for (size_t x = 0; x < out.num_total_pixels; x++) {
 			for (size_t i = 0; i < out.total_comp; i++) {
 				std::complex<double> sigma;
 				sigma = InnerProduct(x, i, C0, Response_direct, 2);
@@ -2108,7 +2106,7 @@ void DynamicElasticProblem::ComputeField_Fourier(TensorField & out) const
 	if (use_strong_contrast) {
 		/*	Response = f, where f = strain + D : Polarization and out = strain. */
 #pragma omp parallel for
-		for (int x = 0; x < out.num_total_pixels; x++) {
+		for (size_t x = 0; x < out.num_total_pixels; x++) {
 			std::complex<double> sigma;
 			for (size_t i = 0; i < out.total_comp; i++) {
 				sigma = InnerProduct(x, i, D, P_Fourier, rank_of_fields);
@@ -2132,7 +2130,7 @@ void DynamicElasticProblem::ComputeField_Direct(TensorField & out) const
 	if (use_strong_contrast) {
 		/* f = strain + D:P, where out = strain. */
 #pragma omp parallel for
-		for (int x = 0; x < out.num_total_pixels; x++) {
+		for (size_t x = 0; x < out.num_total_pixels; x++) {
 			for (size_t i = 0; i < out.total_comp; i++) {
 				std::complex<double> sigma;
 				sigma = InnerProduct(x, i, D, P_direct, 2);
@@ -2152,20 +2150,18 @@ void DynamicElasticProblem::ComputeField_Direct(TensorField & out) const
 
 void DynamicElasticProblem::ComputePropagator_weak()
 {
-	double kk = k0.Modulus2();
 	Propagator_Fourier = TensorField(d, 2 * rank_of_fields, Geometry.GetResolutions());
 	/* Note that ks is already shifted by k0. */
 #pragma omp parallel for
-	for (int q_indx = 0; q_indx < ks.num_total_pixels; q_indx++) {
+	for (size_t q_indx = 0; q_indx < ks.num_total_pixels; q_indx++) {
 		GeometryVector q(static_cast<int>(d));
 		for (int i = 0; i < d; i++)
 			q.x[i] = ks[i][q_indx][0];
 
-		double qq = q.Modulus2();
 		ConstantTensor val = GreenFunction_Fourier(q);
 		
 
-		for (int i = 0; i < val.total_comp; i++) {
+		for (size_t i = 0; i < val.total_comp; i++) {
 			Propagator_Fourier[i][q_indx][0] = val[i].real();
 			Propagator_Fourier[i][q_indx][1] = val[i].imag();
 		}
@@ -2185,8 +2181,8 @@ void DynamicElasticProblem::ComputePropagator_strong()
 {
 	this->ComputePropagator_weak();
 #pragma omp parallel for
-	for (int x = 0; x < Propagator_Fourier.num_total_pixels; x++) {
-		for (int i = 0; i < Propagator_Fourier.total_comp; i++) {
+	for (size_t x = 0; x < Propagator_Fourier.num_total_pixels; x++) {
+		for (size_t i = 0; i < Propagator_Fourier.total_comp; i++) {
 #pragma omp atomic
 			Propagator_Fourier[i][x][0] += this->D[i].real();
 #pragma omp atomic
@@ -2261,7 +2257,7 @@ void DynamicElasticProblem::ShiftFieldByk0(TensorField & out) const
 
 	/* multiply the phase factor. */
 #pragma omp parallel for
-	for (int x = 0; x < out.num_total_pixels; x++) {
+	for (size_t x = 0; x < out.num_total_pixels; x++) {
 		std::vector<size_t> n_x;
 		Geometry.Index2Components(x, n_x);
 
@@ -2272,7 +2268,7 @@ void DynamicElasticProblem::ShiftFieldByk0(TensorField & out) const
 		std::complex<double> phase_factor = std::exp(std::complex<double>(0.0L, k0.Dot(pos)));
 
 		for (int i = 0; i < d; i++) {
-			std::complex<double> value = std::complex<double>(out[i][x][0], out[i][x][0]);
+			std::complex<double> value = std::complex<double>(out[i][x][0], out[i][x][1]);
 			value *= phase_factor;
 			out[i][x][0] = value.real();
 			out[i][x][1] = value.imag();
