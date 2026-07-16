@@ -8,96 +8,13 @@
 
 #include "FirstPassageTime.h"
 
-const double delta1 = 0.0001;
-const double delta2 = 0.01;
-const double delta3 = 0.05; // factor for disk packings
+const double delta1 = 0.0001;	// criterion for the "small" distance to the interface, below which the interface is approximated to be flat.
+const double delta2 = 0.01;		// a small step size, when the interface consists of more than two spheres so that it has a sharp corner.
+const double delta3 = 0.05; 	// a small ratio of the step size over the radius of the nearest sphere. 
 
-const double FACTOR = 1.0 - delta1 * 1e-3;
-/* ----------------------------------------------
-		Trajectory class
- *----------------------------------------------- */
-Trajectory::Trajectory(const Trajectory & src){
-	this->dimension = src.dimension;
-	this->sigma_host = src.sigma_host; this->sigma_particle = src.sigma_particle;
-	this->R2_host = src.R2_host;	this->R2_particle = src.R2_particle;
-	this->R2_s = src.R2_s; tau_s = src.tau_s;
-	this->tau_total = src.tau_total;
-
-	this->pos_curr = GeometryVector(src.pos_curr);
-	this->delta_pos = GeometryVector(src.delta_pos);
-}
-
-void Trajectory::ReadLog(std::istream & ifile){
-	std::string phrase("#d");
-	size_t dim = 0;
-
-	std::string buffer; std::istringstream iss;
-
-	while (dim == 0 && std::getline(ifile, buffer)){
-		if(buffer[0] == '#'){
-			dim = (size_t) std::stoi(buffer.substr(phrase.size()));	
-		}
-	}
-
-	if (dim == this->dimension){
-		// Read pos_curr
-		std::getline(ifile, buffer);
-		this->pos_curr.SetDimension(dim);
-		iss.str(buffer);
-		iss.clear();
-		for (int j=0; j<dim; j++)
-			iss >> this->pos_curr.x[j];
-		
-//		if (ifile.eof() == false)
-//			vertices.push_back(temp);
-
-		// Read delta_pos
-		std::getline(ifile, buffer);
-		this->delta_pos.SetDimension(dim);
-		iss.str(buffer);
-		iss.clear();
-		for (int j=0; j<dim; j++)
-			iss >> this->delta_pos.x[j];
+const double FACTOR = 1.0 - delta1 * 1e-3;	// a factor near to but strictly smaller than 1.
 
 
-		std::getline(ifile, buffer);
-		iss.str(buffer);
-		iss.clear();
-		double temp1 = 0.0, temp2 = 0.0;
-		// Read R2_host
-		iss >> temp1;
-		this->Update_R2_host(temp1);
-
-		// Read R2_particle
-		iss >> temp1;
-		this->Update_R2_particle(temp1);
-
-		// Read R2_s, tau_s
-		iss >> temp1; iss >> temp2;
-		this->Update_R2_s(temp1, temp2);
-		
-		// compare time
-		iss >> temp1;
-		double err_time = temp1 - this->GetTimeTotal();
-		this->tau_total += err_time;
-	}
-	else{
-		std::cerr<<"Trajectory::ReadLog(...)\twrong dimension!\n";
-	}
-}
-
-std::ostream & operator << (std::ostream & os, const Trajectory & t) 
-{
-//	os << "[Trajectory]\n";
-	os << "#d\t" << t.dimension<<"\n";
-	os << t.pos_curr;
-	os << t.delta_pos;
-
-	os << t.R2_host << "\t" << t.R2_particle <<"\t";
-	os << t.R2_s << "\t" << t.tau_s << "\t";
-	os << t.tau_total<<"\n";
-	return os;
-}
 
 
 /* ------------------------------------------------
@@ -354,7 +271,7 @@ void FirstPassageTimeParameters::JumpOneStep_2D(const Dispersion & config, Traje
 			x_particle.reserve(num_samples);
 			x_host.reserve(num_samples);
 
-			for (int j = 0; j < num_samples; j++){
+			for (size_t j = 0; j < num_samples; j++){
 				double theta = 2.0*pi * (double) j /(double) num_samples + 1e-6;
 
 				GeometryVector x_on_shell = x0 + config.CartesianCoord2RelativeCoord( R*GeometryVector(cos(theta), sin(theta)) );
@@ -592,7 +509,7 @@ void FirstPassageTimeParameters::JumpOneStep_2D(const SpherePacking & config, Tr
 			x_particle.reserve(num_samples);
 			x_host.reserve(num_samples);
 
-			for (int j = 0; j < num_samples; j++){
+			for (size_t j = 0; j < num_samples; j++){
 				double theta = 2.0*pi * (double) j /(double) num_samples + 1e-6;
 
 				GeometryVector x_on_shell = x0 + config.CartesianCoord2RelativeCoord( R*GeometryVector(cos(theta), sin(theta)) );
@@ -717,7 +634,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_test(const Dispersion & con
 		for(size_t i=0; i<num_steps; i++){
 			this->JumpOneStep_2D(config, traj, rng, debug_info, true);
 
-			for (int j=0; j<debug_info.size(); j++)
+			for (size_t j=0; j<debug_info.size(); j++)
 				ofile << debug_info[j]<<"\t";
 			ofile << "\n";
 		}
@@ -790,13 +707,13 @@ void FirstPassageTimeParameters::PerformSimulation2D_parallel(std::function<cons
 	progress_display pd(num_configs);
 	for (size_t i=0; i<num_configs; i++){
 		char logname[300]={};
-		sprintf(logname, "%s-%d", log_filename.c_str(), i);
+		snprintf(logname, sizeof(logname), "%s-%zu", log_filename.c_str(), i);
 
 		std::vector<Dispersion> c(this->num_threads, GetConfiguration(i));
 		std::vector<RandomGenerator> RNG;
 		{
 			double Rmax = c[0].GetMaxRadius();
-			for (int j=0; j<this->num_threads; j++){
+			for (size_t j=0; j<this->num_threads; j++){
 				c[j].SetCellSize(Rmax);
 				RNG.emplace_back(j);
 			}
@@ -811,7 +728,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_parallel(std::function<cons
 
 		if (!success_load){
 #pragma omp parallel for schedule(guided)
-			for (int j=0; j<this->num_test_prts; j++){
+			for (size_t j=0; j<this->num_test_prts; j++){
 				size_t tid = omp_get_thread_num();
 				for (size_t k=0; k<this->dimension; k++){
 					trajs[j].pos_curr.x[k] = RNG[tid].RandomDouble();
@@ -821,7 +738,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_parallel(std::function<cons
 
 		std::vector<GeometryVector> data_config (this->num_test_prts, GeometryVector(0.0,0.0,0.0,0.0));
 #pragma omp parallel for schedule(guided)
-		for (int j = 0; j<this->num_test_prts; j++){
+		for (size_t j = 0; j<this->num_test_prts; j++){
 			size_t tid = omp_get_thread_num();
 			this->PerformSimulation2D_time(c[tid], time_max, trajs[j], RNG[tid]);
 
@@ -881,7 +798,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_TimeEvolution(const Dispers
 	std::vector<RandomGenerator> RNG;
 	{
 		double Rmax = c[0].GetMaxRadius();
-		for (int j=0; j<this->num_threads; j++){
+		for (size_t j=0; j<this->num_threads; j++){
 			c[j].SetCellSize(Rmax);
 			RNG.emplace_back(j);
 		}
@@ -896,7 +813,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_TimeEvolution(const Dispers
 
 	if (!success_load){
 #pragma omp parallel for schedule(guided)
-		for (int j=0; j<this->num_test_prts; j++){
+		for (size_t j=0; j<this->num_test_prts; j++){
 			size_t tid = omp_get_thread_num();
 			for (size_t k=0; k<this->dimension; k++){
 				trajs[j].pos_curr.x[k] = RNG[tid].RandomDouble();
@@ -911,7 +828,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_TimeEvolution(const Dispers
 
 		std::vector<GeometryVector> data_config (this->num_test_prts, GeometryVector(0.0,0.0,0.0,0.0));
 #pragma omp parallel for schedule(guided)
-		for (int j = 0; j<this->num_test_prts; j++){
+		for (size_t j = 0; j<this->num_test_prts; j++){
 			size_t tid = omp_get_thread_num();
 			this->PerformSimulation2D_time(c[tid], time_interval, trajs[j], RNG[tid]);
 
@@ -993,7 +910,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_test(const SpherePacking & 
 		for(size_t i=0; i<num_steps; i++){
 			this->JumpOneStep_2D(config, traj, rng, debug_info, true);
 
-			for (int j=0; j<debug_info.size(); j++)
+			for (size_t j=0; j<debug_info.size(); j++)
 				ofile << debug_info[j]<<"\t";
 			ofile << "\n";
 		}
@@ -1060,13 +977,13 @@ void FirstPassageTimeParameters::PerformSimulation2D_parallel(std::function<cons
 	progress_display pd(num_configs);
 	for (size_t i=0; i<num_configs; i++){
 		char logname[300]={};
-		sprintf(logname, "%s-%d", log_filename.c_str(), i);
+		snprintf(logname, sizeof(logname), "%s-%zu", log_filename.c_str(), i);
 
 		std::vector<SpherePacking> c(this->num_threads, GetConfiguration(i));
 		std::vector<RandomGenerator> RNG;
 		{
 			double Rmax = c[0].GetMaxRadius();
-			for (int j=0; j<this->num_threads; j++){
+			for (size_t j=0; j<this->num_threads; j++){
 				c[j].SetCellSize(Rmax);
 				RNG.emplace_back(j);
 			}
@@ -1081,7 +998,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_parallel(std::function<cons
 
 		if (!success_load){
 #pragma omp parallel for schedule(guided)
-			for (int j=0; j<this->num_test_prts; j++){
+			for (size_t j=0; j<this->num_test_prts; j++){
 				size_t tid = omp_get_thread_num();
 				for (size_t k=0; k<this->dimension; k++){
 					trajs[j].pos_curr.x[k] = RNG[tid].RandomDouble();
@@ -1091,7 +1008,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_parallel(std::function<cons
 
 		std::vector<GeometryVector> data_config (this->num_test_prts, GeometryVector(0.0,0.0,0.0,0.0));
 #pragma omp parallel for schedule(guided)
-		for (int j = 0; j<this->num_test_prts; j++){
+		for (size_t j = 0; j<this->num_test_prts; j++){
 			size_t tid = omp_get_thread_num();
 			this->PerformSimulation2D_time(c[tid], time_max, trajs[j], RNG[tid]);
 
@@ -1150,7 +1067,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_TimeEvolution(const SphereP
 	std::vector<RandomGenerator> RNG;
 	{
 		double Rmax = c[0].GetMaxRadius();
-		for (int j=0; j<this->num_threads; j++){
+		for (size_t j=0; j<this->num_threads; j++){
 			c[j].SetCellSize(Rmax);
 			RNG.emplace_back(j);
 		}
@@ -1165,7 +1082,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_TimeEvolution(const SphereP
 
 	if (!success_load){
 #pragma omp parallel for schedule(guided)
-		for (int j=0; j<this->num_test_prts; j++){
+		for (size_t j=0; j<this->num_test_prts; j++){
 			size_t tid = omp_get_thread_num();
 			for (size_t k=0; k<this->dimension; k++){
 				trajs[j].pos_curr.x[k] = RNG[tid].RandomDouble();
@@ -1180,7 +1097,7 @@ void FirstPassageTimeParameters::PerformSimulation2D_TimeEvolution(const SphereP
 
 		std::vector<GeometryVector> data_config (this->num_test_prts, GeometryVector(0.0,0.0,0.0,0.0));
 #pragma omp parallel for schedule(guided)
-		for (int j = 0; j<this->num_test_prts; j++){
+		for (size_t j = 0; j<this->num_test_prts; j++){
 			size_t tid = omp_get_thread_num();
 			this->PerformSimulation2D_time(c[tid], time_interval, trajs[j], RNG[tid]);
 

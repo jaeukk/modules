@@ -12,7 +12,7 @@ include ../../config.mk
 ODIR   := obj/
 TARGET := FirstPassageTime.out
 
-SRCS := main.cpp FirstPassageTime.cpp
+SRCS := main.cpp FirstPassageTime.cpp Trajectory.cpp Validation.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I$(nonspherical) -I.
