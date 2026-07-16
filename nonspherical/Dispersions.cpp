@@ -159,7 +159,7 @@ int Dispersion::IsInsideParticle(const GeometryVector & RelativeCoordinate) cons
 {
 	int idx = -1;
 	this->IterateThroughNeighbors(RelativeCoordinate, this->GetMaxRadius(), 
-	[&idx, this] (const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) -> void{
+	[&idx, this] (const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t Sourceparticle) -> void{
 		//GeometryVector pos_Cartesian = this->RelativeCoord2CartesianCoord(shift);
 		if(this->ParticleCharacteristics[Sourceparticle]->IsPtInside(-1.0*shift)){
 			idx = Sourceparticle;
@@ -183,7 +183,7 @@ void Dispersion::FindNearestNeighbors (const GeometryVector & RelativeCoordinate
 	{
 		neighbors.clear();
 		shifts.clear();
-		(*this).IterateThroughNeighbors(RelativeCoordinate, TypicalLength, [&shifts, &neighbors](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) ->void
+		(*this).IterateThroughNeighbors(RelativeCoordinate, TypicalLength, [&shifts, &neighbors](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t Sourceparticle) ->void
 		{	
 //			bool repeated = false;
 //			for (size_t i=0; i<neighbors.size() && !repeated; i++){

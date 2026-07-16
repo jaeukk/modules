@@ -7,3 +7,4 @@ obj/
 *.txt
 # Runtime-generated logs
 DetailedLog.txt
+*CLAUDE.md

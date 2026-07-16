@@ -150,7 +150,8 @@ int main(int argc, char ** argv) {
 		auto getc = [&loadname, &start_idx](size_t i)->Dispersion{
 			Dispersion c;
 			char name[400] = {};
-			snprintf(name, sizeof(name), loadname.c_str(), start_idx + i);
+			// loadname is a user printf pattern; it must use an int conversion (e.g. %d/%04d).
+			snprintf(name, sizeof(name), loadname.c_str(), static_cast<int>(start_idx + i));
 			ReadDispersion(c, name);
 			return c;
 		};

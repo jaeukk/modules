@@ -14,7 +14,7 @@ include ../config.mk
 
 ODIR := obj/
 
-SRCS := ParticleShapes.cpp FormFactors.cpp Dispersions.cpp
+SRCS := ParticleShapes.cpp FormFactors.cpp Dispersions.cpp SpectralDensity_Dispersion.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I$(nonspherical)

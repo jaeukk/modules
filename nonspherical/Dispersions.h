@@ -64,7 +64,7 @@ public:
 	 * \param prtShape	A pointer of the Shape class that defines a particle shape. */
 	template<typename add> Dispersion(const PeriodicCellList<add> & source, const Shape_ & prtShape) : PeriodicCellList(source, prtShape->clone()) {
 		//This step is necessary to make sure all pointers of Shape class are independant.
-		for (int i = 0; i < source.NumParticle(); i++)
+		for (size_t i = 0; i < source.NumParticle(); i++)
 			this->ParticleCharacteristics[i] = prtShape->clone();
 	}
 	
@@ -120,6 +120,7 @@ public:
 				this->MaxRadius = std::max(this->MaxRadius, ParticleCharacteristics[i]->GetMaxRadius());
 		}
 	}
+
 	/** Update this->MaxRadius. */
 	void UpdateMaxRadius(void) const {
 		if (this->MaxRadius == 0.0) {
@@ -210,6 +211,7 @@ public:
 	/** Rescale all particles and simulation box.
 	 * \param LinearFactor	The linear ratio to which everything is scaled. */
 	virtual void Rescale(double LinearFactor);
+
 	/** Rescale all particles and simulation box.
 	 * \param newVolume	The volume of periodic simulation box to which everything is scaled. */
 	virtual void Resize(double NewVolume);

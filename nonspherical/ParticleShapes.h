@@ -66,13 +66,18 @@ public:
 		this->R_circum = -1;	this->R_inscr = -1.0; this->volume = -1;		this->area = -1;
 	};
 	
-	/** A copy constructor.	 
-	 * It only copies dimensions, r_circum, volume, and area. */
+
+/** A copy constructor. Copies only the cached scalar geometry (dimension,
+ *  radii, volume, area); `name` and `Centroid` are (re)established by each
+ *  derived class's own constructor, so the base deliberately leaves them. */
 	Shape(const Shape & source) {
 		this->Dimension = source.Dimension;
 		this->R_circum = source.R_circum;	this->volume = source.volume;		this->area = source.area;
 		this->R_inscr = source.R_inscr;
 	}
+
+	/** Defaulted copy assignment (all members are value types); declared because the user-provided copy constructor deprecates the implicit one. */
+	Shape & operator=(const Shape &) = default;
 
 	/* Basic interfaces */
 	
@@ -173,10 +178,11 @@ public:
 	/**	A pure virtual member function to check whether a given point is inside this shape.
 	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
 	 * \return True = pos is inside this Shape.	 */
-	virtual bool IsPtInside(const GeometryVector & pos_wrt_centroid) { 
-		std::cout << "Shape::IsPtInside is not implemented. Please write an implementation in each class." << std::endl; 
-		return false;
-	}
+	virtual bool IsPtInside(const GeometryVector & pos_wrt_centroid) = 0;
+	//  { 
+	// 	std::cout << "Shape::IsPtInside is not implemented. Please write an implementation in each class." << std::endl; 
+	// 	return false;
+	// }
 
 	/**	A pure virtual member function to compute the closest distance from a given point to the boundary of the shape.
 	 * \param pos_wrt_centroid	A GeometryVector of a test point in Cartesian coordinates with respect to the particle centroid.
@@ -366,11 +372,19 @@ public:
 	/** Please don't use this member funciton. */
 	virtual std::shared_ptr<Shape> clone() { return nullptr; }
 
-	/** 
+	/**
 	 * A memebr function to move the position of a PlanarFigure object.
 	 * No implementation!!
 	*/
 	void ShiftBy(const GeometryVector & x){}
+
+	/** \brief A planar figure has zero measure, so "is a point inside" is undefined.
+	 *  Concrete override (the base is now pure virtual) that fails loudly instead of
+	 *  silently returning a wrong answer.
+	 *  \param pos_wrt_centroid	A test point w.r.t. the centroid (unused; always throws). */
+	virtual bool IsPtInside(const GeometryVector & pos_wrt_centroid) {
+		throw std::logic_error("PlanarFigure::IsPtInside is undefined for a zero-measure planar figure.");
+	}
 	// Inherited
 private:
 
@@ -498,6 +512,7 @@ public:
 	void Rotate(RandomGenerator & rng) { Shape::Rotate(rng); };
 	/// \see Shape::Rotate(RandomGenerator)
 	void Rotate(const std::vector<GeometryVector> & newbasis);
+
 	/// \see Shape::Scale(double)
 	virtual void Scale(double factor);
 
@@ -689,7 +704,9 @@ private:
 //
 //	virtual const GeometryVector & GetBasis(size_t i) const { return this->a[i]; }
 ////	void Rotate(std::vector<GeometryVector> & newcoordinatebasis);
+
 ////	void Rotate(RandomGenerator & rng);
+
 ////	void 
 //};
 //

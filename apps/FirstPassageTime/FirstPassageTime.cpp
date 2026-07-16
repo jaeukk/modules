@@ -46,16 +46,16 @@ bool FirstPassageTimeParameters::ContinueTrajectory(Trajectory & traj)
 void FirstPassageTimeParameters::WriteLogs(const std::string & name, const std::vector<Trajectory> & trajs) 
 {
 	std::fstream output((name+".trajlog").c_str(), std::fstream::out);
+	output.precision(10);
+	output << std::scientific;
 
 	output <<"##TrajectoryLog##\n";
 	output <<"#dimension\n"<<this->dimension<<"\n";
 	output <<"#sigma_host\n"<<this->sigma_host<<"\n";
 	output <<"#sigma_particle\n"<<this->sigma_particle<<"\n";
-	
+
 	size_t num = std::min(this->num_test_prts, trajs.size());
 	output <<"#num_test_particles\n"<< num <<"\n";
-	output.precision(10);
-	output << std::scientific;
 	for (size_t i=0; i<num; i++){
 		output << "[Trajectory]\n";
 		output << trajs[i];
