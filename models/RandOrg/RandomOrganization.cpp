@@ -1,5 +1,7 @@
 #include "RandomOrganization.h"
 
+#include <ctime>
+
 
 //Berthier's model
 
@@ -13,14 +15,15 @@ void IsActive(std::vector<GeometryVector> & List, std::vector<int> & result, dou
 	for (int i = 1; i < (int)List.size(); i++) {
 		for (int j = 0; j < i; j++) {
 			GeometryVector temp = List[i] - List[j];
-			for (int k = 0; k < temp.Dimension; k++) {//Implement periodic boundary conditions
-				if (fabs(temp.x[k] > SystSize*0.5)) {
-					temp.x[k] = SystSize - fabs(temp.x[k]);
-				}
+			for (int k = 0; k < temp.Dimension; k++) {//Implement periodic boundary conditions (minimum image)
+				temp.x[k] -= SystSize * std::round(temp.x[k] / SystSize);
 			}
 
 			if (sqrt(temp.Modulus2()) < exclusionR) {
-				TempList.at(i)++; TempList.at(j)++;
+#pragma omp atomic
+				TempList[i]++;
+#pragma omp atomic
+				TempList[j]++;
 			}
 		}
 	}
@@ -29,13 +32,13 @@ void IsActive(std::vector<GeometryVector> & List, std::vector<int> & result, dou
 	result.resize(0);
 	result.reserve(List.size());
 	for (int i = 0; i < (int)TempList.size(); i++) {
-		if (TempList.size() > 0)	result.push_back(i);
+		if (TempList[i] > 0)	result.push_back(i);
 	}
 
 	
 }
 
-bool B_Model(std::vector<GeometryVector> & List, double exclusionR, double delta, double SystSize) {
+bool B_Model(std::vector<GeometryVector> & List, double exclusionR, double delta, double SystSize, RandomGenerator & g) {
 	std::vector<int> index;
 	IsActive(List, index, exclusionR, SystSize);
 
@@ -43,13 +46,24 @@ bool B_Model(std::vector<GeometryVector> & List, double exclusionR, double delta
 		DimensionType dim = List[0].Dimension;
 		for (int i = 0; i < (int)index.size(); i++) {
 			int j = index[i];
-			GeometryVector dr = delta*RandomUnitVector(dim);
-			List.at(j) = List[j] + dr;
+			GeometryVector dr = delta*RandomUnitVector(dim, g);
+			GeometryVector newPos = List[j] + dr;
+			//wrap the kicked position back into [0, SystSize) so accumulated kicks stay in the box
+			for (int k = 0; k < (int)dim; k++)
+				newPos.x[k] -= SystSize * std::floor(newPos.x[k] / SystSize);
+			List.at(j) = newPos;
 		}
 		return true;
 	}
 	else {		return false;	}
 
+}
+
+bool B_Model(std::vector<GeometryVector> & List, double exclusionR, double delta, double SystSize) {
+	//Legacy (non-reproducible) API. Each thread gets its own time-seeded generator, so there
+	//is no shared mutable state / data race. Use the 5-arg overload for a reproducible sequence.
+	static thread_local RandomGenerator g((int)std::time(nullptr) + omp_get_thread_num());
+	return B_Model(List, exclusionR, delta, SystSize, g);
 }
 
 
@@ -71,7 +85,7 @@ void IsActive(const Configuration & List, std::vector<size_t> & ActivePrt_index,
 		//#pragma omp for parallel
 		if (Count[i] == 0) {//Check whether i-th particle is active or not, when i-th particle may not be active particle
 			List.IterateThroughNeighbors(List.GetRelativeCoordinates(i), 2.0*exclusionR, 
-				[&Count, &i, &diameter2, &Num](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle)->void 
+				[&Count, &i, &diameter2, &Num](const GeometryVector & shift, const GeometryVector & /*LatticeShift*/, const signed long * /*PeriodicShift*/, const size_t Sourceparticle)->void
 			{
 				if (Sourceparticle != i && shift.Modulus2() < diameter2 && Sourceparticle < Num) {
 					Count.at(Sourceparticle)++;
@@ -100,7 +114,7 @@ void IsActive(const PeriodicCellList<double> &List, std::vector<size_t> & Active
 		//#pragma omp for parallel
 		if (Count[i] == 0) {//Check whether i-th particle is active or not, when i-th particle may not be active particle
 			List.IterateThroughNeighbors(List.GetRelativeCoordinates(i), 2.0*exclusionR,
-				[&Count, &i, &List, &Num](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle)->void
+				[&Count, &i, &List, &Num](const GeometryVector & shift, const GeometryVector & /*LatticeShift*/, const signed long * /*PeriodicShift*/, const size_t Sourceparticle)->void
 			{
 				if (Sourceparticle != i && sqrt(shift.Modulus2()) < List.GetCharacteristics(i)+List.GetCharacteristics(Sourceparticle) && Sourceparticle < Num) {
 					Count.at(Sourceparticle)++;

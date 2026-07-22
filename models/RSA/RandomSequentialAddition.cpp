@@ -1,5 +1,7 @@
 #include "RandomSequentialAddition.h"
 
+#include <memory>
+
 struct SpherePacking_TempStruct
 {
 	signed char c[MaxDimension];
@@ -363,6 +365,15 @@ GeometryVector RSA::Coord2Vect(const double * coord)
 //initialize square box with side length 1, sphere radii are set so that around NumSphere pSpheres exist in saturation limit
 RSA::RSA(int Dimension, unsigned long NumSphere)
 {
+	//Validate inputs: a non-positive dimension or a zero sphere count would divide by zero below.
+	if (Dimension <= 0) {
+		std::cerr << "RSA::RSA: invalid dimension " << Dimension << "; clamping to 1.\n";
+		Dimension = 1;
+	}
+	if (NumSphere == 0) {
+		std::cerr << "RSA::RSA: invalid sphere count 0; clamping to 1.\n";
+		NumSphere = 1;
+	}
 	this->dimension=Dimension;
 
 	//calculate diameter
@@ -386,6 +397,8 @@ RSA::RSA(int Dimension, unsigned long NumSphere)
 //pa should support pSpheres of different sizes, but this is not tested.
 RSA::RSA(const SpherePacking & pa, double radius)
 {
+	if (radius <= 0.0)
+		std::cerr << "RSA::RSA: non-positive sphere radius " << radius << ".\n";
 	this->dimension=pa.GetDimension();
 
 	this->radius=radius;
@@ -461,13 +474,14 @@ class RSA_II_TempClass
 {
 public:
 	RandomGenerator * g;
-	/** \brief Wrap a random number generator for use as a shuffle index generator. (CLAUDE)
+	/** \brief Wrap a random number generator for use as a shuffle index generator.
 	 *  \param gen  Random number generator to wrap (stored by address). */
 	RSA_II_TempClass(RandomGenerator & gen)
 	{
 		this->g= & gen;
 	}
-	/** \brief Return a random index in [0, max) for std::random_shuffle. (CLAUDE)
+
+	/** \brief Return a random index in [0, max) for std::random_shuffle.
 	 *  \param max  Exclusive upper bound on the returned index.
 	 *  \return     A random index in [0, max). */
 	ptrdiff_t operator() (ptrdiff_t max)
@@ -484,17 +498,20 @@ void RSA::RSA_II_Parallel( size_t NumInsertedLimit, size_t TrialTime)
 	while(nbrinserted>NumInsertedLimit)
 	{
 		nbrinserted=0;
+		//Draw one base seed serially (no shared-RNG draw inside the parallel region);
+		//each thread then seeds deterministically from base seed + thread index.
+		int baseSeed = (int)(this->gen.RandomDouble()*10000);
 #pragma omp parallel default(shared)
 		{
 			SpherePacking myList(*this->pSpheres);
-			RandomGenerator mygen((int)(this->gen.RandomDouble()*10000)+omp_get_thread_num());
+			RandomGenerator mygen(baseSeed + omp_get_thread_num());
 			std::vector<RSA_II_TempStruct> myresults;
 #pragma omp for
 			for(signed long i=0; i<(signed long)TrialTime; i++)
 			{
 				double temp[MaxDimension];
-				for(int j=0; j<this->dimension; j++)
-					this->pVoxels->GetRandomCoordinate(temp, mygen);
+				//one random coordinate per trial (the per-dimension loop discarded all but the last draw)
+				this->pVoxels->GetRandomCoordinate(temp, mygen);
 				if(myList.CheckOverlap(Coord2Vect(temp), this->radius)==false)
 				{
 					myresults.push_back(RSA_II_TempStruct());
@@ -552,9 +569,26 @@ double RSA::Density(void) const
 }
 void RSA::GetVoxelList(double VoxelDiameterRatio)//get original voxel list
 {
+	//Refuse to build the voxel list with a non-positive radius (it would divide by zero below).
+	if (this->radius <= 0.0) {
+		std::cerr << "RSA::GetVoxelList: non-positive sphere radius " << this->radius
+				  << "; cannot build the voxel list.\n";
+		return;
+	}
 	unsigned long rank=std::floor( std::sqrt(this->pSpheres->GetBasisVector(0).Modulus2())/this->radius/2.0/VoxelDiameterRatio);
-	this->pVoxels=new VoxelList(this->dimension, rank);
-	this->pVoxels->GetOriginalList(* this->pSpheres, this->radius);
+	if (rank < 1)
+		rank = 1;
+	if (rank > 65535) {//voxel indices are stored as unsigned short; clamp to the representable range
+		std::cerr << "RSA::GetVoxelList: voxel rank " << rank << " exceeds the representable range; clamping to 65535.\n";
+		rank = 65535;
+	}
+	//Build the new list fully before releasing the old one. Holding it in a unique_ptr keeps the
+	//allocation from leaking if GetOriginalList() throws; ownership transfers only on success.
+	std::unique_ptr<VoxelList> newVoxels(new VoxelList(this->dimension, rank));
+	newVoxels->GetOriginalList(* this->pSpheres, this->radius);
+	if (this->pVoxels != nullptr)
+		delete this->pVoxels;
+	this->pVoxels = newVoxels.release();
 }
 void RSA::SplitVoxel(bool parallel, int checklevel)
 {
@@ -673,7 +707,7 @@ SpherePacking GenerateRSAPacking(int dimension, unsigned long nbrsphere, short n
 	}
 	if(tryagain)
 	{
-		delete con1.pVoxels;
+		//GetVoxelList() releases any existing voxel list internally, so no manual delete here.
 		con1.GetVoxelList(voxelratio);
 		while(con1.pVoxels->NumVoxel()!=0)
 		{
@@ -699,23 +733,10 @@ SpherePacking GenerateRSAPacking(int dimension, unsigned long nbrsphere, short n
 }
 
 double Rc(DimensionType d, double numDensity) {
-	double volumeFraction = 0;
-	double r = 0;
-	switch (d) {
-	case 1:
-		volumeFraction = 2.0 / 3.0;
-		break;
-	case 2:
-		volumeFraction = 0.54707;
-		break;
-	case 3:
-		volumeFraction = 0.38413;
-		break;
-	default:
-		std::cout << "RandomSequentialAddition::Rc : out-of-range";
-		break;
-	}
-
-	r = pow(volumeFraction / (numDensity * HyperSphere_Volume((int)d, 1.0)), 1.0 / (double)d);
+	//Use the single canonical saturation-fraction table (see SaturatedPackingFraction).
+	//NOTE: the 1D saturation fraction here changed from the previous 2/3 to 0.7476
+	//(Renyi's car-parking constant), so Rc now agrees with PhiC in 1D.
+	double volumeFraction = SaturatedPackingFraction(d);
+	double r = pow(volumeFraction / (numDensity * HyperSphere_Volume((int)d, 1.0)), 1.0 / (double)d);
 	return r;
 }

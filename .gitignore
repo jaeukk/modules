@@ -8,3 +8,5 @@ obj/
 # Runtime-generated logs
 DetailedLog.txt
 *CLAUDE.md
+# Multi-agent orchestration runtime files (task contracts, leases, worker outputs)
+_multiagent/

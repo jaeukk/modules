@@ -44,6 +44,21 @@ visualization := $(MODS)/visualization
 phonons       := $(MODS)/phonons
 lp            := $(MODS)/lp
 
+# models/ is organized into per-model subdirs (RSA/ HSF/ Pert/ Lattices/ RandOrg/).
+# Expose them as flat include paths so consumers keep #include <RSA_Gen.h>,
+# <HardSphereFluids.h>, <GenPerturb.h>, <Lattice.h>, <RandomOrganization.h>, ...
+# unchanged.  models_subdirs_INC is folded into COMMON_INC (hence CFLAGS) below, so
+# every consumer resolves the flat model headers with no edit to its own makefile;
+# models_INC is the full flag list for makefiles that want it explicitly.  The
+# $(models) path var itself stays a single directory (used for -C and obj paths).
+# CAVEAT: flat resolution rides on models_subdirs_INC being inside the default
+# CFLAGS (via COMMON_INC).  A consumer that OVERRIDES CFLAGS on the command line
+# (CFLAGS=...) drops those includes and must then add $(models_INC) to its own -I
+# flags explicitly to keep #include <RSA_Gen.h> / <Lattice.h> / ... resolving.
+models_subdirs_INC := -I$(models)/RSA -I$(models)/HSF -I$(models)/Pert \
+                      -I$(models)/Lattices -I$(models)/RandOrg
+models_INC := -I$(models) $(models_subdirs_INC)
+
 #----- Library prefix auto-detection ------------------------------------------
 # First candidate whose include/gsl/gsl_matrix.h exists wins.
 GSL_CANDIDATES   := $(HOME)/install $(HOME)/lib/gsl /usr/local /usr
@@ -110,7 +125,10 @@ DEBUG ?= -g
 OPT   ?= -O3
 
 # Base flags shared by every module.  A module adds its own -I$(core) etc.
-COMMON_INC := $(GSL_INC)
+# The per-model subdir includes are added here (globally) so the reorganized
+# models/ headers resolve flat (#include <RSA_Gen.h> ...) for every consumer that
+# already builds with $(CFLAGS) -- no consumer makefile needs the subdir -I.
+COMMON_INC := $(GSL_INC) $(models_subdirs_INC)
 BASE_LIBS  := -lm $(GSL_LIB)
 
 CFLAGS ?= -Wall $(STD) $(DEBUG) $(OPT) $(OMP_FLAG) $(PREPRO) $(COMMON_INC) -c

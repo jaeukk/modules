@@ -1,5 +1,5 @@
 #include "HardSphereFluids.h"
-#include "GenerateConfigs.h"
+#include <GenerateConfigs.h>
 void HSF::LatticePacking(int numPrts, double PackingFraction, std::vector<GeometryVector> & basis, SpherePacking & config) {
 	int dimension = basis.size();
 	int L = (int)ceil(pow(numPrts, 1.0 / dimension));
@@ -12,10 +12,10 @@ void HSF::LatticePacking(int numPrts, double PackingFraction, std::vector<Geomet
 	config = SpherePacking(dimension, &basis_cell[0], 1.0);
 
 	//Check the realizability!
-	//Determine the particle radius
-	double r = sqrt(basis[0].Modulus2());
+	//Determine the particle radius = half the nearest lattice spacing (avoid overlaps)
+	double r = 0.5*sqrt(basis[0].Modulus2());
 	for (int i = 1; i < dimension; i++)
-		r = std::min(r, sqrt(basis[i].Modulus2()));
+		r = std::min(r, 0.5*sqrt(basis[i].Modulus2()));
 
 	double MaxPackingFraction = HyperSphere_Volume(dimension, r)*numPrts / config.PeriodicVolume();
 	if (MaxPackingFraction >= PackingFraction) {
@@ -41,9 +41,8 @@ void HSF::LatticePacking(int numPrts, double PackingFraction, std::vector<Geomet
 		{
 			size_t numRemoval = (int)floor((MaxPackingFraction - PackingFraction)*config.PeriodicVolume() / HyperSphere_Volume(dimension, r));
 			if (numRemoval >= config.NumParticle() - numPrts) {
-				RandomGenerator g;
 				for (int i = config.NumParticle() ; i > numPrts; i--)
-					config.DeleteParticle((int)floor(config.NumParticle()*(g.RandomDouble())));
+					config.DeleteParticle((int)floor(config.NumParticle()*(this->rng[0].RandomDouble())));
 			}
 
 		}
@@ -53,6 +52,11 @@ void HSF::LatticePacking(int numPrts, double PackingFraction, std::vector<Geomet
 			config.Rescale_prtOnly(factor);
 			std::cout << "initial lattice packing is successfully generated: packing fraction = " << config.PackingFraction() <<std::endl;
 			//config.UpdateMaxRadius();
+		}
+		//Verify the generated packing is overlap-free before returning it.
+		if (config.CheckOverlap()) {
+			std::cout << "LatticePacking::the generated packing has overlaps; returning an empty packing.\n";
+			config = SpherePacking();
 		}
 	}
 	else
@@ -95,11 +99,12 @@ void HSF::LatticePacking(int numPrts, double PackingFraction, const std::string 
 HSF::HSF() {
 	this->Dimension = 0;
 	this->NumPrts = 0;
-	this->NumThreads = 0;
+	this->NumThreads = 1;
 	this->PackingFraction = 0;
 	this->MaxDispl = 1.0;
 	this->Diameter = 0;
-	this->pSpheres = new SpherePacking();
+	this->pSpheres.reset(new SpherePacking());
+	this->rng.emplace_back(RandomGenerator(0));//guarantee one generator so serial Evolve() never reads rng[0] out of bounds
 	adjusted = false;	equilibrated = false;
 }
 
@@ -140,9 +145,8 @@ HSF::HSF(int Dimension, int NumPrts, double PackingFraction): HSF() {
 		/*if (config.CheckOverlap())
 			std::cout << "particles are overlapping\n";*/
 
-		//remove excessive particles
-		RandomGenerator RNG;
-		for (int i = config.NumParticle(); i > NumPrts; i--) 
+		//remove excessive particles (deterministically drop the trailing particles)
+		for (int i = config.NumParticle(); i > NumPrts; i--)
 			config.DeleteParticle(config.NumParticle()-1);
 		
 		//Generate a cubic box
@@ -163,7 +167,7 @@ HSF::HSF(int Dimension, int NumPrts, double PackingFraction): HSF() {
 }
 
 void HSF::ReplaceConfig(const SpherePacking & newPacking) {
-	this->pSpheres =  new SpherePacking(newPacking);
+	this->pSpheres.reset(new SpherePacking(newPacking));
 	this->Dimension = newPacking.GetDimension();
 	this->NumPrts = newPacking.NumParticle();
 	this->PackingFraction = this->pSpheres->PackingFraction();
@@ -179,6 +183,9 @@ void HSF::ReplaceConfig(const SpherePacking & newPacking) {
 	}
 	adjusted = false;
 	equilibrated = false;
+	//A replaced packing is treated as monodisperse until Switch2Polydisperse() is called again.
+	this->isMonodisperse = true;
+	this->pSphereRadii.clear();
 
 	//if (this->NumThreads > 1)
 	//	this->pSpheres->PrepareIterateThroughNeighbors(3.0*this->Diameter);
@@ -192,10 +199,19 @@ void HSF::RescaleConfig(double rho) {
 }
 
 double HSF::Evolve() {
-	if (this->NumThreads > 1)
-		return 0;//return	Evolve_Parallel();
-	else
-		return	Evolve_Serial();
+	if (this->rng.empty()) {
+		std::cerr << "HSF::Evolve: no random generator available.\n";
+		return 0;
+	}
+	if (this->NumThreads > 1) {
+		//Parallel evolution is not implemented; fall back to serial with a one-time warning.
+		//atomic exchange makes the "warn once" race-free under concurrent calls.
+		static std::atomic<bool> warned{false};
+		if (!warned.exchange(true)) {
+			std::cout << "HSF::Evolve: parallel evolution is not implemented; falling back to serial.\n";
+		}
+	}
+	return Evolve_Serial();
 }
 
 double HSF::Evolve_Serial() {
@@ -210,7 +226,7 @@ double HSF::Evolve_Serial() {
 				TrialMove(dis, this->rng[0]);
 				dis = dis + this->pSpheres->GetRelativeCoordinates(i);
 				this->pSpheres->IterateThroughNeighbors(dis, D, 
-					[D2, &overlap, i](const GeometryVector & shift, const GeometryVector &latticeShift, const signed long *PeriodicShift, size_t sourceParticles)->void{
+					[D2, &overlap, i](const GeometryVector & shift, const GeometryVector & /*latticeShift*/, const signed long * /*PeriodicShift*/, size_t sourceParticles)->void{
 					if (sourceParticles != i) { overlap = (shift.Modulus2() < D2); }
 				}, &overlap);
 				if (!overlap) {
@@ -233,7 +249,7 @@ double HSF::Evolve_Serial() {
 				TrialMove(dis, this->rng[0]);
 				dis = dis + this->pSpheres->GetRelativeCoordinates(i);
 				this->pSpheres->IterateThroughNeighbors(dis, D, 
-					[&overlap, &i, this](const GeometryVector & shift, const GeometryVector &latticeShift, const signed long *PeriodicShift, size_t sourceParticles)->void{
+					[&overlap, &i, this](const GeometryVector & shift, const GeometryVector & /*latticeShift*/, const signed long * /*PeriodicShift*/, size_t sourceParticles)->void{
 					if (sourceParticles != i) { 
 						double Dij = this->pSphereRadii[i] + this->pSphereRadii[sourceParticles];
 						overlap = (shift.Modulus2() < Dij*Dij); }
@@ -255,35 +271,6 @@ double HSF::Evolve_Serial() {
 }
 
 /*
-double HSF::Evolve_Parallel() {
-	double acceptance = 0.0;
-	double D = this->Diameter;
-	double D2 = D * D;
-	if (ensembleType == 0) {
-		GeometryVector dis;
-		for (int i = 0; i < this->NumPrts; i++) {
-			bool overlap = false;
-			TrialMove(dis, this->rng[0]);
-			dis = dis + this->pSpheres->GetRelativeCoordinates(i);
-			this->pSpheres->IterateThroughNeighbors(dis, D,
-				[D2, &overlap, i](const GeometryVector & shift, const GeometryVector &latticeShift, const signed long *PeriodicShift, size_t sourceParticles)->void {
-				if (sourceParticles != i) { overlap = (shift.Modulus2() < D2); }
-			}, &overlap);
-			if (!overlap) {
-				acceptance++;
-				this->pSpheres->MoveParticle(i, dis);
-			}
-		}
-		acceptance /= (double)this->NumPrts;
-	}
-	else if (ensembleType == 1) {
-		std::cout << "NPT is not ready yet\n";
-	}
-
-	return acceptance;
-}
-*/
-/*
 *	Measure g_2 within a range of D<r<D+dD
 *	dD is proportional to .1 * 10^4/ N
 */
@@ -297,7 +284,7 @@ double HSF::g2_at_D() {
 //#pragma omp parallel for 
 	for (size_t i = 0; i < this->NumPrts; i++) {
 		this->pSpheres->IterateThroughNeighbors(this->pSpheres->GetRelativeCoordinates(i), D_,
-			[&result,i](const GeometryVector & shift, const GeometryVector & latticeShift, const signed long *PeriodicShift, size_t Source)->void {
+			[&result,i](const GeometryVector & /*shift*/, const GeometryVector & /*latticeShift*/, const signed long * /*PeriodicShift*/, size_t Source)->void {
 			if(i!=Source)
 				result++;
 		}

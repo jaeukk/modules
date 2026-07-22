@@ -8,17 +8,26 @@
  * Collections of point configurations and spherepackings that you can simply construct.
  * They can be used as initial configurations.
 	//What can we generate?
-	----- Embeded 
+	----- Lattices/ (Lattice.h)
 	** lattice packing
-	** Perturbed lattices
-	** Imperfect lattices with vacancies
+	** Perturbed lattices (Pert/GenPerturb.h)
+	** Imperfect lattices with vacancies (Pert/GenPerturb.h)
 	** Paracrystals (in progress)
-	
-	----- Imported
-	** RSA
+
+	----- RSA/ (RSA_Gen.h)
+	** Saturated RSA (sphere packings)
+	----- HSF/ (HSF_Gen.h)
 	** equilibrium hard-sphere fluids
+	----- DPP/
 	** Determinantal point processes (TODO)
+	----- Jamming
 	** Dense Packing via LS algorithm (TODO)
+
+ * The per-model generator classes were split into subdir headers during the
+ * reorganization; this header keeps the ConfigGen base, PoissonPtGen, the
+ * Jammed_Gen stub, the predefined-lattice helpers, Echo, and numK_points, and
+ * re-includes the split headers at the bottom so that consumers which only
+ * #include <GenerateConfigs.h> keep seeing LatticeGen / GenPerturb / GenPtsDefect.
  */
 
 #ifndef GENERATECONFIGS
@@ -29,11 +38,17 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <functional>
+#include <cstring>
+#include <cctype>
+#include <cmath>
+#include <ctime>
+#include <memory>
 
-#include "GeometryVector.h"
-#include "PeriodicCellList.h"
-#include "RandomGenerator.h"
-#include "etc.h"
+#include <GeometryVector.h>
+#include <PeriodicCellList.h>
+#include <RandomGenerator.h>
+#include <etc.h>
 
 
 /** \brief Give basis vectors of well-known lattices
@@ -59,6 +74,15 @@ void GetPredefinedCrystals(const std::string & crystalName, std::vector<Geometry
  *  \return                 the number of k-points. */
 size_t numK_points(PeriodicCellList<Empty> & FundamentalCell, std::vector<GeometryVector> & ks);
 
+/** \brief Read a value from an input stream and echo it to an output stream.
+ *  \tparam T        Type of the value to read and echo.
+ *  \param ifile     Input stream to read from.
+ *  \param ofile     Output stream to echo to.
+ *  \param variable  Receives the value read from ifile. */
+template<typename T> inline void Echo(std::istream & ifile, std::ostream & ofile, T & variable) {
+	ifile >> variable;	ofile << variable << "\n";
+}
+
 /*
 	Callable types to generate configurations
 	Instructions to the Constructors
@@ -80,6 +104,19 @@ public:
 
 	/** A default constructor of ConfigGen. */
 	ConfigGen() { this->rho = 1.0; this->numPrts = 0; this->d = 1; this->numThreads = 1; };
+
+	/** \brief Fully-parametrized constructor.
+	 *  \param dimensions  Spatial dimension.
+	 *  \param numPrts     Number of particles.
+	 *  \param rho         Number density. */
+	ConfigGen(int dimensions, int numPrts, double rho);
+
+	/** \brief Construct a point process interactively from streams.
+	 *  Reads dimension, particle number, and number density in that order.
+	 *  \param ifile  Input stream supplying the parameters.
+	 *  \param ofile  Output stream for prompts and echoes. */
+	ConfigGen(std::istream & ifile, std::ostream & ofile);
+
 	/** \brief A pure virtual function to construct a point configuration.
 	 *  \param[out] c	A point configuration. */
 	virtual void GenerateC(Configuration & c) = 0;
@@ -91,36 +128,41 @@ public:
 	//Change system parameters
 	/** \brief A virtual member function to change number density (must be redefined).
 	 *  \param rho	new number density. */
-	virtual void SetRho(double rho) { std::cerr << "SetRho() is undefined" << std::endl; };
+	virtual void SetRho(double rho) { (void)rho; std::cerr << "SetRho() is undefined" << std::endl; };
 
 	/** \brief A virtual member function to change particle number (must be redefined).
 	 *  \param num	new particle numbers. */
-	virtual void SetNumPrts(int num) { std::cerr << "SetNumPrts() is undefined" << std::endl; };
+	virtual void SetNumPrts(int num) { (void)num; std::cerr << "SetNumPrts() is undefined" << std::endl; };
 
 	/** \brief A virtual member function to change the packing fraction (must be redefined).
 	 *  \param phi	new packing fraction. */
-	virtual void SetPackingFraction(double phi) { std::cerr << "SetPackingFraction() is undefined" << std::endl; };	//must be redefined
+	virtual void SetPackingFraction(double phi) { (void)phi; std::cerr << "SetPackingFraction() is undefined" << std::endl; };	//must be redefined
 
-	/** \brief Get the number density. (CLAUDE)
+	/** \brief Get the number density.
 	 *  \return the number density.*/
 	virtual double GetRho() { return this->rho; };
 
-	/** \brief Get the particle number. (CLAUDE)
+	/** \brief Get the particle number.
 	 *  \return the particle number.*/
 	virtual size_t GetNumPrts() { return this->numPrts; };
 
 	/** \brief Redefin the number of threads that are used to construct realizations.
 	 *  \param numThreads  new number of threads. */
-	virtual void SetNumThreads(int numThreads) { this->numThreads = numThreads; };
+	virtual void SetNumThreads(int numThreads) {
+		if (numThreads > 0)
+			this->numThreads = (size_t)numThreads;
+		else
+			std::cerr << "SetNumThreads: number of threads must be positive." << std::endl;
+	};
 
 	/** \brief A pure virutal member function to input extra parameters.
 	 *  \param[in] option	the number of option.
 	 *  \param[in] input		An input stream.
 	 *  \param[out] output	An output stream.
 	 */
-	virtual void SetAdditionalOption(const std::string &option, std::istream & input, std::ostream &output) { output << "Uncrecognized command!\n"; /*by default, accept no additional option*/ }
+	virtual void SetAdditionalOption(const std::string & option, std::istream & input, std::ostream &output) { (void)option; (void)input; output << "Uncrecognized command!\n"; /*by default, accept no additional option*/ }
 
-	/** \brief Get the spatial dimension. (CLAUDE)
+	/** \brief Get the spatial dimension.
 	 *  \return the spatial dimension. */
 	DimensionType GetDimension() {
 		return this->d;
@@ -131,7 +173,7 @@ public:
 };
 
 ///* Generate an empty periodic fundamental cell */
-//struct EmptyBox : public ConfigGen 
+//struct EmptyBox : public ConfigGen
 //{
 //protected:
 //	Configuration F_Cell;
@@ -139,8 +181,8 @@ public:
 //	virtual void SetBasis(const std::vector<GeometryVector> & basis);
 //public:
 //	/*** Constructors **********
-//	 * Default Constructor 
-//	 * Fully parametrized 
+//	 * Default Constructor
+//	 * Fully parametrized
 //	 * Name-parametrized
 //	 * CMD interfaces
 //	 * Copy
@@ -157,116 +199,6 @@ public:
 //	virtual void GenerateP(SpherePacking & c) { c = SpherePacking(this->F_Cell, 0.0); };
 //};
 
-/**	/brief A class to construct a periodic point pattern or sphere packing.
- *  It stores a fundamental cell of a sphere packing. */
-class LatticeGen : public ConfigGen
-{
-	std::vector<size_t> NumInSide;	//< NumInSide[i] = the number of unit cells in the ith direction, for i=0, ..., d-1.
-
-protected:
-	double maxPhi;					//< maximal packing fraction. 
-	SpherePacking F_Cell;			//<	A fundamental cell
-//	virtual void SetBasis(const std::vector<GeometryVector> & basis);
-public:
-	/** A default constructor. */
-	LatticeGen() : ConfigGen() { this->maxPhi = 0; this->F_Cell = SpherePacking(); };
-	
-	/** A constructor by a SpherePacking.
-	 * If particle radii = 0, particles are considered "monodisperse" and the radius are set to be the maximum. */
-	LatticeGen(const SpherePacking & unitcell) {
-		NumInSide = std::vector<size_t>(unitcell.GetDimension(), 1);
-		F_Cell = SpherePacking(unitcell);
-		numPrts = F_Cell.NumParticle();
-		rho = numPrts / F_Cell.PeriodicVolume();
-		d = F_Cell.GetDimension();
-
-		//Particle radii = 0.5 * nearest neighbor distance.
-		{
-			bool uninitializedPrtRadii = false;		//True = at least one particle has a nonpositive radius.
-			for (size_t i = 0; i < this->numPrts; i++)
-				uninitializedPrtRadii |= (F_Cell.GetCharacteristics(i) <= 0.0);
-
-			if (F_Cell.CheckOverlap()) {
-				std::cout << "Particles are overlapping. Their sizes are adjusted.\n";
-				uninitializedPrtRadii = false;
-			}
-
-			if (uninitializedPrtRadii) {
-				std::cout	<< "Paritlce radii are not initialized."
-							<<"Particle radii are set to be nearest neighbor distances.\n";
-				/* at least one particle has a nonpositive radius 
-				=> reset particle radii such that they are half of nearest neighbor distances.*/
-				for (size_t i = 0; i < this->numPrts; i++)
-					F_Cell.UpdateCharacteristics(0.5*F_Cell.NearestParticleDistance(i), i);
-			}
-		}
-		
-		maxPhi = this->UpdateMaxPhi();	
-	}
-
-	/** \brief A constructor by name of lattices.
-	 *  \param name	The name of predefined periodic packings. */
-	LatticeGen(const std::string & name);
-
-	/** A constructor by an input stream. */
-	LatticeGen(std::istream & ifile, std::ostream & ofile);
-
-	/** A copy constructor. */
-	LatticeGen(const LatticeGen & source) : LatticeGen(source.F_Cell) {};
-
-
-	/** \brief A member function to update and return maximum packing fraction.
-	 *  \return Maximal packing fraction.*/
-	double UpdateMaxPhi();
-
-	/** \brief Insert a spherical particle in the fundamental cell.
-	 *  \param relativeCoorinates	Relative coordinates of a particle.
-	 *  \param radius	Particle radius. The default value is 0.0. */
-	void AddPrt(const GeometryVector & relativeCoorinates, double radius = 0.0);
-
-	/** \brief Remove the ith particle in the fundamental cell.
-	 *  \param i The index of a particle that is removed. */
-	void RemovePrt(size_t i);
-
-	/** \brief Get basis vectors of a fundamental cell.
-	 *  \param[out] basis		The basis vectors of the fundamental cell. */
-	void GetBasisVectors(std::vector<GeometryVector> & basis) {
-		basis.clear();
-		for (int i = 0; i < this->d; i++)
-			basis.push_back(this->F_Cell.GetBasisVector(i));
-	}
-
-	/** \brief Rescale particle size.
-	 *  \param newPhi	A new packing fraction. */
-	virtual void SetPackingFraction(double newPhi);
-
-	/** \brief Rescale the cell size.
-	 *  \param newRho	A new number density. */
-	virtual void SetRho(double newRho);
-
-	/** \brief Resize particle radii to attain a maximal packing fraction. */
-	void Set2MaxPhi();
-
-	/** \brief Set the number of unit cells.
-	 *  \param numInEachSide The number of unit cells in each direction. */
-	void SetNumCells(size_t numInEachSide) {	this->NumInSide = std::vector<size_t>(this->d, numInEachSide);	};
-
-	/** \brief Set the number of unit cells.
-	 *  \param numInSide	The number of unit cells in each direction (entry i for the ith direction). */
-	void SetNumCells(const std::vector<size_t> & numInSide) { this->NumInSide = std::vector<size_t>(numInSide); };
-
-
-	/** \brief Generate a periodic point pattern.
- 	 *  \param[out] c	A periodic Configuration that contains N[0] x...x N[d-1] unit cells. */
-	virtual void GenerateC(Configuration & c) { c = MultiplicateStructure(Configuration(this->F_Cell, "a"), this->NumInSide); }
-
-	/** \brief Generate a periodic sphere packing.
-	 *  \param[out] c	A periodic SpherePacking that contains N[0] x...x N[d-1] unit cells. */
-	virtual void GenerateP(SpherePacking & c);
-
-};
-
-
 
 /** \breif A class to construct a simple Poisson point pattern. */
 class PoissonPtGen : public ConfigGen {
@@ -275,9 +207,9 @@ protected:
 					//< 1: particle number can vary
 	RandomGenerator rng;	//< a random number generator
 
-	/** \brief Expected number of particles in a cell of the given volume. (CLAUDE)
-	 *  \param cell_volume  Volume of the fundamental cell.
-	 *  \return             Rounded mean count (mode 0) or a Poisson draw (mode 1). */
+	/** \brief Determine the particle count for a cell of the given volume.
+	 *  \param cell_volume Volume of the fundamental cell.
+	 *  \return The rounded mean count in fixed-count mode, a Poisson-distributed draw in Poisson mode, or zero for an invalid mode. */
 	inline size_t GetExpectedNumPrts(double cell_volume) {
 		double mean = cell_volume * this->rho;
 		if (mode == 0) {
@@ -328,22 +260,22 @@ public:
 			size_t N = this->GetExpectedNumPrts(volume);
 			for (size_t i = 0; i < N; i++) {
 				//Randomly place a single point inside the fundamental cell.
-				c.Insert("a", this->rng);	
+				c.Insert("a", this->rng);
 			}
 		}
-	
+
 	}
 
 
 	/** \brief Undefined member functions !!
 	 *  \param num  Ignored. */
-	virtual void SetNumPrts(int num) { std::cout << "This is not used\n"; }
-	/** \brief Unused override: packing fraction is meaningless for a Poisson point pattern. (CLAUDE)
+	virtual void SetNumPrts(int num) { (void)num; std::cout << "This is not used\n"; }
+	/** \brief Unused override: packing fraction is meaningless for a Poisson point pattern.
 	 *  \param phi  Ignored. */
-	virtual void SetPackingFraction(double phi) { std::cout << "PoissonPtgen::packing fraction is unnecessary\n"; }
-	/** \brief Unused override: sphere-packing generation is not defined for Poisson points. (CLAUDE)
+	virtual void SetPackingFraction(double phi) { (void)phi; std::cout << "PoissonPtgen::packing fraction is unnecessary\n"; }
+	/** \brief Unused override: sphere-packing generation is not defined for Poisson points.
 	 *  \param[out] c  Ignored. */
-	virtual void GenerateP(SpherePacking & c) { std::cout << "PoissonPtGen::GenerateP is not defined.\n"; }
+	virtual void GenerateP(SpherePacking & c) { (void)c; std::cout << "PoissonPtGen::GenerateP is not defined.\n"; }
 
 };
 
@@ -358,496 +290,15 @@ class Jammed_Gen : public ConfigGen {
 #endif // !USE_LS
 
 
-
-/********* Transformation **********
- * Converts a given point process to another by a specified method
- * Require an initial configuration.
- * Default initial system = d-dimensional cubic lattice
- **********************************/
-
-/** /brief A struct to introduce point defects to a given system. 
- *	It stores the mean of point defect concentration = (# of vacancies) / (total # of points ). 
- *  Unnecessary information; dimension, number density, the number of particles */
-class GenPtsDefect :ConfigGen {
-protected:
-	double MeanPointDefects;		//< mean fraction of vacancies
-	int dist_type;					//< 0 = fixed number of point defects
-									//< 1 = fluctuating number of point defects (follow Poisson distribution).
-	int DefectType;					//< 0 = vacancy
-									//< 1 = interstitials.
-	RandomGenerator RNG;			//< a random number generator	
-	/** \brief A member function to get the total number of point defects.
-	 *  \param TotalPrts	The total number of particles in the initial configuration.
-	 *  \return The expected number of point defects.
-	 */
-	inline size_t GetNumDefects(size_t TotalPrts){
-		double mean = TotalPrts * MeanPointDefects;
-		if (dist_type == 0) {
-			return (int)round(mean);
-		}
-		else if (dist_type == 1) {
-			return RNG.PoissonRNG(mean);
-		}
-		else {
-			std::cerr << "Undefined distributions\n";
-			return 0;
-		}
-	}
-public:
-	/** \brief A default constructor.
-	 *  \param mean				The mean of concentration of point defects (<1).
-	 *  \param distribution_type	Distribution of the number of point defects (0 => fixed, 1 => Poisson distribution).
-	 *  \param defect_type		Type of point defects (0 = vacancy, 1 = interstitials). 	 */
-	GenPtsDefect(double mean, int distribution_type, int defect_type) : ConfigGen(), MeanPointDefects(mean), dist_type(distribution_type), DefectType(defect_type) {
-		if (mean > 1.0) {	
-			std::cout << "GenPtsDefect:: mean is too high!" << std::endl;	
-			return;
-		}
-		if (distribution_type != 0 || distribution_type != 1) { 
-			std::cout << "GenPtsDefect:: undefined distributions" << std::endl;
-			return;
-		}
-		if (defect_type != 0 || defect_type != 1) {
-			std::cout << "GenPtsDefect:: undefined defect types" << std::endl;
-			return;
-		}
-	};
-	
-	/** \brief A copy constructor.
-	 *  \param source  The GenPtsDefect to copy. */
-	GenPtsDefect(const GenPtsDefect & source) : GenPtsDefect(source.MeanPointDefects, source.dist_type, source.DefectType) {}
-
-	/** \brief A constructor via streams.
-	 *  \param ifile  Input stream supplying the parameters.
-	 *  \param ofile  Output stream for prompts and echoes. */
-	GenPtsDefect(std::istream & ifile, std::ostream & ofile);
-
-	/** \brief A member function to reset.
-	 *  \param numberdensity  Ignored (GenPtsDefect doesn't use number density). */
-	virtual void SetRho(double numberdensity) { std::cout << "GenPtsDefect doesn't use number density\n"; }
-	/** \brief Unused override: GenPtsDefect doesn't use the number of particles. (CLAUDE)
-	 *  \param numPrts  Ignored. */
-	virtual void SetNumPrts(int numPrts) { std::cout << "GenPtsDefect doesn't use the number of particles\n"; }
-
-	/** \brief A member function to introduce point defects in a Configuraiton object.
-	 *  \param[in,out] c	A point configuration in which point defects are introduced.
-	 */
-	virtual void GenerateC(Configuration &c) {
-		if (c.NumParticle() > 0) {
-			size_t num_defects = this->GetNumDefects(c.NumParticle());
-			if (this->DefectType == 0) {
-				//Point vacancies;
-				int idx = 0;
-				for (size_t i = 0; i < num_defects; i++) {
-					idx = (int)floor(c.NumParticle()*RNG.RandomDouble());
-					c.DeleteParticle(idx);
-				}
-			}
-			else if (this->DefectType == 1) {
-				//Interstitial
-				GeometryVector rel_pos(static_cast<int>(c.GetDimension()));
-				for (size_t i = 0; i < num_defects; i++) {
-					for (int j = 0; j < c.GetDimension(); j++)
-						rel_pos.x[j] = RNG.RandomDouble();
-
-					c.Insert("a", rel_pos);
-				}
-			}
-			else {
-				std::cerr << "Undefined defect_type" << std::endl;	return;
-			}
-		}
-		else {
-			std::cout << "c should have at least 1 particle." << std::endl;
-			return;
-		}
-	}
-
-	/** \brief A memebr function to introduce point defects in a SpherePacking object.
-	 *  \param[out] c  Sphere packing (generation not implemented).
-	 */
-	virtual void GenerateP(SpherePacking & c) {
-		std::cout << "GenPtsDefects::GenerateP is not implemented.\n";
-		return;
-	}
-	/** \brief Reset a seed.
-	 *  \param seed  New seed for the random number generator. */
-	void SetSeed(int seed) { this->RNG.seed(seed); }
-};
-
-
-/** \brief A class to stochastically and independently displace particle positions by a given distribution!
-	This class doesn't require "the number of particles", "number density"
-*/
-class GenPerturb : public ConfigGen
-{
-protected:
-	std::vector<double> parameters;			//< parameters for iCMD
-	std::function<double (double) > iCMD;	//< the inverse of cummulative function of radial displacements.
-											//< iCMD: [0,1]-> [0, infty].
-	std::function<GeometryVector(RandomGenerator &)> GetRandomDispl;	//< A Lambda function to get a random displacement.
-	RandomGenerator rng;					//< a number number generator
-public:
-	/** \brief A constructor.
-	 *  \param dimension   Spatial dimension.
-	 *  \param inverseCMD  Inverse cumulative distribution of the radial displacement.
-	 *  \param seed        Seed for the random number generator. */
-	GenPerturb(size_t dimension, const std::function <double(double)> & inverseCMD, int seed = 0) : ConfigGen() {
-		this->d = dimension;
-		this->iCMD = inverseCMD;
-		this->rng.seed(seed);
-
-		this->GetRandomDispl 
-			= [this](RandomGenerator &)->GeometryVector 
-		{
-			GeometryVector pos = RandomUnitVector(this->d, this->rng);
-			pos = this->rng.RandomDouble(this->iCMD) * pos;
-			return pos;
-		};
-	}
-
-	/** \brief A constructor via an input stream.
-	 *  Predefined distributions = uniform, gaussian, powerlaw.
-	 *  If Type of distribution = etc => it requries the inverse of cumulative distribution function.
-	 *  \param ifile	Input stream supplying the parameters.
-	 *  \param ofile	Output stream for prompts and echoes.
-	 *  \param inverseCMD	The inverse function of cumulative distribution of radial displacement.  */
-	GenPerturb(std::istream & ifile, std::ostream & ofile, const std::function <double(double)> & inverseCMD = nullptr) : ConfigGen() {
-		ofile	<< " ----------------------------------\n "
-				<< "             GenPerturb            \n"
-				<< " ----------------------------------\n" << std::endl;
-		ofile << "Dimension = ";
-		ifile >> this->d;
-		
-		std::string name;
-		ofile << "Type of distribution = ";
-		ifile >> name;
-		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-		if (strcmp(name.c_str(), "uniform")==0) {
-			double maxRadius;
-			ofile << "Maximal radius (positive real) = ";
-			ifile >> maxRadius;
-			parameters.push_back(maxRadius);
-
-			this->GetRandomDispl = [this](RandomGenerator & rng)->GeometryVector {
-				GeometryVector result = RandomUnitVector(this->d, rng);
-				double r;
-
-				switch (this->d)
-				{
-				case 1:
-					r = this->rng.RandomDouble();	break;
-				case 2:
-					r = sqrt(this->rng.RandomDouble());	break;
-				case 3:
-					r = cbrt(this->rng.RandomDouble()); break;
-				default:
-					r = pow(this->rng.RandomDouble(), 1.0 / this->d);
-				}
-
-				return this->parameters[0]* r *result;
-			};
-		}
-		else if (strcmp(name.c_str(), "gaussian") == 0) {
-			double standard_deviation;
-			ofile << "Input the standard deviation (positive real)";
-			ifile >> standard_deviation;
-			parameters.push_back(standard_deviation);
-
-			this->GetRandomDispl = [this](RandomGenerator & g)->GeometryVector {
-				GeometryVector x(static_cast<int>(this->d));
-				for (int i = 0; i < x.Dimension; i++) {
-					x.x[i] = g.RandomDouble_normal(this->parameters[0]);
-				}
-				return x;
-			};
-		}
-		else if (strcmp(name.c_str(), "powerlaw") == 0|| strcmp(name.c_str(), "power-law") == 0) {
-			double delta, alpha;
-			std::cout << "Input the length scale (positive real)";
-			std::cin >> delta;
-			std::cout << "Input the power exponent (positive real)";
-			std::cin >> alpha;
-			this->parameters.push_back(delta);	this->parameters.push_back(alpha);
-
-			this->iCMD = [this](double y)->double {
-				double delta = this->parameters[0], alpha = this->parameters[1];
-				if (y  <  0.5 / (1.0 + alpha))
-				{
-					return  -delta / pow(2.0*(1.0 + alpha)*y, 1.0 / alpha);
-				}
-				else if (y  <  0.5*(1.0 + alpha / (1.0 + alpha)))
-				{
-					return  (2.0*y - 1)*(1 + alpha) / alpha * delta;
-				}
-				else
-				{
-					return  delta / pow(2.0*(1.0 - y)*(1.0 + alpha), 1.0 / alpha);
-				}
-			};
-
-			/*auto f = [delta, alpha, dimension](double y)->double {
-				if(y  <  0.5 / (1.0 + alpha)) 
-				{	return  -delta / pow(2.0*(1.0 + alpha)*y, 1.0 / alpha); }
-				else if(y  <  0.5*(1.0 + alpha / (1.0 + alpha))) 
-				{	return  (2.0*y - 1)*(1 + alpha) / alpha * delta; }
-				else 
-				{	return  delta / pow(2.0*(1.0 - y)*(1.0 + alpha), 1.0 / alpha); }
-			};*/
-			this->GetRandomDispl = [this](RandomGenerator & g)->GeometryVector{
-				GeometryVector x = RandomUnitVector(this->d, g);
-				return g.RandomDouble(this->iCMD)*x;
-			};
-		}
-		else if (strcmp(name.c_str(), "etc") == 0) {
-			if (inverseCMD != nullptr) {
-				this->iCMD = inverseCMD;
-				this->GetRandomDispl = [this](RandomGenerator & g)->GeometryVector {
-					return g.RandomDouble(this->iCMD)*RandomUnitVector(this->d, g);
-				};
-			}
-			else {
-				ofile << "Distribution is not defined!" << std::endl;
-			}
-		}		
-		else{
-			ofile << "Distribution is not defined!" << std::endl;
-		}
-	}
-
-	/** \brief A copy constructor.
-	 *  \param source  The GenPerturb to copy. */
-	GenPerturb(const GenPerturb & source) : GenPerturb(source.d, source.iCMD){
-		this->parameters = std::vector<double>(source.parameters);
-		this->GetRandomDispl = source.GetRandomDispl;
-	}
-
-
-	/** \brief Reset random seed.
-	 *  \param seed  New seed for the random number generator. */
-	void SetSeed(int seed) { this->rng.seed(seed); 	}
-
-	/** \brief Stochastically displace particles in c.
-	 *  \param[in,out] c	A point configuration that will be perturbed. It should have at least one particle, and positive volume.	 */
-	virtual void GenerateC(Configuration & c) {
-		if (c.GetDimension() == this->d) {
-			if (c.NumParticle() > 0) {
-				if (c.PeriodicVolume() > 0) {
-					GeometryVector Displacement_Rel(static_cast<int> (this->d));
-
-					for (size_t i = 0; i < c.NumParticle(); i++) {
-						//A random and isotropic displacement in Cartesian coordinates.
-						Displacement_Rel = this->GetRandomDispl(this->rng);//this->rng.RandomDouble(this->iCMD) * RandomUnitVector(this->d, this->rng);
-						//Convert it into relative coordinates.
-						Displacement_Rel = c.CartesianCoord2RelativeCoord(Displacement_Rel);
-						//Displace particle i by this dispalcement.
-						c.MoveParticle(i, c.GetRelativeCoordinates(i) + Displacement_Rel);
-					}
-				}
-				else {
-					std::cout << "c should have positive volume" << std::endl;
-					return;
-				}
-			}
-			else {
-				std::cout << "c should have at least one particle." << std::endl;
-				return;
-			}
-		}
-		else {
-			std::cout << "The dimension of c should be identical to the dimension of GenPerturb" << std::endl;
-			return;
-		}
-	}
-	
-	
-	/** \brief Stochastically displace spherical particles in c.
-	 *  If particle i is overlapping with another at a new position, trial movements are made until particle i is not overlapping with others.
-	 *  \param[in,out] c	A SpherePacking that will be perutrbed. This member function ends up with a perturbed packing.*/
-	virtual void GenerateP(SpherePacking & c) {
-		if (c.GetDimension() == this->d) {
-			if (c.NumParticle() > 0) {
-				if (c.PeriodicVolume() > 0) {
-					GeometryVector	TrialPos_Rel(static_cast<int> (this->d)),	//Trial position in relative coordinates.
-									OldPos_Rel(static_cast<int> (this->d));		//Initial position in relative coordinates.			
-
-					double succ_rate = 0.0;
-					for (size_t i = 0; i < c.NumParticle(); i++) {
-						OldPos_Rel = c.GetRelativeCoordinates(i);	//Initial particle position.
-						double r = c.GetCharacteristics(i);			//Particle radius.
-						
-						if (c.NumParticle() > 1) {	//There are multiple particles!!
-							//Temporarily set aside particle i to either particle 0 or particle i-1.
-							int nextPrtIdx = (i == 0) ? 1 : i - 1;
-							c.MoveParticle(i, c.GetRelativeCoordinates(nextPrtIdx));
-							c.UpdateCharacteristics(0.0, i);
-							//Try to move particle i until it is not overlapping with others.
-							do {
-								succ_rate++;
-								//A random and isotropic displacement in Cartesian coordinates.
-								TrialPos_Rel = this->GetRandomDispl(this->rng);  //this->rng.RandomDouble(this->iCMD) * RandomUnitVector(this->d, this->rng);
-								//Convert it into relative coordinates, and add initial position.
-								TrialPos_Rel = c.CartesianCoord2RelativeCoord(TrialPos_Rel) + OldPos_Rel;
-							} while (c.CheckOverlap(TrialPos_Rel, r));
-						}
-						else {	//There is only one particle.
-							//A random and isotropic displacement in Cartesian coordinates.
-							TrialPos_Rel = this->GetRandomDispl(this->rng); //this->rng.RandomDouble(this->iCMD) * RandomUnitVector(this->d, this->rng);
-							//Convert it into relative coordinates, and add initial position.
-							TrialPos_Rel = c.CartesianCoord2RelativeCoord(TrialPos_Rel) + OldPos_Rel;
-						}
-						//Move particle i into a new position and recover its radius.
-						c.MoveParticle(i, TrialPos_Rel);
-						c.UpdateCharacteristics(r, i);
-					}
-					std::cout << "Success rate of displacing particles = " << c.NumParticle() / succ_rate << std::endl;
-				}
-				else {
-					std::cout << "c should have positive volume" << std::endl;
-					return;
-				}
-			}
-			else {
-				std::cout << "c should have at least one particle." << std::endl;
-				return;
-			}
-		}
-		else {
-			std::cout << "The dimension of c should be identical to the dimension of GenPerturb" << std::endl;
-			return;
-		}
-	}
-
-
-	/** \brief Undefined member functions !
-	 *  \param rho  Ignored. */
-	virtual void SetRho(double rho) { std::cout << "GenPerturb::SetRho is not defined\n"; };
-	/** \brief Unused override: GenPerturb does not use the number of particles. (CLAUDE)
-	 *  \param num  Ignored. */
-	virtual void SetNumPrts(int num) { std::cout << "GenPerturb::SetNumPrts is not defined\n"; };
-	/** \brief Unused override: GenPerturb does not use the packing fraction. (CLAUDE)
-	 *  \param phi  Ignored. */
-	virtual void SetPackingFraction(double phi) { std::cout << "GenPerturb::SetPackingFraction is not defined\n"; };
-};
-
-
-
-
-/** \brief A class to help to load and save a realization under the periodic boundary condition.
- *	This class currently supports 
-		.txt	->    ReadConfiguration
-	    .ConfigPack -> ConfigurationPack
-		.SpherePack -> SpherePackingPack	*/
-class LoadConfig : public ConfigGen {
-protected:
-	std::string LoadPrefix;
-	std::string Format;
-
-public:
-	/** \brief Load configurations.
-	 *  \param prefix		File-name prefix; when it includes a specifier (%d), it is expanded per index.
-	 *  \param fileformat	File format / extension (.txt, .ConfigPack, .SpherePack).
-	 *  \param numConfig	the number of repetitions, when prefix includes specifier (%d), searches from 0~numConfig.
-	 *  \param dataType		class type of the loaded data
-					<0: no change
-					0: Configuration
-					1: SpherePacking
-					2: Dispersions (if possible)
-	 *  \param rho			number density of the load configuration.
-					<0: no change for the original data.
-	 *  \param phi			packing fraction of the load configuration (only particle sizes are changed)
-					<0
-	*/
-	LoadConfig(const std::string & prefix, const std::string & fileformat, int numConfig, int dataType,double rho =-1.0, double phi = -1.0);
-	/** \brief Construct a configuration loader interactively. (CLAUDE)
-	 *  \param ifile  Input stream supplying the load parameters.
-	 *  \param ofile  Output stream for prompts and echoes. */
-	LoadConfig(std::istream & ifile, std::ostream & ofile);
-
-//	virtual void GenerateC(Configuration & c);
-//	virtual void GeenrateP(SpherePacking & c);
-
-};
-
-
-
-
-/*a class to use the GenerateConfig class in CLI
-	there are three modes
-		Load files
-		Empty box
-		Generate Configurations
-*/
-class GenerateConfigCLI {
-private:
-	ConfigGen * Model;
-	std::string ModelName;
-	std::function <Configuration(size_t)> getpointconfig;
-	std::function <SpherePacking(size_t)> getpackingconfig;
-public:
-	/** \brief Default constructor: build an empty CLI driver with no model. (CLAUDE) */
-	GenerateConfigCLI() {
-		Model = nullptr;
-		ModelName = "";
-		getpointconfig = nullptr;
-		getpackingconfig = nullptr;
-	}
-
-	/** \brief Construct the CLI driver and select a model from streams. (CLAUDE)
-	 *  \param ifile  Input stream supplying the model choice and parameters.
-	 *  \param ofile  Output stream for prompts and echoes. */
-	GenerateConfigCLI(std::istream & ifile, std::ostream & ofile) { SetModel(ifile, ofile); }
-
-	/** \brief change the model that it will generate.
-	 *  \param ifile  Input stream supplying the model choice and parameters.
-	 *  \param ofile  Output stream for prompts and echoes. */
-	void SetModel(std::istream &ifile, std::ostream & ofile) {
-		//Avaiable options
-		std::string temp;
-		//short count = 0;
-		
-		ofile << " Avaiable options (Load/EmptyBox/Generate)\n";
-		ifile >> temp;
-		std::transform(temp.begin(), temp.end(), temp.begin(), ::tolower);
-		if ((strcmp(temp.c_str(), "Generate") == 0) || (strcmp(temp.c_str(), "GenerateConfig") == 0)) {
-
-
-		}
-		else {
-			if ((strcmp(temp.c_str(), "Load") == 0) || (strcmp(temp.c_str(), "LoadPrefix") == 0)) {
-
-			}
-			else if ((strcmp(temp.c_str(), "EmptyBox") == 0) || (strcmp(temp.c_str(), "EmptyUnitBox") == 0)) {
-
-			}
-			this->Model = nullptr;
-		}
-	
-	}
-
-	/** \brief Destructor: delete the owned model if any. (CLAUDE) */
-	~GenerateConfigCLI() {
-		if(Model != nullptr)
-			delete Model;
-	}
-
-	/** \brief Get the i-th generated point configuration. (CLAUDE)
-	 *  \param[out] c  Receives the generated point configuration.
-	 *  \param i       Index of the configuration to generate. */
-	void GetConfigC(Configuration &c, size_t i) { c = this->getpointconfig(i); }
-	/** \brief Get the i-th generated sphere packing. (CLAUDE)
-	 *  \param[out] p  Receives the generated sphere packing.
-	 *  \param i       Index of the packing to generate. */
-	void GetConfigP(SpherePacking &p, size_t i) { p = this->getpackingconfig(i); }
-
-	/** \brief Save a point configuration to file. (CLAUDE)
-	 *  \param c  Point configuration to save. */
-	void SaveConfig(Configuration &c);
-	/** \brief Save a sphere packing to file. (CLAUDE)
-	 *  \param c  Sphere packing to save. */
-	void SaveConfig(SpherePacking &c);
-
-};
+// -----------------------------------------------------------------------------
+// Backward-compatible facade.  The per-model generator classes that used to live
+// in this header now live in per-model subdir headers.  Re-include them here (after
+// ConfigGen and the helpers are defined) so existing consumers that only
+// #include <GenerateConfigs.h> keep compiling unchanged.  The include guards make
+// the reverse include (Lattice.h / GenPerturb.h -> GenerateConfigs.h) a no-op.
+// -----------------------------------------------------------------------------
+#include "Lattices/Lattice.h"
+#include "Pert/GenPerturb.h"
 
 
 #endif

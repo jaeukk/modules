@@ -3,11 +3,14 @@
 
 #include <omp.h>
 #include <vector>
+#include <memory>
+#include <iostream>
+#include <atomic>
 
-#include "etc.h"
-#include "GeometryVector.h"
-#include "PeriodicCellList.h"
-#include "RandomGenerator.h"
+#include <etc.h>
+#include <GeometryVector.h>
+#include <PeriodicCellList.h>
+#include <RandomGenerator.h>
 
 const double tolerance = 1e-3;
 const double error = 8e-3;// -> 1e-2
@@ -30,33 +33,33 @@ public:
 	int Dimension;
 	size_t NumPrts, NumThreads;
 	double PackingFraction, MaxDispl;
-	SpherePacking * pSpheres;
+	std::unique_ptr<SpherePacking> pSpheres;
 
-	/** \brief Default constructor: build an empty hard-sphere fluid. (CLAUDE) */
+	/** \brief Default constructor: build an empty hard-sphere fluid. */
 	HSF();
-	/** \brief Build an initial hard-sphere configuration from a dense lattice packing. (CLAUDE)
-	 *  Generate a "Dimension"-dimensional hypercubic simulation box,
-	 *  place "NumPrts" particles in the arrangement of densest lattice packings,
-	 *  and shrink particle size up to "packingFraction".
-	 *  \param Dimension        Spatial dimension of the simulation box.
-	 *  \param NumPrts          Number of particles to place.
-	 *  \param packingFraction  Target packing fraction after shrinking the particles. */
+
+	/** \brief Build an initial hard-sphere configuration from a simple hypercubic lattice.
+	 *  Constructs a Dimension-dimensional cubic box, retains NumPrts lattice particles, and rescales their radii to the requested packing fraction.
+	 *  \param Dimension Spatial dimension of the simulation box.
+	 *  \param NumPrts Number of particles to retain.
+	 *  \param packingFraction Target packing fraction. */
 	HSF(int Dimension, int NumPrts, double packingFraction);
 	
-	/** \brief Seed every per-thread random number generator. (CLAUDE)
-	 *  \param seed  Base seed; generator i is seeded with seed + i*time(NULL). */
+	/** \brief Seed every per-thread random number generator.
+	 *  \param seed  Base seed; generator i is seeded deterministically with seed + i. */
 	void SetRandomSeed(int seed) {
 		for (size_t i = 0; i < this->rng.size(); i++)
-			this->rng[i].seed(seed + i*std::time(NULL));
+			this->rng[i].seed(seed + (int)i);
 	}
-	/** \brief Whether the fluid has reached equilibrium. (CLAUDE)
+
+	/** \brief Whether the fluid has reached equilibrium.
 	 *  \return true if equilibrated. */
 	bool IsEquilibrated() { return this->equilibrated; };
-	/** \brief Whether the maximum displacement has been adjusted. (CLAUDE)
+	/** \brief Whether the maximum displacement has been adjusted.
 	 *  \return true if adjusted. */
 	bool IsAdjusted() { return this->adjusted; };
 
-	/** \brief Set the number of threads and re-create the per-thread generators. (CLAUDE)
+	/** \brief Set the number of threads and re-create the per-thread generators.
 	 *  \param n  Number of threads (must be positive). */
 	void SetNumThreads(int n) {
 		if (n > 0) {
@@ -70,36 +73,40 @@ public:
 		}
 	}
 	
-	/** \brief Replace the current configuration with the given sphere packing and reset derived quantities. (CLAUDE)
+	/** \brief Replace the current configuration with the given sphere packing and reset derived quantities.
 	 *  \param newPacking  Sphere packing to copy in as the new configuration. */
 	void ReplaceConfig(const SpherePacking & newPacking);// { this->pSpheres = new SpherePacking(newPacking); }
-	/** \brief Select the statistical ensemble (NVT or NPT). (CLAUDE)
+	/** \brief Select the statistical ensemble (NVT or NPT).
 	 *  \param n  Ensemble type: 0 = canonical (NVT), 1 = isobaric (NPT, not yet implemented). */
 	void SetEnsembleType(int n) {
-		if (n < 2) {
-			ensembleType = n;
-			if (n == 0) { std::cout << "NVT (canonical) ensemble" << std::endl; }
-			else { std::cout << "NPT (isobaric) ensemble \n not ready yet. Please input 0" << std::endl; }
+		if (n == 0) {
+			ensembleType = 0;
+			std::cout << "NVT (canonical) ensemble" << std::endl;
+		}
+		else if (n == 1) {
+			//NPT is not implemented; reject the selection rather than enabling a dead branch.
+			std::cout << "NPT (isobaric) ensemble is not implemented yet. Please input 0" << std::endl;
 		}
 		else {
 			std::cout << "SetEnsembleType::Invalid input" << std::endl;
 		}
 	}
+
 	/** \brief change the max displacement.
 	 *  \param delta  New maximum trial displacement. */
 	void SetMaxDisp(double delta) { this->MaxDispl = delta; };
 	/** \brief rescale the configuration to be at number density rho.
 	 *  \param rho  Target number density. */
 	void RescaleConfig(double rho);
+
 	/** \brief run for a single MC cycle (=1 trial move/particle).
 	 *  \return acceptance rate. */
 	double Evolve();
-	/** \brief Run a single MC cycle serially (one trial move per particle). (CLAUDE)
+
+	/** \brief Run a single MC cycle serially (one trial move per particle).
 	 *  \return acceptance rate of the trial moves. */
 	double Evolve_Serial();
-	/** \brief Run a single MC cycle using parallel threads. (CLAUDE)
-	 *  \return acceptance rate of the trial moves. */
-	double Evolve_Parallel();
+
 	/** \brief run for [cycles] MC cycles (=1 trial move/particle).
 	 *  \param cycles  Number of MC cycles to run.
 	 *  \return acceptance rate. */
@@ -109,40 +116,48 @@ public:
 			accep += Evolve();
 		return accep / (double)cycles;
 	}
+
 	/** \brief Adjust the max displacement to the target acceptance ratio.
 	 *  \return the optimized maximum displacement. */
 	double AdjustMaxDisp();
+
 	/** \brief Equilibrate the hard-sphere fluids from the initial configuration.
 	 *  \return the number of MC cycles. */
 	int Equilibrate();
+
 	/** \brief Calculate the pressure from pair correlation functions.
 	 *  \return the reduced pressure of the hard-sphere fluid. */
 	double Pressure();
+
 	/** \brief Prepare the system before the production period.
 	 *  Initialize the class before starting this function!! */
 	void Prepare();
+
 	/** \brief Run this method if the packing is polydisperse. */
 	void Switch2Polydisperse(){
 		this->isMonodisperse = false;
+		this->pSphereRadii.clear();//rebuild the per-particle radii from scratch on every switch
 		for (size_t i = 0; i<this->pSpheres->NumParticle(); i++){
 			this->pSphereRadii.push_back(this->pSpheres->GetCharacteristics(i));
 		}
 		std::cout << "Now, this->Diameter is the maxium particle diameter!!\n";
 	};
 protected:
-	/** \brief Draw a uniform random trial displacement bounded by the maximum displacement. (CLAUDE)
-	 *  \param[out] dx  Displacement vector to fill (its dimension is set to the box dimension).
-	 *  \param rg       Random number generator used to draw the displacement. */
+	/** \brief Draw a trial displacement whose Cartesian components are uniform in [-MaxDispl/2, MaxDispl/2).
+	 *  \param[out] dx Displacement vector to fill; its dimension is set to the box dimension.
+	 *  \param rg Random number generator used for the component draws. */
 	inline void TrialMove(GeometryVector &dx, RandomGenerator & rg) {
 		dx.Dimension = this->Dimension;
 		for (int i = 0; i < Dimension; i++) {
 			dx.x[i] = MaxDispl * (rg.RandomDouble() - 0.5);
 		}
 	}
+
 	/** \brief Calculate g2(D+).
 	 *  \return the value of the pair correlation function at contact. */
 	double g2_at_D();
-	/** \brief Build a lattice packing then thin and shrink it to match the requested parameters. (CLAUDE)
+
+	/** \brief Build a lattice packing then thin and shrink it to match the requested parameters.
 	 *  Generate lattice packing of side length L = ceil(pow(numPrt, 1/d)),
 	 *  then some particles are removed and particle radius are reduced to satisfy the given parameters.
 	 *  If it's not possible to satisfy the input parameters, it returns an empty packing, and output corresponding message.
@@ -151,7 +166,8 @@ protected:
 	 *  \param[in] lattice          lattice vectors.
 	 *  \param[out] config          resulting sphere packing. */
 	void LatticePacking(int numPrts, double packingFraction, std::vector<GeometryVector> &lattice, SpherePacking & config);
-	/** \brief Build a lattice packing from a named lattice, then thin and shrink it. (CLAUDE)
+
+	/** \brief Build a lattice packing from a named lattice, then thin and shrink it.
 	 *  \param[in] numPrts          # of particles in the packing.
 	 *  \param[in] packingFraction  target packing fraction.
 	 *  \param[in] lattice          lattice name (Capitalize the first letter).
