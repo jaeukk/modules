@@ -31,15 +31,15 @@ struct TwoPhaseDispersion {
 											//	TwoPhaseDispersion();
 	bool use_weights = false;	//True, if the weights variable is defined.
 
-	/** \brief Construct an empty two-phase dispersion (empty packing, zero resolution). (CLAUDE) */
+	/** \brief Construct an empty two-phase dispersion (empty packing, zero resolution). */
 	TwoPhaseDispersion() :TwoPhaseDispersion(SpherePacking(), 0) {};
 
-	/** \brief Construct a dispersion from a sphere packing with a uniform per-side resolution. (CLAUDE)
+	/** \brief Construct a dispersion from a sphere packing with a uniform per-side resolution.
 	 *  \param packing  The sphere packing defining the inclusion phase and simulation box.
 	 *  \param num      Number of voxels along each side of the grid. */
 	TwoPhaseDispersion(const SpherePacking & packing, size_t num);
 
-	/** \brief Copy constructor. (CLAUDE)
+	/** \brief Copy constructor.
 	 *  \param src  The dispersion to copy. */
 	TwoPhaseDispersion(const TwoPhaseDispersion & src) : packing(src.packing), prt_indicator(src.prt_indicator),
 		num_side_voxels(src.num_side_voxels), num_total_voxels(src.num_total_voxels) {
@@ -47,9 +47,9 @@ struct TwoPhaseDispersion {
 		this->weights = src.weights;
 		this->use_weights = src.use_weights;
 	};
-	/** \brief Defaulted copy assignment; the user-declared copy constructor deprecates the implicit one (-Wdeprecated-copy). (CLAUDE) */
+	/** \brief Defaulted copy assignment; the user-declared copy constructor deprecates the implicit one (-Wdeprecated-copy). */
 	TwoPhaseDispersion & operator=(const TwoPhaseDispersion &) = default;
-	/** \brief Construct a dispersion by reading a discretized array from a file. (CLAUDE)
+	/** \brief Construct a dispersion by reading a discretized array from a file.
 	 *  \param filename  Prefix of the .DisArray file to read. */
 	TwoPhaseDispersion(const std::string & filename): TwoPhaseDispersion()
 	{
@@ -57,22 +57,22 @@ struct TwoPhaseDispersion {
 	}
 	//~TwoPhaseDispersion() {};
 
-	/** \brief Set the grid resolution from a per-dimension list of voxel counts. (CLAUDE)
+	/** \brief Set the grid resolution from a per-dimension list of voxel counts.
 	 *  \param num_voxels  Number of voxels along each side. */
 	void SetResolutions(const std::vector<size_t> & num_voxels);
 
-	/** \brief Set an isotropic grid resolution (same voxel count on every side). (CLAUDE)
+	/** \brief Set an isotropic grid resolution (same voxel count on every side).
 	 *  \param num_side_voxels  Number of voxels along each side. */
 	void SetResolutions(const size_t num_side_voxels) {
 		this->SetResolutions(std::vector<size_t>(this->packing.GetDimension(), num_side_voxels));
 	};
-	/** \brief Adjust cell sizes to be optimal for FFTW (not yet implemented). (CLAUDE) */
+	/** \brief Adjust cell sizes to be optimal for FFTW (not yet implemented). */
 	void OptimizeSize();
 
-	/** \brief Identify the voxels whose centers lie inside the particle phase. (CLAUDE) */
+	/** \brief Identify the voxels whose centers lie inside the particle phase. */
 	void ComputeIndicator();
 
-	/** \brief Return the phase-indicator weight of the voxel at the given index. (CLAUDE)
+	/** \brief Return the phase-indicator weight of the voxel at the given index.
 	 *  \param index  Index into the prt_indicator / weights array.
 	 *  \return       The subpixel weight if weights are defined, otherwise 1. */
 	double WeightedPhaseIndicator(size_t index) const;
@@ -87,7 +87,7 @@ struct TwoPhaseDispersion {
 	 *  \param[out]	components	the resulting dD component. */
 	inline void Index2Components(const size_t index, std::vector<size_t> & components) const;
 
-	/** \brief Return the per-side voxel resolutions of the grid. (CLAUDE) */
+	/** \brief Return the per-side voxel resolutions of the grid. */
 	const std::vector<size_t> & GetResolutions() const { return this->num_side_voxels; };
 	/* Save a text file to draw a scatter plot. 
 	 * Date format:
@@ -98,11 +98,11 @@ struct TwoPhaseDispersion {
 	 */
 	void Print(const std::string & prefix) const;
 
-	/** \brief Read a discretized two-phase array (basis, resolution, voxel weights) from a .DisArray file. (CLAUDE)
+	/** \brief Read a discretized two-phase array (basis, resolution, voxel weights) from a .DisArray file.
 	 *  \param prefix  Prefix of the .DisArray file (without extension). */
 	void Read(const std::string & prefix);
 
-	/** \brief Build the rank-1 tensor field of DFT wavevectors for this grid. (CLAUDE)
+	/** \brief Build the rank-1 tensor field of DFT wavevectors for this grid.
 	 *  \return  A tensor field whose i-th component holds the i-th wavevector coordinate at each pixel. */
 	TensorField GetKs() const;
 private:

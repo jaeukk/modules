@@ -7,7 +7,7 @@
 #include <PeriodicCellList.h>
 #include <etc.h>
 
-/** \brief Sort the values in stack in ascending order. (CLAUDE)
+/** \brief Sort the values in stack in ascending order.
  *  \param stack  Data to sort in place. */
 void MergeSort(std::vector<double> &stack);
 
@@ -166,7 +166,7 @@ std::vector<GeometryVector> Crop(const PeriodicCellList<T> &config, const std::f
 
 }
 
-/** \brief Compute the n-th term of the one-dimensional van der Corput sequence in the given basis. (CLAUDE)
+/** \brief Compute the n-th term of the one-dimensional van der Corput sequence in the given basis.
  *  \param n      Sequence index (numbering).
  *  \param basis  Radix (base) of the sequence.
  *  \return       The n-th van der Corput value in [0,1). */

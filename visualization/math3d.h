@@ -452,20 +452,20 @@ inline double m3dGetDistance(const M3DVector3d u, const M3DVector3d v)
 inline float m3dGetDistance(const M3DVector3f u, const M3DVector3f v)
 { return float(sqrt(m3dGetDistanceSquared(u, v))); }
 
-/** \brief Squared magnitude (length) of a 3D vector. (CLAUDE)
+/** \brief Squared magnitude (length) of a 3D vector.
  *  \param u  3D vector.
  *  \return   The squared magnitude of u. */
 inline float m3dGetMagnitudeSquared(const M3DVector3f u) { return u[0]*u[0] + u[1]*u[1] + u[2]*u[2]; }
-/** \brief Squared magnitude (length) of a 3D vector. (CLAUDE)
+/** \brief Squared magnitude (length) of a 3D vector.
  *  \param u  3D vector.
  *  \return   The squared magnitude of u. */
 inline double m3dGetMagnitudeSquared(const M3DVector3d u) { return u[0]*u[0] + u[1]*u[1] + u[2]*u[2]; }
 
-/** \brief Magnitude (length) of a 3D vector. (CLAUDE)
+/** \brief Magnitude (length) of a 3D vector.
  *  \param u  3D vector.
  *  \return   The magnitude of u. */
 inline float m3dGetMagnitude(const M3DVector3f u) { return float(sqrt(m3dGetMagnitudeSquared(u))); }
-/** \brief Magnitude (length) of a 3D vector. (CLAUDE)
+/** \brief Magnitude (length) of a 3D vector.
  *  \param u  3D vector.
  *  \return   The magnitude of u. */
 inline double m3dGetMagnitude(const M3DVector3d u) { return sqrt(m3dGetMagnitudeSquared(u)); }
@@ -708,25 +708,25 @@ inline void m3dInjectRotation(M3DMatrix44d dst, const M3DMatrix33d src)
 ////////////////////////////////////////////////////////////////////////////////
 // MultMatrix
 // Implemented in Math.cpp
-/** \brief Multiply two 4x4 matrices: product = a * b. (CLAUDE)
+/** \brief Multiply two 4x4 matrices: product = a * b.
  *  \param product  Destination 4x4 matrix receiving the product.
  *  \param a        Left 4x4 matrix.
  *  \param b        Right 4x4 matrix. */
 void m3dMatrixMultiply44(M3DMatrix44f product, const M3DMatrix44f a, const M3DMatrix44f b);
 
-/** \brief Multiply two 4x4 matrices: product = a * b. (CLAUDE)
+/** \brief Multiply two 4x4 matrices: product = a * b.
  *  \param product  Destination 4x4 matrix receiving the product.
  *  \param a        Left 4x4 matrix.
  *  \param b        Right 4x4 matrix. */
 void m3dMatrixMultiply44(M3DMatrix44d product, const M3DMatrix44d a, const M3DMatrix44d b);
 
-/** \brief Multiply two 3x3 matrices: product = a * b. (CLAUDE)
+/** \brief Multiply two 3x3 matrices: product = a * b.
  *  \param product  Destination 3x3 matrix receiving the product.
  *  \param a        Left 3x3 matrix.
  *  \param b        Right 3x3 matrix. */
 void m3dMatrixMultiply33(M3DMatrix33f product, const M3DMatrix33f a, const M3DMatrix33f b);
 
-/** \brief Multiply two 3x3 matrices: product = a * b. (CLAUDE)
+/** \brief Multiply two 3x3 matrices: product = a * b.
  *  \param product  Destination 3x3 matrix receiving the product.
  *  \param a        Left 3x3 matrix.
  *  \param b        Right 3x3 matrix. */
@@ -738,10 +738,7 @@ void m3dMatrixMultiply33(M3DMatrix33d product, const M3DMatrix33d a, const M3DMa
 // By-the-way __inline means I'm asking the compiler to do a cost/benefit analysis. If 
 // these are used frequently, they may not be inlined to save memory. I'm experimenting
 // with this....
-/** \brief Transform a 3D point/vector by a 4x4 matrix (rotation and translation). (CLAUDE)
- *  \param vOut  Destination 3D vector receiving the transformed result.
- *  \param v     Source 3D point or vector.
- *  \param m     4x4 transformation matrix. */
+/** \brief Transform a 3D point by a 4x4 matrix, using an implicit homogeneous coordinate of 1. \param vOut Destination receiving the transformed point. \param v Source 3D point. \param m 4x4 transformation matrix. */
 __inline void m3dTransformVector3(M3DVector3f vOut, const M3DVector3f v, const M3DMatrix44f m)
     {
     vOut[0] = m[0] * v[0] + m[4] * v[1] + m[8] *  v[2] + m[12];// * v[3];
@@ -751,10 +748,7 @@ __inline void m3dTransformVector3(M3DVector3f vOut, const M3DVector3f v, const M
     }
 
 // Ditto above, but for doubles
-/** \brief Transform a 3D point/vector by a 4x4 matrix (rotation and translation). (CLAUDE)
- *  \param vOut  Destination 3D vector receiving the transformed result.
- *  \param v     Source 3D point or vector.
- *  \param m     4x4 transformation matrix. */
+/** \brief Transform a 3D point by a 4x4 matrix, using an implicit homogeneous coordinate of 1. \param vOut Destination receiving the transformed point. \param v Source 3D point. \param m 4x4 transformation matrix. */
 __inline void m3dTransformVector3(M3DVector3d vOut, const M3DVector3d v, const M3DMatrix44d m)
     {
     vOut[0] = m[0] * v[0] + m[4] * v[1] + m[8] *  v[2] + m[12];// * v[3];	 
@@ -763,7 +757,7 @@ __inline void m3dTransformVector3(M3DVector3d vOut, const M3DVector3d v, const M
 	//vOut[3] = m[3] * v[0] + m[7] * v[1] + m[11] * v[2] + m[15] * v[3];
     }
 
-/** \brief Transform a 4D point/vector by a 4x4 matrix (full homogeneous transform). (CLAUDE)
+/** \brief Transform a 4D point/vector by a 4x4 matrix (full homogeneous transform).
  *  \param vOut  Destination 4D vector receiving the transformed result.
  *  \param v     Source 4D point or vector.
  *  \param m     4x4 transformation matrix. */
@@ -776,7 +770,7 @@ __inline void m3dTransformVector4(M3DVector4f vOut, const M3DVector4f v, const M
     }
 
 // Ditto above, but for doubles
-/** \brief Transform a 4D point/vector by a 4x4 matrix (full homogeneous transform). (CLAUDE)
+/** \brief Transform a 4D point/vector by a 4x4 matrix (full homogeneous transform).
  *  \param vOut  Destination 4D vector receiving the transformed result.
  *  \param v     Source 4D point or vector.
  *  \param m     4x4 transformation matrix. */
@@ -820,25 +814,25 @@ __inline void m3dRotateVector(M3DVector3d vOut, const M3DVector3d p, const M3DMa
 // Yes, it's faster to loop backwards... These could be 
 // unrolled... but eh... if you find this is a bottleneck,
 // then you should unroll it yourself
-/** \brief Scale all elements of a 3x3 matrix in place by a scalar. (CLAUDE)
+/** \brief Scale all elements of a 3x3 matrix in place by a scalar.
  *  \param m      3x3 matrix to scale in place.
  *  \param scale  Scalar multiplier. */
 inline void m3dScaleMatrix33(M3DMatrix33f m, float scale)
 { for(int i = 8; i >=0; i--) m[i] *= scale; }
 
-/** \brief Scale all elements of a 3x3 matrix in place by a scalar. (CLAUDE)
+/** \brief Scale all elements of a 3x3 matrix in place by a scalar.
  *  \param m      3x3 matrix to scale in place.
  *  \param scale  Scalar multiplier. */
 inline void m3dScaleMatrix33(M3DMatrix33d m, double scale)
 { for(int i = 8; i >=0; i--) m[i] *= scale; }
 
-/** \brief Scale all elements of a 4x4 matrix in place by a scalar. (CLAUDE)
+/** \brief Scale all elements of a 4x4 matrix in place by a scalar.
  *  \param m      4x4 matrix to scale in place.
  *  \param scale  Scalar multiplier. */
 inline void m3dScaleMatrix44(M3DMatrix44f m, float scale)
 { for(int i = 15; i >=0; i--) m[i] *= scale; }
 
-/** \brief Scale all elements of a 4x4 matrix in place by a scalar. (CLAUDE)
+/** \brief Scale all elements of a 4x4 matrix in place by a scalar.
  *  \param m      4x4 matrix to scale in place.
  *  \param scale  Scalar multiplier. */
 inline void m3dScaleMatrix44(M3DMatrix44d m, double scale)
@@ -847,7 +841,7 @@ inline void m3dScaleMatrix44(M3DMatrix44d m, double scale)
 
 // Create a Rotation matrix
 // Implemented in math.cpp
-/** \brief Build a 3x3 rotation matrix for a rotation by angle (radians) about axis (x, y, z). (CLAUDE)
+/** \brief Build a 3x3 rotation matrix for a rotation by angle (radians) about axis (x, y, z).
  *  \param m      Destination 3x3 matrix.
  *  \param angle  Rotation angle in radians.
  *  \param x      X component of the rotation axis.
@@ -855,7 +849,7 @@ inline void m3dScaleMatrix44(M3DMatrix44d m, double scale)
  *  \param z      Z component of the rotation axis. */
 void m3dRotationMatrix33(M3DMatrix33f m, float angle, float x, float y, float z);
 
-/** \brief Build a 3x3 rotation matrix for a rotation by angle (radians) about axis (x, y, z). (CLAUDE)
+/** \brief Build a 3x3 rotation matrix for a rotation by angle (radians) about axis (x, y, z).
  *  \param m      Destination 3x3 matrix.
  *  \param angle  Rotation angle in radians.
  *  \param x      X component of the rotation axis.
@@ -863,7 +857,7 @@ void m3dRotationMatrix33(M3DMatrix33f m, float angle, float x, float y, float z)
  *  \param z      Z component of the rotation axis. */
 void m3dRotationMatrix33(M3DMatrix33d m, double angle, double x, double y, double z);
 
-/** \brief Build a 4x4 rotation matrix for a rotation by angle (radians) about axis (x, y, z). (CLAUDE)
+/** \brief Build a 4x4 rotation matrix for a rotation by angle (radians) about axis (x, y, z).
  *  \param m      Destination 4x4 matrix.
  *  \param angle  Rotation angle in radians.
  *  \param x      X component of the rotation axis.
@@ -871,7 +865,7 @@ void m3dRotationMatrix33(M3DMatrix33d m, double angle, double x, double y, doubl
  *  \param z      Z component of the rotation axis. */
 void m3dRotationMatrix44(M3DMatrix44f m, float angle, float x, float y, float z);
 
-/** \brief Build a 4x4 rotation matrix for a rotation by angle (radians) about axis (x, y, z). (CLAUDE)
+/** \brief Build a 4x4 rotation matrix for a rotation by angle (radians) about axis (x, y, z).
  *  \param m      Destination 4x4 matrix.
  *  \param angle  Rotation angle in radians.
  *  \param x      X component of the rotation axis.
@@ -945,23 +939,23 @@ inline void m3dScaleMatrix44(M3DMatrix44d m, double x, double y, double z)
     }                                    \
 }
 
-/** \brief Transpose a 4x4 matrix: dst = transpose(src). (CLAUDE)
+/** \brief Transpose a 4x4 matrix: dst = transpose(src).
  *  \param dst  Destination 4x4 matrix receiving the transpose.
  *  \param src  Source 4x4 matrix. */
 inline void m3dTransposeMatrix44(M3DMatrix44f dst, const M3DMatrix44f src)
 { TRANSPOSE44(dst, src); }
-/** \brief Transpose a 4x4 matrix: dst = transpose(src). (CLAUDE)
+/** \brief Transpose a 4x4 matrix: dst = transpose(src).
  *  \param dst  Destination 4x4 matrix receiving the transpose.
  *  \param src  Source 4x4 matrix. */
 inline void m3dTransposeMatrix44(M3DMatrix44d dst, const M3DMatrix44d src)
 { TRANSPOSE44(dst, src); }
-/** \brief Invert a 4x4 matrix: dst = inverse(src). (CLAUDE)
+/** \brief Invert a 4x4 matrix: dst = inverse(src).
  *  \param dst  Destination 4x4 matrix receiving the inverse.
  *  \param src  Source 4x4 matrix.
  *  \return     True on success, false if src is singular. */
 bool m3dInvertMatrix44(M3DMatrix44f dst, const M3DMatrix44f src);
 
-/** \brief Invert a 4x4 matrix: dst = inverse(src). (CLAUDE)
+/** \brief Invert a 4x4 matrix: dst = inverse(src).
  *  \param dst  Destination 4x4 matrix receiving the inverse.
  *  \param src  Source 4x4 matrix.
  *  \return     True on success, false if src is singular. */
@@ -1044,7 +1038,7 @@ float m3dRaySphereTest(const M3DVector3f point, const M3DVector3f ray, const M3D
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Faster (and more robust) replacements for gluProject
-/** \brief Project a 3D point to 2D window coordinates (discarding Z), like gluProject. (CLAUDE)
+/** \brief Project a 3D point to 2D window coordinates (discarding Z), like gluProject.
  *  \param vPointOut    Destination 2D window coordinates.
  *  \param mModelView   Model-view matrix.
  *  \param mProjection  Projection matrix.
@@ -1052,7 +1046,7 @@ float m3dRaySphereTest(const M3DVector3f point, const M3DVector3f ray, const M3D
  *  \param vPointIn     Source 3D point in object space. */
 void m3dProjectXY( M3DVector2f vPointOut, const M3DMatrix44f mModelView, const M3DMatrix44f mProjection, const int iViewPort[4], const M3DVector3f vPointIn);
 
-/** \brief Project a 3D point to 3D window coordinates (keeping Z), like gluProject. (CLAUDE)
+/** \brief Project a 3D point to 3D window coordinates (keeping Z), like gluProject.
  *  \param vPointOut    Destination 3D window coordinates.
  *  \param mModelView   Model-view matrix.
  *  \param mProjection  Projection matrix.
@@ -1064,7 +1058,7 @@ void m3dProjectXYZ(M3DVector3f vPointOut, const M3DMatrix44f mModelView, const M
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // This function does a three dimensional Catmull-Rom "spline" interpolation between p1 and p2
-/** \brief Catmull-Rom spline interpolation between vP1 and vP2 in 3D. (CLAUDE)
+/** \brief Catmull-Rom spline interpolation between vP1 and vP2 in 3D.
  *  \param vOut  Destination 3D vector receiving the interpolated point.
  *  \param vP0   Control point before the segment.
  *  \param vP1   Start point of the interpolated segment.
@@ -1073,7 +1067,7 @@ void m3dProjectXYZ(M3DVector3f vPointOut, const M3DMatrix44f mModelView, const M
  *  \param t     Interpolation parameter in [0, 1]. */
 void m3dCatmullRom(M3DVector3f vOut, M3DVector3f vP0, M3DVector3f vP1, M3DVector3f vP2, M3DVector3f vP3, float t);
 
-/** \brief Catmull-Rom spline interpolation between vP1 and vP2 in 3D. (CLAUDE)
+/** \brief Catmull-Rom spline interpolation between vP1 and vP2 in 3D.
  *  \param vOut  Destination 3D vector receiving the interpolated point.
  *  \param vP0   Control point before the segment.
  *  \param vP1   Start point of the interpolated segment.

@@ -163,7 +163,7 @@ typedef Delaunay::Vertex_handle Vertex_handle;
 typedef Delaunay::Simplex_handle Simplex_handle;
 typedef Delaunay::Point_d Point;
 
-/** \brief Convert a CGAL d-dimensional point to a GeometryVector. (CLAUDE)
+/** \brief Convert a CGAL d-dimensional point to a GeometryVector.
  *  \tparam point  CGAL point type exposing cartesian(i).
  *  \param p  CGAL point to convert.
  *  \param d  Spatial dimension.
@@ -356,7 +356,7 @@ void GetVoronoiCell(const PeriodicCellList<Empty> & c, size_t i, std::vector<Geo
 }
 
 const double Perturbation = 0;
-/** \brief Volume of the convex hull of the given vertices, via simplex decomposition. (CLAUDE)
+/** \brief Volume of the convex hull of the given vertices, via simplex decomposition.
  *  \param Vertices  Vertices whose convex-hull volume is computed.
  *  \param d         Spatial dimension.
  *  \param gen       Random generator used for an optional vertex perturbation.
@@ -1156,7 +1156,7 @@ void GetVoronoiCell(const PeriodicCellList<Empty> & c, size_t i, std::vector<Geo
 	return;
 }
 
-/** \brief CGAL-disabled stub of PolygonVolume; prints an error and returns 0. (CLAUDE)
+/** \brief CGAL-disabled stub of PolygonVolume; prints an error and returns 0.
  *  \param Vertices  Unused (CGAL not enabled).
  *  \param d         Unused (CGAL not enabled).
  *  \return          0. */
@@ -1166,7 +1166,7 @@ double PolygonVolume(std::vector<GeometryVector> Vertices, DimensionType d)
 	return 0;
 }
 
-/** \brief CGAL-disabled stub of PlotVoronoi2D; prints an error and returns. (CLAUDE)
+/** \brief CGAL-disabled stub of PlotVoronoi2D; prints an error and returns.
  *  \param prefix  Unused (CGAL not enabled).
  *  \param List    Unused (CGAL not enabled).
  *  \param remark  Unused (CGAL not enabled). */
@@ -1848,7 +1848,7 @@ void VoronoiCellRoutine_radial(const SpherePacking &c, int numThreads, std::vect
 }
 
 #else
-	/** \brief voro++-disabled stub of VoronoiCellRoutine; prints an error. (CLAUDE)
+	/** \brief voro++-disabled stub of VoronoiCellRoutine; prints an error.
 	 *  \param c           Unused (voro++ not enabled).
 	 *  \param cellVolume  Unused (voro++ not enabled).
 	 *  \param vertices    Unused (voro++ not enabled).
@@ -1858,7 +1858,7 @@ void VoronoiCellRoutine_radial(const SpherePacking &c, int numThreads, std::vect
 		std::cout << "Please include \"VORO++\"\n";
 	}
 
-	/** \brief voro++-disabled stub of VoronoiCellRoutine_radial; prints an error. (CLAUDE)
+	/** \brief voro++-disabled stub of VoronoiCellRoutine_radial; prints an error.
 	 *  \param c           Unused (voro++ not enabled).
 	 *  \param cellVolume  Unused (voro++ not enabled).
 	 *  \param vertices    Unused (voro++ not enabled).

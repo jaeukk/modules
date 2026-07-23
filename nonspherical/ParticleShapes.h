@@ -159,9 +159,9 @@ public:
 		}
 	};
 
-	/** A member function to return the radius of the sphere that inscribes this particle. (CLAUDE)
-	 * \return the radius = 0 if it is not updated.
-	 * \see GetInscrRadius()	 */
+	/** \brief Return the cached radius of the sphere inscribed in this particle.
+	 * \return The cached inscribed radius, or 0 if it is not positive.
+	 * \see GetInscrRadius() */
 	inline double GetInscrRadius() const {
 		if (this->R_inscr > 0)
 			return this->R_inscr;
@@ -523,8 +523,8 @@ public:
 	inline std::complex<double> GetFormFactor(const GeometryVector & k) { return this->Gamma.GetFormFactor(k); }
 };
 
-/** Read a Polygon from a string input stream. (CLAUDE)
- * \param ifile	A string input stream holding the number of vertices and their coordinates.
+/** \brief Read a Polygon from an input stream.
+ * \param ifile Input stream holding the number of vertices and their coordinates.
  * \return The Polygon reconstructed from the stream. */
 Polygon ReadPolygon(std::istream & ifile);
 
@@ -652,7 +652,7 @@ public:
 	 * \return distance.	 */
 	virtual double GetDistance2Boundary(const GeometryVector & pos_wrt_centroid, std::vector<GeometryVector> & list_dist, GeometryVector & x0, GeometryVector & n_outward) const;
 
-	/** \return A shared pointer of an identical copy of this Polyhedron object. (CLAUDE) */
+	/** \return A shared pointer of an identical copy of this Polyhedron object. */
 	virtual std::shared_ptr<Shape> clone() {
 		return std::shared_ptr<Shape>( new Polyhedron (*this));
 	}

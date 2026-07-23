@@ -24,7 +24,7 @@
 #include "NR_distribution.h"
 
 
-/** \brief Test the LocalNumber class on samples drawn from a Bernoulli distribution. (CLAUDE)
+/** \brief Test the LocalNumber class on samples drawn from a Bernoulli distribution.
  *	\param ifile	Input stream supplying the expectation value, seeds, and sample counts.
  *	\param ofile	Output stream for prompts and the estimated statistics. */
 void Example_Bernoulli(std::istream & ifile, std::ostream & ofile) {
@@ -80,7 +80,7 @@ void Example_Bernoulli(std::istream & ifile, std::ostream & ofile) {
 	ofile << "\texpected variance = " << p * (1 - p) << std::endl;
 }
 
-/** \brief Test the LocalNumber class (and its binary file I/O) on a discrete normal distribution. (CLAUDE)
+/** \brief Test the LocalNumber class (and its binary file I/O) on a discrete normal distribution.
  *	\param ifile	Input stream supplying the mean, standard deviation, seeds, sample counts, and output prefix.
  *	\param ofile	Output stream for prompts and the estimated statistics. */
 void Example_DiscreteNormal(std::istream & ifile, std::ostream & ofile) {
@@ -144,7 +144,7 @@ void Example_DiscreteNormal(std::istream & ifile, std::ostream & ofile) {
 	load.close();
 }
 
-/** \brief Compute N(R) statistics for binomial (random sequential) point patterns. (CLAUDE)
+/** \brief Compute N(R) statistics for binomial (random sequential) point patterns.
  *	\param ifile	Input stream supplying the random seeds for sampling windows and configurations.
  *	\param ofile	Output stream for prompts and progress messages. */
 void Example_NV_Binomial(std::istream & ifile, std::ostream & ofile) {
@@ -195,7 +195,7 @@ void Example_NV_Binomial(std::istream & ifile, std::ostream & ofile) {
 	ofile << "end";
 }
 
-/** \brief Compute N(R) statistics for Poisson point patterns. (CLAUDE)
+/** \brief Compute N(R) statistics for Poisson point patterns.
  *	\param ifile	Input stream supplying the random seeds for sampling windows and configurations.
  *	\param ofile	Output stream for prompts and progress messages. */
 void Example_NV_Poisson(std::istream & ifile, std::ostream & ofile) {
@@ -246,7 +246,7 @@ void Example_NV_Poisson(std::istream & ifile, std::ostream & ofile) {
 	ofile << "end";
 }
 
-/** \brief Compute N(R) statistics for a cubic (square) lattice configuration. (CLAUDE)
+/** \brief Compute N(R) statistics for a cubic (square) lattice configuration.
  *	\param ifile	Input stream supplying the random seed for sampling windows.
  *	\param ofile	Output stream for prompts and progress messages. */
 void Example_NV_CubicLattice(std::istream & ifile, std::ostream & ofile) {
@@ -291,7 +291,7 @@ void Example_NV_CubicLattice(std::istream & ifile, std::ostream & ofile) {
 	ofile << "end";
 }
 
-/** \brief Compute N(R) statistics for saturated random sequential addition (RSA) packings. (CLAUDE)
+/** \brief Compute N(R) statistics for saturated random sequential addition (RSA) packings.
  *	\param ifile	Input stream supplying the random seeds for sampling windows and configurations.
  *	\param ofile	Output stream for prompts and progress messages. */
 void Example_NV_RSA(std::istream & ifile, std::ostream & ofile) {

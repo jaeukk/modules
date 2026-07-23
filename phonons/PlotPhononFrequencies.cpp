@@ -8,7 +8,7 @@
 
 double LowestFrequencySquared;//use it to broadcast calculation results to other functions
 
-/** \brief Render the phonon dispersion curves to a figure file via MathGL. (CLAUDE)
+/** \brief Render the phonon dispersion curves to a figure file via MathGL.
  *  Does nothing useful unless USE_MATHGL is defined.
  *  \param results          Flattened squared frequencies, ordered as NumX blocks of NumCurves.
  *  \param NumCurves        Number of phonon branches (curves) to plot.

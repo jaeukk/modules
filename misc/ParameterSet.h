@@ -9,13 +9,13 @@ class ParameterSet
 {
 public:
 	double * Parameters;
-	/** \brief Construct an empty parameter set with no allocated parameters. (CLAUDE) */
+	/** \brief Construct an empty parameter set with no allocated parameters. */
 	ParameterSet()
 	{
 		this->Parameters = nullptr;
 	}
 
-	/** \brief Copy-construct a parameter set, deep-copying the parameter array. (CLAUDE)
+	/** \brief Copy-construct a parameter set, deep-copying the parameter array.
 	 *  \param src  Parameter set to copy from. */
 	ParameterSet(const ParameterSet & src)
 	{
@@ -27,7 +27,7 @@ public:
 		std::memcpy(this->Parameters, src.Parameters, sizeof(double)*nbr);
 	}
 
-	/** \brief Move-construct a parameter set, taking ownership of src's parameter array. (CLAUDE)
+	/** \brief Move-construct a parameter set, taking ownership of src's parameter array.
 	 *  \param src  Parameter set to move from. */
 	ParameterSet(ParameterSet && src)
 	{
@@ -35,19 +35,19 @@ public:
 		src.Parameters = nullptr;
 	}
 
-	/** \brief Copy assignment is deleted; use clone() for polymorphic deep copies. (CLAUDE) */
+	/** \brief Copy assignment is deleted; use clone() for polymorphic deep copies. */
 	ParameterSet & operator=(const ParameterSet &) = delete;
-	/** \brief Move assignment is deleted; use clone() for polymorphic deep copies. (CLAUDE) */
+	/** \brief Move assignment is deleted. */
 	ParameterSet & operator=(ParameterSet &&) = delete;
 
-	/** \brief Destroy the parameter set and release the parameter array. (CLAUDE) */
+	/** \brief Destroy the parameter set and release the parameter array. */
 	virtual ~ParameterSet()
 	{
 		if(this->Parameters != nullptr)
 			delete [] this->Parameters;
 	}
 
-	/** \brief Build the pair potential corresponding to the current parameters. (CLAUDE)
+	/** \brief Build the pair potential corresponding to the current parameters.
 	 *  \return  Newly allocated potential owned by the caller. */
 	virtual IsotropicPairPotential * GetPotential(void) const =0;
 
@@ -64,15 +64,15 @@ public:
 	/** \brief for some non-continuous parameter, iterate through it. Intended to be used when it has never evolved
 	 *  \return  True if a next iterate exists, false otherwise. */
 	virtual bool Iterate(void) =0;//for some non-continuous parameter, iterate through it. Intended to be used when it has never evolved
-	/** \brief Create a deep copy of this parameter set. (CLAUDE)
+	/** \brief Create a deep copy of this parameter set.
 	 *  \return  Newly allocated clone owned by the caller. */
 	virtual ParameterSet * clone() const =0;
 
-	/** \brief Serialize the parameter set to an output stream. (CLAUDE)
+	/** \brief Serialize the parameter set to an output stream.
 	 *  \param out  Destination stream. */
 	virtual void Write(std::ostream & out) const =0;
 
-	/** \brief Deserialize the parameter set from an input stream. (CLAUDE)
+	/** \brief Deserialize the parameter set from an input stream.
 	 *  \param in  Source stream. */
 	virtual void Read(std::istream & in) =0;
 	//virtual double RecommendedTolerence(void) const =0;
@@ -84,7 +84,7 @@ public:
 	 *  \return  The maximum allowed cutoff distance. */
 	virtual double MaxDistance(void) const =0;//the Rcut of the potential should not exceed this, guaranteed to fix unchanged during the life of this object
 
-	/** \brief Return the number of parameters in this set. (CLAUDE)
+	/** \brief Return the number of parameters in this set.
 	 *  \return  Number of parameters. */
 	virtual size_t NumParameters(void) const =0;
 
@@ -101,7 +101,7 @@ public:
 	/** \brief when there is a well in the parameterization, it is guaranteed that (it's width)/(it's location) is greater than this number
 	 *  \return  Lower bound on the relative size of the sharpest well. */
 	virtual double SharpestRelativeSize(void) =0;//when there is a well in the parameterization, it is guaranteed that (it's width)/(it's location) is greater than this number
-	/** \brief Randomize each parameter uniformly within its bound. (CLAUDE)
+	/** \brief Randomize each parameter uniformly within its bound.
 	 *  \param gen  Random number generator. */
 	void Randomize(RandomGenerator & gen)
 	{
@@ -125,7 +125,7 @@ private:
 	double * pParameters1;
 	double * pParameters2;
 public:
-	/** \brief Combine two parameter sets into one, taking ownership of both. (CLAUDE)
+	/** \brief Combine two parameter sets into one, taking ownership of both.
 	 *  \param p1  First parameterization; this object takes ownership.
 	 *  \param p2  Second parameterization; this object takes ownership. */
 	CombinedParameterization(ParameterSet * p1, ParameterSet * p2) : ParameterSet()
@@ -135,12 +135,12 @@ public:
 		this->Allocate();
 	}
 
-	/** \brief Copy construction is deleted; owning p1/p2 make shallow copies unsafe. Use clone(). (CLAUDE) */
+	/** \brief Copy construction is deleted; owning p1/p2 make shallow copies unsafe. Use clone(). */
 	CombinedParameterization(const CombinedParameterization &) = delete;
-	/** \brief Copy assignment is deleted; owning p1/p2 make shallow copies unsafe. Use clone(). (CLAUDE) */
+	/** \brief Copy assignment is deleted; owning p1/p2 make shallow copies unsafe. Use clone(). */
 	CombinedParameterization & operator=(const CombinedParameterization &) = delete;
 
-	/** \brief Destroy the combined parameterization and its two sub-parameterizations. (CLAUDE) */
+	/** \brief Destroy the combined parameterization and its two sub-parameterizations. */
 	~CombinedParameterization()
 	{
 		this->DeAllocate();
@@ -148,7 +148,7 @@ public:
 		delete this->p2;
 	}
 
-	/** \brief Build the combined pair potential from both sub-parameterizations. (CLAUDE)
+	/** \brief Build the combined pair potential from both sub-parameterizations.
 	 *  \return  Newly allocated combined potential owned by the caller. */
 	virtual IsotropicPairPotential * GetPotential(void) const
 	{
@@ -156,7 +156,7 @@ public:
 		return result;
 	}
 
-	/** \brief Return the summed penalty of both sub-parameterizations. (CLAUDE)
+	/** \brief Return the summed penalty of both sub-parameterizations.
 	 *  \return  Sum of the two penalties. */
 	virtual double Penalty(void) const
 	{
@@ -164,7 +164,7 @@ public:
 		return result;
 	}
 
-	/** \brief Fill the combined parameter bounds from both sub-parameterizations. (CLAUDE)
+	/** \brief Fill the combined parameter bounds from both sub-parameterizations.
 	 *  \param[out] LowerBound  Array receiving the lower bound of each parameter.
 	 *  \param[out] UpperBound  Array receiving the upper bound of each parameter. */
 	virtual void GetBound(double * LowerBound, double * UpperBound) const
@@ -174,7 +174,7 @@ public:
 		this->p2->GetBound(LowerBound+Num1, UpperBound+Num1);
 	}
 
-	/** \brief Evolve the second sub-parameterization to a more complex form. (CLAUDE)
+	/** \brief Evolve the second sub-parameterization to a more complex form.
 	 *  \return  True on success, false if it cannot evolve further. */
 	virtual bool Evolve(void)
 	{
@@ -184,7 +184,7 @@ public:
 		return result;
 	}
 
-	/** \brief Iterate the second sub-parameterization through its discrete states. (CLAUDE)
+	/** \brief Iterate the second sub-parameterization through its discrete states.
 	 *  \return  True if a next iterate exists, false otherwise. */
 	virtual bool Iterate(void)
 	{
@@ -194,7 +194,7 @@ public:
 		return result;
 	}
 
-	/** \brief Serialize both sub-parameterizations to an output stream. (CLAUDE)
+	/** \brief Serialize both sub-parameterizations to an output stream.
 	 *  \param out  Destination stream. */
 	virtual void Write(std::ostream & out) const
 	{
@@ -202,7 +202,7 @@ public:
 		this->p2->Write(out);
 	}
 
-	/** \brief Deserialize both sub-parameterizations from an input stream. (CLAUDE)
+	/** \brief Deserialize both sub-parameterizations from an input stream.
 	 *  \param in  Source stream. */
 	virtual void Read(std::istream & in)
 	{
@@ -212,7 +212,7 @@ public:
 		this->Allocate();
 	}
 
-	/** \brief Return the smaller MinDistance of the two sub-parameterizations. (CLAUDE)
+	/** \brief Return the smaller MinDistance of the two sub-parameterizations.
 	 *  \return  Minimum of the two MinDistance values. */
 	virtual double MinDistance(void) const
 	{
@@ -222,7 +222,7 @@ public:
 		return m1<m2?m1:m2;
 	}
 
-	/** \brief Return the larger MaxDistance of the two sub-parameterizations. (CLAUDE)
+	/** \brief Return the larger MaxDistance of the two sub-parameterizations.
 	 *  \return  Maximum of the two MaxDistance values. */
 	virtual double MaxDistance(void) const
 	{
@@ -232,14 +232,14 @@ public:
 		return m1>m2?m1:m2;
 	}
 
-	/** \brief Return the total parameter count of both sub-parameterizations. (CLAUDE)
+	/** \brief Return the total parameter count of both sub-parameterizations.
 	 *  \return  Sum of the two parameter counts. */
 	virtual size_t NumParameters(void) const
 	{
 		return this->p1->NumParameters()+this->p2->NumParameters();
 	}
 
-	/** \brief Return the smaller SharpestRelativeSize of the two sub-parameterizations. (CLAUDE)
+	/** \brief Return the smaller SharpestRelativeSize of the two sub-parameterizations.
 	 *  \return  Minimum of the two SharpestRelativeSize values. */
 	virtual double SharpestRelativeSize(void)
 	{
@@ -249,14 +249,14 @@ public:
 		return s1<s2?s1:s2;
 	}
 
-	/** \brief Deep-copy this combined parameterization, cloning both sub-parameterizations. (CLAUDE)
+	/** \brief Deep-copy this combined parameterization, cloning both sub-parameterizations.
 	 *  \return  Newly allocated clone owned by the caller. */
 	virtual ParameterSet * clone() const
 	{
 		return new CombinedParameterization(this->p1->clone(), this->p2->clone());
 	}
 
-	/** \brief Allocate the combined parameter array and alias each sub-parameterization into it. (CLAUDE) */
+	/** \brief Allocate the combined parameter array and alias each sub-parameterization into it. */
 	void Allocate()
 	{
 		size_t Num1=p1->NumParameters();
@@ -270,7 +270,7 @@ public:
 		std::swap(this->pParameters2, this->p2->Parameters);
 	}
 
-	/** \brief Flush aliased parameters back to each sub-parameterization and free the combined array. (CLAUDE) */
+	/** \brief Flush aliased parameters back to each sub-parameterization and free the combined array. */
 	void DeAllocate()
 	{
 		size_t Num1=p1->NumParameters();

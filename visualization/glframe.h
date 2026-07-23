@@ -40,100 +40,97 @@ class GLFrame
 
         /////////////////////////////////////////////////////////////
         // Set Location
-        /** \brief Set the frame origin from a 3D point. (CLAUDE)
+        /** \brief Set the frame origin from a 3D point.
          *  \param vPoint  New origin location. */
         inline void SetOrigin(const M3DVector3f vPoint) {
 			m3dCopyVector3(vOrigin, vPoint); }
 
-        /** \brief Set the frame origin from individual coordinates. (CLAUDE)
+        /** \brief Set the frame origin from individual coordinates.
          *  \param x  X coordinate of the origin.
          *  \param y  Y coordinate of the origin.
          *  \param z  Z coordinate of the origin. */
         inline void SetOrigin(float x, float y, float z) {
 			vOrigin[0] = x; vOrigin[1] = y; vOrigin[2] = z; }
 
-		/** \brief Get the frame origin into a 3D vector. (CLAUDE)
+		/** \brief Get the frame origin into a 3D vector.
 		 *  \param vPoint  Destination 3D vector receiving the origin. */
 		inline void GetOrigin(M3DVector3f vPoint) {
 			m3dCopyVector3(vPoint, vOrigin); }
 
-		/** \brief Return the X coordinate of the frame origin. (CLAUDE) */
+		/** \brief Return the X coordinate of the frame origin. */
 		inline float GetOriginX(void) { return vOrigin[0]; }
-		/** \brief Return the Y coordinate of the frame origin. (CLAUDE) */
+		/** \brief Return the Y coordinate of the frame origin. */
 		inline float GetOriginY(void) { return vOrigin[1]; }
-		/** \brief Return the Z coordinate of the frame origin. (CLAUDE) */
+		/** \brief Return the Z coordinate of the frame origin. */
 		inline float GetOriginZ(void) { return vOrigin[2]; }
 
         /////////////////////////////////////////////////////////////
         // Set Forward Direction
-        /** \brief Set the forward (view) direction from a 3D vector. (CLAUDE)
+        /** \brief Set the forward (view) direction from a 3D vector.
          *  \param vDirection  New forward direction. */
         inline void SetForwardVector(const M3DVector3f vDirection) {
 			m3dCopyVector3(vForward, vDirection); }
 
-        /** \brief Set the forward (view) direction from individual components. (CLAUDE)
+        /** \brief Set the forward (view) direction from individual components.
          *  \param x  X component of the forward direction.
          *  \param y  Y component of the forward direction.
          *  \param z  Z component of the forward direction. */
         inline void SetForwardVector(float x, float y, float z)
             { vForward[0] = x; vForward[1] = y; vForward[2] = z; }
 
-        /** \brief Get the forward (view) direction into a 3D vector. (CLAUDE)
+        /** \brief Get the forward (view) direction into a 3D vector.
          *  \param vVector  Destination 3D vector receiving the forward direction. */
         inline void GetForwardVector(M3DVector3f vVector) { m3dCopyVector3(vVector, vForward); }
 
         /////////////////////////////////////////////////////////////
         // Set Up Direction
-        /** \brief Set the up direction from a 3D vector. (CLAUDE)
+        /** \brief Set the up direction from a 3D vector.
          *  \param vDirection  New up direction. */
         inline void SetUpVector(const M3DVector3f vDirection) {
 			m3dCopyVector3(vUp, vDirection); }
 
-        /** \brief Set the up direction from individual components. (CLAUDE)
+        /** \brief Set the up direction from individual components.
          *  \param x  X component of the up direction.
          *  \param y  Y component of the up direction.
          *  \param z  Z component of the up direction. */
         inline void SetUpVector(float x, float y, float z)
 			{ vUp[0] = x; vUp[1] = y; vUp[2] = z; }
 
-        /** \brief Get the up direction into a 3D vector. (CLAUDE)
+        /** \brief Get the up direction into a 3D vector.
          *  \param vVector  Destination 3D vector receiving the up direction. */
         inline void GetUpVector(M3DVector3f vVector) { m3dCopyVector3(vVector, vUp); }
 
 
 		/////////////////////////////////////////////////////////////
 		// Get Axes
-		/** \brief Get the local Z axis (the forward vector) into a 3D vector. (CLAUDE)
+		/** \brief Get the local Z axis (the forward vector) into a 3D vector.
 		 *  \param vVector  Destination 3D vector receiving the Z axis. */
 		inline void GetZAxis(M3DVector3f vVector) { GetForwardVector(vVector); }
-		/** \brief Get the local Y axis (the up vector) into a 3D vector. (CLAUDE)
+		/** \brief Get the local Y axis (the up vector) into a 3D vector.
 		 *  \param vVector  Destination 3D vector receiving the Y axis. */
 		inline void GetYAxis(M3DVector3f vVector) { GetUpVector(vVector); }
-		/** \brief Get the local X axis (up cross forward) into a 3D vector. (CLAUDE)
+		/** \brief Get the local X axis (up cross forward) into a 3D vector.
 		 *  \param vVector  Destination 3D vector receiving the X axis. */
 		inline void GetXAxis(M3DVector3f vVector) { m3dCrossProduct(vVector, vUp, vForward); }
 
 
 		/////////////////////////////////////////////////////////////
         // Translate along orthonormal axis... world or local
-        /** \brief Translate the origin in world coordinates. (CLAUDE)
+        /** \brief Translate the origin in world coordinates.
          *  \param x  Offset along world X.
          *  \param y  Offset along world Y.
          *  \param z  Offset along world Z. */
         inline void TranslateWorld(float x, float y, float z)
 			{ vOrigin[0] += x; vOrigin[1] += y; vOrigin[2] += z; }
 
-        /** \brief Translate the origin in local (frame) coordinates. (CLAUDE)
-         *  \param x  Offset along the local right (X) axis.
-         *  \param y  Offset along the local up (Y) axis.
-         *  \param z  Offset along the local forward (Z) axis. */
+        /** \brief Translate the origin along the frame axes: x along up cross forward, y along up, and z along forward. \param x Offset along the local X axis (up cross forward). \param y Offset along the local up axis. \param z Offset along the local forward axis. */
         inline void TranslateLocal(float x, float y, float z)
 			{ MoveForward(z); MoveUp(y); MoveRight(x);	}
 
 
 		/////////////////////////////////////////////////////////////
 		// Move Forward (along Z axis)
-		/** \brief Move the origin along the forward (Z) axis. (CLAUDE)
+		/** \brief Move the origin along the forward (Z) axis.
 		 *  \param fDelta  Distance to move along the forward direction. */
 		inline void MoveForward(float fDelta)
 			{
@@ -144,7 +141,7 @@ class GLFrame
 			}
 
 		// Move along Y axis
-		/** \brief Move the origin along the up (Y) axis. (CLAUDE)
+		/** \brief Move the origin along the up (Y) axis.
 		 *  \param fDelta  Distance to move along the up direction. */
 		inline void MoveUp(float fDelta)
 			{
@@ -155,8 +152,7 @@ class GLFrame
 			}
 
 		// Move along X axis
-		/** \brief Move the origin along the right (X) axis. (CLAUDE)
-		 *  \param fDelta  Distance to move along the right direction. */
+		/** \brief Move the origin along the local X axis defined by up cross forward. \param fDelta Distance to move along that axis. */
 		inline void MoveRight(float fDelta)
 			{
 			// Move along direction of right vector
@@ -176,7 +172,7 @@ class GLFrame
 
 
 
-		/** \brief Assemble the 4x4 transformation matrix for this frame. (CLAUDE)
+		/** \brief Assemble the 4x4 transformation matrix for this frame.
 		 *  \param matrix        Destination 4x4 matrix.
 		 *  \param bRotationOnly  If true, omit the translation (rotation only). */
 		void GetMatrix(M3DMatrix44f	matrix, bool bRotationOnly = false)
@@ -261,7 +257,7 @@ class GLFrame
 		// tune... ;-) You might get a boost form page fault reduction too... if
 		// no other glu routines are used...
 		// This will get called once per frame.... go ahead and inline
-        /** \brief Apply this frame as the camera (viewing) transform to the GL matrix stack. (CLAUDE)
+        /** \brief Apply this frame as the camera (viewing) transform to the GL matrix stack.
          *  \param bRotOnly  If true, apply rotation only and skip the translation. */
         inline void ApplyCameraTransform(bool bRotOnly = false)
 			{
@@ -290,7 +286,7 @@ class GLFrame
 		// There is ample room for optimization here... 
 		// This is going to be called alot... don't inline
 		// Add flag to perform actor rotation only and not the translation
-        /** \brief Apply this frame as an object (actor) transform to the GL matrix stack. (CLAUDE)
+        /** \brief Apply this frame as an object (actor) transform to the GL matrix stack.
          *  \param bRotationOnly  If true, apply rotation only and skip the translation. */
         void ApplyActorTransform(bool bRotationOnly = false)
 			{
@@ -304,7 +300,7 @@ class GLFrame
 
 
         // Rotate around local X Axes - Note all rotations are in radians
-        /** \brief Rotate the frame about its local X axis. (CLAUDE)
+        /** \brief Rotate the frame about its local X axis.
          *  \param fAngle  Rotation angle in radians. */
         void RotateLocalX(float fAngle)
 			{
@@ -329,7 +325,7 @@ class GLFrame
 			}
 
 		// Rotate around local Y
-		/** \brief Rotate the frame about its local Y axis. (CLAUDE)
+		/** \brief Rotate the frame about its local Y axis.
 		 *  \param fAngle  Rotation angle in radians. */
         void RotateLocalY(float fAngle)
 			{
@@ -351,7 +347,7 @@ class GLFrame
 
 
 		// Rotate around local Z
-		/** \brief Rotate the frame about its local Z axis. (CLAUDE)
+		/** \brief Rotate the frame about its local Z axis.
 		 *  \param fAngle  Rotation angle in radians. */
         void RotateLocalZ(float fAngle)
 			{
@@ -371,7 +367,7 @@ class GLFrame
 
 		// Reset axes to make sure they are orthonormal. This should be called on occasion
 		// if the matrix is long-lived and frequently transformed.
-		/** \brief Re-orthonormalize the frame's up and forward axes. (CLAUDE) */
+		/** \brief Re-orthonormalize the frame's up and forward axes. */
 		void Normalize(void)
 			{
 			M3DVector3f vCross;
@@ -389,7 +385,7 @@ class GLFrame
 
 
 		// Rotate in world coordinates...
-		/** \brief Rotate the frame about an arbitrary world-space axis. (CLAUDE)
+		/** \brief Rotate the frame about an arbitrary world-space axis.
 		 *  \param fAngle  Rotation angle in radians.
 		 *  \param x       X component of the world-space rotation axis.
 		 *  \param y       Y component of the world-space rotation axis.
@@ -418,11 +414,7 @@ class GLFrame
 
 
         // Rotate around a local axis
-        /** \brief Rotate the frame about an arbitrary local-space axis. (CLAUDE)
-         *  \param fAngle  Rotation angle in radians.
-         *  \param x       X component of the local-space rotation axis.
-         *  \param y       Y component of the local-space rotation axis.
-         *  \param z       Z component of the local-space rotation axis. */
+        /** \brief Rotate the frame orientation about the world-space axis obtained by applying LocalToWorld to (x, y, z). \param fAngle Rotation angle in radians. \param x X component supplied to LocalToWorld. \param y Y component supplied to LocalToWorld. \param z Z component supplied to LocalToWorld. */
         void RotateLocal(float fAngle, float x, float y, float z)
             {
             M3DVector3f vWorldVect;
@@ -439,7 +431,7 @@ class GLFrame
         // and position on the point
 		// Is it better to stick to the convention that the destination always comes
 		// first, or use the conventions that "sounds" like the function...
-        /** \brief Convert a point from local (frame) coordinates to world coordinates. (CLAUDE)
+        /** \brief Convert a point from local (frame) coordinates to world coordinates.
          *  \param vLocal  Source point in local coordinates.
          *  \param vWorld  Destination 3D vector receiving the point in world coordinates. */
         void LocalToWorld(const M3DVector3f vLocal, M3DVector3f vWorld)
@@ -461,7 +453,7 @@ class GLFrame
             }
 
 		// Change world coordinates into "local" coordinates
-        /** \brief Convert a point from world coordinates to local (frame) coordinates. (CLAUDE)
+        /** \brief Convert a point from world coordinates to local (frame) coordinates.
          *  \param vWorld  Source point in world coordinates.
          *  \param vLocal  Destination 3D vector receiving the point in local coordinates. */
         void WorldToLocal(const M3DVector3f vWorld, M3DVector3f vLocal)
@@ -488,7 +480,7 @@ class GLFrame
         
         /////////////////////////////////////////////////////////////////////////////
         // Transform a point by frame matrix
-        /** \brief Transform a point by the frame's full matrix (rotation and translation). (CLAUDE)
+        /** \brief Transform a point by the frame's full matrix (rotation and translation).
          *  \param vPointSrc  Source point.
          *  \param vPointDst  Destination 3D vector receiving the transformed point. */
         void TransformPoint(M3DVector3f vPointSrc, M3DVector3f vPointDst)
@@ -502,7 +494,7 @@ class GLFrame
         
         ////////////////////////////////////////////////////////////////////////////
         // Rotate a vector by frame matrix
-        /** \brief Rotate a vector by the frame's matrix (rotation only, no translation). (CLAUDE)
+        /** \brief Rotate a vector by the frame's matrix (rotation only, no translation).
          *  \param vVectorSrc  Source vector.
          *  \param vVectorDst  Destination 3D vector receiving the rotated vector. */
         void RotateVector(M3DVector3f vVectorSrc, M3DVector3f vVectorDst)

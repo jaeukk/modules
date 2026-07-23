@@ -44,19 +44,19 @@ struct ConstantTensor {
 	std::vector<std::complex<double>> value;
 	size_t d, rank, total_comp;
 
-	/** \brief Construct an empty constant tensor (dimension 0, rank 0). (CLAUDE) */
+	/** \brief Construct an empty constant tensor (dimension 0, rank 0). */
 	ConstantTensor();
 
-	/** \brief Construct a zero-initialized constant tensor of given dimension and rank. (CLAUDE)
+	/** \brief Construct a zero-initialized constant tensor of given dimension and rank.
 	 *  \param dimension  Spatial dimension d.
 	 *  \param rank       Tensor rank (number of indices). */
 	ConstantTensor(size_t dimension, size_t rank);
 
-	/** \brief Copy constructor. (CLAUDE)
+	/** \brief Copy constructor.
 	 *  \param src  The constant tensor to copy. */
 	ConstantTensor(const ConstantTensor & src);
 
-	/** \brief Mutable access to the i-th linearized component. (CLAUDE)
+	/** \brief Mutable access to the i-th linearized component.
 	 *  \param i  Linearized component index.
 	 *  \return   Reference to the component (or component 0 if out of range). */
 	inline std::complex<double> & operator[](size_t i) {
@@ -68,7 +68,7 @@ struct ConstantTensor {
 		}
 	}
 
-	/** \brief Read-only access to the i-th linearized component. (CLAUDE)
+	/** \brief Read-only access to the i-th linearized component.
 	 *  \param i  Linearized component index.
 	 *  \return   The component value (or 0 if out of range). */
 	inline const std::complex<double> operator[](size_t i) const {
@@ -80,7 +80,7 @@ struct ConstantTensor {
 		}
 	}
 
-	/** \brief Copy-assignment operator. (CLAUDE)
+	/** \brief Copy-assignment operator.
 	 *  \param rhs  The constant tensor to assign from.
 	 *  \return     Reference to this tensor. */
 	ConstantTensor & operator = (const ConstantTensor & rhs);
@@ -88,19 +88,19 @@ struct ConstantTensor {
 };
 
 /* operators */
-/** \brief Component-wise sum of two constant tensors. (CLAUDE)
+/** \brief Component-wise sum of two constant tensors.
  *  \param left   Left operand.
  *  \param right  Right operand.
  *  \return       The element-wise sum. */
 ConstantTensor operator + (const ConstantTensor & left, const ConstantTensor & right);
 
-/** \brief Component-wise difference of two constant tensors. (CLAUDE)
+/** \brief Component-wise difference of two constant tensors.
  *  \param left   Left operand.
  *  \param right  Right operand.
  *  \return       The element-wise difference (left - right). */
 ConstantTensor operator - (const ConstantTensor & left, const ConstantTensor & right);
 
-/** \brief Scalar multiplication of a constant tensor. (CLAUDE)
+/** \brief Scalar multiplication of a constant tensor.
  *  \param left   Complex scalar factor.
  *  \param right  The constant tensor.
  *  \return       The scaled tensor. */
@@ -116,12 +116,12 @@ ConstantTensor Lambda_h(size_t dimension);
  *  \return           The rank-4 shear projection tensor. */
 ConstantTensor Lambda_s(size_t dimension);
 
-/** \brief Return the rank-2 identity tensor in d dimensions. (CLAUDE)
+/** \brief Return the rank-2 identity tensor in d dimensions.
  *  \param dimension  Spatial dimension d.
  *  \return           The identity tensor. */
 ConstantTensor Identity(size_t dimension);
 
-/** \brief Return the trace of a rank-2 constant tensor. (CLAUDE)
+/** \brief Return the trace of a rank-2 constant tensor.
  *  \param src  A rank-2 constant tensor.
  *  \return     The sum of its diagonal components. */
 inline std::complex<double> Trace(const ConstantTensor & src) {
@@ -144,23 +144,23 @@ struct TensorField {
 	std::vector<size_t> num_points;	/* store size of fields */
 	size_t num_total_pixels;
 
-	/** \brief Construct an empty tensor field. (CLAUDE) */
+	/** \brief Construct an empty tensor field. */
 	TensorField();
 
-	/** \brief Construct a zero-initialized tensor field over a grid. (CLAUDE)
+	/** \brief Construct a zero-initialized tensor field over a grid.
 	 *  \param dimension   Spatial dimension d.
 	 *  \param rank        Tensor rank (number of indices).
 	 *  \param num_points  Number of grid points along each dimension. */
 	TensorField(size_t dimension, size_t rank, const std::vector<size_t> & num_points);
 
-	/** \brief Copy constructor (deep-copies the fftw buffers). (CLAUDE)
+	/** \brief Copy constructor (deep-copies the fftw buffers).
 	 *  \param src  The tensor field to copy. */
 	TensorField(const TensorField & src);
 
-	/** \brief Destructor; frees the allocated fftw buffers. (CLAUDE) */
+	/** \brief Destructor; frees the allocated fftw buffers. */
 	~TensorField();
 
-	/** \brief Store the element-wise sum of two tensor fields into out. (CLAUDE)
+	/** \brief Store the element-wise sum of two tensor fields into out.
 	 *  \param out  Output tensor field receiving A + B.
 	 *  \param A    First operand.
 	 *  \param B    Second operand. */
@@ -178,22 +178,22 @@ struct TensorField {
 	 *  \return   Pointer to the scalar field of that component. */
 	inline const fftw_complex * comp(const std::vector<size_t> &i) const;
 
-	/** \brief Add another tensor field element-wise in place. (CLAUDE)
+	/** \brief Add another tensor field element-wise in place.
 	 *  \param rhs  Tensor field to add.
 	 *  \return     Reference to this tensor field. */
 	TensorField & operator += (const TensorField &rhs);
 
-	/** \brief Subtract another tensor field element-wise in place. (CLAUDE)
+	/** \brief Subtract another tensor field element-wise in place.
 	 *  \param rhs  Tensor field to subtract.
 	 *  \return     Reference to this tensor field. */
 	TensorField & operator -= (const TensorField & rhs);
 
-	/** \brief Copy-assignment (reallocates buffers if sizes differ). (CLAUDE)
+	/** \brief Copy-assignment (reallocates buffers if sizes differ).
 	 *  \param src  Tensor field to assign from.
 	 *  \return     Reference to this tensor field. */
 	TensorField & operator = (const TensorField & src);
 
-	/** \brief Multiply every component by a complex scalar in place. (CLAUDE)
+	/** \brief Multiply every component by a complex scalar in place.
 	 *  \param rhs  Complex scalar factor.
 	 *  \return     Reference to this tensor field. */
 	TensorField & operator *= (const std::complex<double> rhs);
@@ -210,7 +210,7 @@ struct TensorField {
 		}
 	}
 
-	/** \brief The tensor field of the i-th component (const overload). (CLAUDE)
+	/** \brief The tensor field of the i-th component (const overload).
 	 *  \param i  Linearized component index.
 	 *  \return   Pointer to the i-th scalar field (or component 0 if out of range). */
 	inline const fftw_complex* operator[](size_t i) const {
@@ -236,7 +236,7 @@ struct TensorField {
 		return out;
 	}
 
-	/** \brief Convert a linearized pixel index to per-dimension grid coordinates. (CLAUDE)
+	/** \brief Convert a linearized pixel index to per-dimension grid coordinates.
 	 *  \param index  Linearized pixel index.
 	 *  \param[out] out  The resulting grid coordinates. */
 	inline void GetPositionComponent(size_t index, std::vector<size_t> & out) const {
@@ -263,7 +263,7 @@ struct TensorField {
 	 *  \param part       0 = real, 1 = imaginary, 2 = both. */
 	void Print_shifted_origin(const std::string & prefix, int component = -1, int part = 0) const;
 
-	/** \brief Convert a linearized component index to its per-index components. (CLAUDE)
+	/** \brief Convert a linearized component index to its per-index components.
 	 *  \param index       Linearized component index.
 	 *  \param[out] components  The resulting rank-length component vector. */
 	inline void GetComponent(size_t index, std::vector<size_t> & components) const {
@@ -281,7 +281,7 @@ struct TensorField {
 };
 
 /* 3 basic operations of fftw_complex */
-/** \brief Scalar multiplication of a tensor field. (CLAUDE)
+/** \brief Scalar multiplication of a tensor field.
  *  \param left   Complex scalar factor.
  *  \param right  The tensor field.
  *  \return       The scaled tensor field. */
@@ -292,7 +292,7 @@ inline TensorField operator*(const std::complex<double>& left, const TensorField
 	return out;
 }
 
-/** \brief Element-wise sum of two tensor fields. (CLAUDE)
+/** \brief Element-wise sum of two tensor fields.
  *  \param left   Left operand.
  *  \param right  Right operand.
  *  \return       The element-wise sum. */
@@ -303,7 +303,7 @@ inline TensorField operator+(const TensorField & left, const TensorField & right
 	return out;
 }
 
-/** \brief Element-wise difference of two tensor fields. (CLAUDE)
+/** \brief Element-wise difference of two tensor fields.
  *  \param left   Left operand.
  *  \param right  Right operand.
  *  \return       The element-wise difference (left - right). */
@@ -314,33 +314,33 @@ inline TensorField operator-(const TensorField & left, const TensorField & right
 	return out;
 }
 
-/** \brief Per-pixel inner product of two tensor fields A and B. (CLAUDE)
+/** \brief Per-pixel inner product of two tensor fields A and B.
  *  \param[out] out  Resulting tensor field of the contracted product.
  *  \param A    First tensor field.
  *  \param B    Second tensor field.
  *  \param num_contraction  Number of indices contracted between A and B. */
 void InnerProduct(TensorField & out, const TensorField & A, const TensorField &B, size_t num_contraction);
 
-/** \brief Per-pixel inner product of A with the complex conjugate of B. (CLAUDE)
+/** \brief Per-pixel inner product of A with the complex conjugate of B.
  *  \param A    First tensor field.
  *  \param B    Second tensor field (conjugated in the contraction).
  *  \param num_contraction  Number of indices contracted between A and B.
  *  \return     Reference to the resulting tensor field. */
 TensorField & InnerProduct_conjugate(const TensorField & A, const TensorField &B, size_t num_contraction);
 
-/** \brief Stream-extract a complex value into an fftw_complex. (CLAUDE)
+/** \brief Stream-extract a complex value into an fftw_complex.
  *  \param input  Input stream.
  *  \param rhs    The fftw_complex to fill.
  *  \return       The input stream. */
 std::istream & operator >> (std::istream & input, const fftw_complex & rhs);
 
-/** \brief Stream-insert an fftw_complex value. (CLAUDE)
+/** \brief Stream-insert an fftw_complex value.
  *  \param input  Output stream.
  *  \param rhs    The fftw_complex to print.
  *  \return       The output stream. */
 std::ostream & operator << (std::ostream & input, const fftw_complex & rhs);
 
-/** \brief Compute the spatial mean of a tensor field. (CLAUDE)
+/** \brief Compute the spatial mean of a tensor field.
  *  \param src  The tensor field.
  *  \return     The constant tensor of per-component averages. */
 ConstantTensor MeanField(const TensorField & src);
@@ -354,7 +354,7 @@ ConstantTensor MeanField(const TensorField & src);
  *  \return the complex-valued component. */
 std::complex<double> InnerProduct(size_t position, size_t component, const ConstantTensor & A, const TensorField & B, size_t num_comp);
 
-/** \brief Compute the inner product between a constant tensor A and a tensor field B at each position. (CLAUDE)
+/** \brief Compute the inner product between a constant tensor A and a tensor field B at each position.
  *  \param[out] out  Resulting tensor field.
  *  \param A    The constant tensor.
  *  \param B    The tensor field.

@@ -30,7 +30,7 @@ extern size_t FFH_verbosity;	/* determine the amount of information displayed on
 const size_t num_limit = 200;	/* the number of maximum iterations. */
 
 
-/** \brief Squared modulus of a complex number stored as fftw_complex. (CLAUDE)
+/** \brief Squared modulus of a complex number stored as fftw_complex.
  *  \param x  The complex value (real, imaginary).
  *  \return   |x|^2 = re^2 + im^2. */
 inline double Modulus2(const fftw_complex & x) {
@@ -38,12 +38,7 @@ inline double Modulus2(const fftw_complex & x) {
 }
 
 
-/** \brief Truncated (finite-box) Green's function of the Helmholtz equation. (CLAUDE)
- *  \param d   Spatial dimension (2 or 3).
- *  \param xi  Wavenumber magnitude of the evaluation point.
- *  \param L   Linear size of the truncation box.
- *  \param k1  Background wavenumber.
- *  \return    The truncated Green's function value. */
+/** \brief Green's function of the Helmholtz equation truncated to a d-dimensional ball of radius L. \param d Spatial dimension (2 or 3). \param xi Wavenumber magnitude of the evaluation point. \param L Radius of the truncation ball. \param k1 Background wavenumber. \return The truncated Green's-function value. */
 inline std::complex<double> TruncatedGreenFn_Helmholtz(int d, double xi, double L, double k1);
 
 struct FFH_base {
@@ -55,16 +50,16 @@ struct FFH_base {
 		Tol_div = -1.0;			/* the average of the "divergence" of the computed fields. */
 	size_t m;
 	/* contructors */
-	/** \brief Construct an empty homogenization problem. (CLAUDE) */
+	/** \brief Construct an empty homogenization problem. */
 	FFH_base();
 
-	/** \brief Construct a homogenization problem from a geometry and two phase tensors. (CLAUDE)
+	/** \brief Construct a homogenization problem from a geometry and two phase tensors.
 	 *  \param src              The two-phase dispersion (geometry).
 	 *  \param matrix_phase     Constant tensor describing the matrix phase (phase 1).
 	 *  \param inclusion_phase  Constant tensor describing the inclusion phase (phase 2). */
 	FFH_base(const TwoPhaseDispersion & src, const ConstantTensor & matrix_phase, const ConstantTensor & inclusion_phase);
 
-	/** \brief destructor. Destroys the fftw plans and cleans up the fftw threads. (CLAUDE) */
+	/** \brief destructor. Destroys the fftw plans and cleans up the fftw threads. */
 	~FFH_base(){
 		for (size_t i = 0; i < FourierTransform_P.size(); i++) {
 			if (FourierTransform_P[i]!=nullptr)
@@ -88,7 +83,7 @@ struct FFH_base {
 
 	//virtual void DefineProperties(const ConstantTensor & matrix_phase, const ConstantTensor & inclusion_phase);
 
-	/** \brief Select the weak- or strong-contrast expansion. (CLAUDE)
+	/** \brief Select the weak- or strong-contrast expansion.
 	 *  \param strong_contrast  true = use the strong-contrast expansion. */
 	void SetMethod(bool strong_contrast);
 
@@ -100,7 +95,7 @@ struct FFH_base {
 	 *  \param[in] applied  external field. */
 	virtual void Prepare(const ConstantTensor & applied);
 
-	/** \brief Advance the iterative solver by a number of stages. (CLAUDE)
+	/** \brief Advance the iterative solver by a number of stages.
 	 *  \param steps  Number of iteration stages to perform. */
 	virtual void Iterate(size_t steps = 1);
 
@@ -121,23 +116,23 @@ struct FFH_base {
 	 *  \return false erorr > target_tolerance. */
 	virtual bool CheckDivergenceFree(double target_tolereance = 1e-10);
 
-	/** \brief Report whether the current solution appears to be converging. (CLAUDE)
+	/** \brief Report whether the current solution appears to be converging.
 	 *  \return true if the solver still considers the solution to be converging. */
 	bool IsCovergeningSolution() const { return this->is_converging; };
 
-	/** \brief Print the divergence-free field and the conjugate field in direct space. (CLAUDE)
+	/** \brief Print the divergence-free field and the conjugate field in direct space.
 	 *  \param prefix  Output filename prefix. */
 	void Print(const std::string & prefix) const;
 
-	/** \brief Print the divergence-free field and the conjugate field in Fourier space. (CLAUDE)
+	/** \brief Print the divergence-free field and the conjugate field in Fourier space.
 	 *  \param prefix  Output filename prefix. */
 	void Print_Fourier(const std::string & prefix) const;
 
-	/** \brief Print the discretized geometry grid. (CLAUDE)
+	/** \brief Print the discretized geometry grid.
 	 *  \param prefix  Output filename prefix. */
 	void Print_Grid(const std::string & prefix) const;
 
-	/** \brief Print the 2D Fourier-space Green's function components. (CLAUDE)
+	/** \brief Print the 2D Fourier-space Green's function components.
 	 *  \param prefix  Output filename prefix. */
 	void Print_GreenFn_2D(const std::string & prefix) const;
 
@@ -175,41 +170,41 @@ protected:
 
 
 
-	/** \brief Compute the divergence-free field in Fourier space. (CLAUDE)
+	/** \brief Compute the divergence-free field in Fourier space.
 	 *  \param[out] out  The resulting field. */
 	virtual void ComputeDivergenceFreeField_Fourier(TensorField & out) const = 0;
 
-	/** \brief Compute the divergence-free field in direct space. (CLAUDE)
+	/** \brief Compute the divergence-free field in direct space.
 	 *  \param[out] out  The resulting field. */
 	virtual void ComputeDivergenceFreeField_Direct(TensorField & out) const = 0;
 
-	/** \brief Compute the conjugate (gradient-type) field in Fourier space. (CLAUDE)
+	/** \brief Compute the conjugate (gradient-type) field in Fourier space.
 	 *  \param[out] out  The resulting field. */
 	virtual void ComputeField_Fourier(TensorField & out) const = 0;
 
-	/** \brief Compute the conjugate (gradient-type) field in direct space. (CLAUDE)
+	/** \brief Compute the conjugate (gradient-type) field in direct space.
 	 *  \param[out] out  The resulting field. */
 	virtual void ComputeField_Direct(TensorField & out) const = 0;
 
-	/** \brief Compute the Fourier-space propagator for the weak-contrast expansion. (CLAUDE) */
+	/** \brief Compute the Fourier-space propagator for the weak-contrast expansion. */
 	virtual void ComputePropagator_weak() = 0;
 
-	/** \brief Iterate the weak-contrast solver. (CLAUDE)
+	/** \brief Iterate the weak-contrast solver.
 	 *  \param steps  Number of iteration stages. */
 	virtual void Iterate_weak(size_t steps = 1) { this->Iterate_common(steps); };
-	/** \brief Compute the constitutive L tensors for the weak-contrast expansion. (CLAUDE) */
+	/** \brief Compute the constitutive L tensors for the weak-contrast expansion. */
 	virtual void ComputeL_weak() = 0;
 
-	/** \brief Compute the Fourier-space propagator for the strong-contrast expansion. (CLAUDE) */
+	/** \brief Compute the Fourier-space propagator for the strong-contrast expansion. */
 	virtual void ComputePropagator_strong() = 0;
 
-	/** \brief Iterate the strong-contrast solver. (CLAUDE)
+	/** \brief Iterate the strong-contrast solver.
 	 *  \param steps  Number of iteration stages. */
 	virtual void Iterate_strong(size_t steps = 1) { this->Iterate_common(steps); };
-	/** \brief Compute the constitutive L tensors for the strong-contrast expansion. (CLAUDE) */
+	/** \brief Compute the constitutive L tensors for the strong-contrast expansion. */
 	virtual void ComputeL_strong() = 0;
 
-	/** \brief Shared iteration kernel used by both expansions. (CLAUDE)
+	/** \brief Shared iteration kernel used by both expansions.
 	 *  \param steps  Number of iteration stages. */
 	void Iterate_common(size_t steps = 1);
 };
@@ -221,29 +216,29 @@ struct StaticDielectricProblem : public FFH_base {
 
 	friend double curl(const StaticDielectricProblem & src);
 
-	/** \brief Construct an empty static dielectric problem. (CLAUDE) */
+	/** \brief Construct an empty static dielectric problem. */
 	StaticDielectricProblem();
 
-	/** \brief Construct a static dielectric problem from a geometry and two permittivities. (CLAUDE)
+	/** \brief Construct a static dielectric problem from a geometry and two permittivities.
 	 *  \param src       The two-phase dispersion (geometry).
 	 *  \param epsilon1  Permittivity of the matrix phase.
 	 *  \param epsilon2  Permittivity of the inclusion phase. */
 	StaticDielectricProblem(const TwoPhaseDispersion & src,
 		const std::complex<double> & epsilon1, const std::complex<double> & epsilon2);
 
-	/** \brief Define the static dielectric problem geometry. (CLAUDE)
+	/** \brief Define the static dielectric problem geometry.
 	 *  \param src              The two-phase dispersion (geometry).
 	 *  \param matrix_phase     Constant tensor for the matrix phase.
 	 *  \param inclusion_phase  Constant tensor for the inclusion phase. */
 	virtual void DefineProblem(const TwoPhaseDispersion& src, const ConstantTensor & matrix_phase, const ConstantTensor & inclusion_phase);
 
-	/** \brief Set the two permittivities and the derived reference phase. (CLAUDE)
+	/** \brief Set the two permittivities and the derived reference phase.
 	 *  \param epsilon1  Permittivity of the matrix phase.
 	 *  \param epsilon2  Permittivity of the inclusion phase. */
 	virtual void DefineProperties(const std::complex<double> & epsilon1, const std::complex<double> & epsilon2);
 	//virtual void Prepare(const ConstantTensor & applied_electric_field);
 
-	/** \brief Compute the effective permittivity from the converged fields. (CLAUDE)
+	/** \brief Compute the effective permittivity from the converged fields.
 	 *  \return The effective (complex) permittivity. */
 	virtual std::complex<double> ComputeEffectiveEpsilon() const;
 protected:
@@ -270,13 +265,13 @@ protected:
 	 *  G_{ij} = -k_i k_j /k^2 /\epsilon_1. */
 	virtual void ComputePropagator_weak();
 
-	/** \brief Compute the weak-contrast L tensors from the permittivities. (CLAUDE) */
+	/** \brief Compute the weak-contrast L tensors from the permittivities. */
 	virtual void ComputeL_weak();
 
 	/** \brief Fourier transform of the H-tensor*/
 	virtual void ComputePropagator_strong();
 
-	/** \brief Compute the strong-contrast L tensors from the permittivities. (CLAUDE) */
+	/** \brief Compute the strong-contrast L tensors from the permittivities. */
 	virtual void ComputeL_strong();
 };
 
@@ -284,34 +279,26 @@ struct DynamicDielectricProblem : public StaticDielectricProblem {
 	RandomGenerator rng;
 
 
-	/** \brief Construct an empty dynamic dielectric problem. (CLAUDE) */
+	/** \brief Construct an empty dynamic dielectric problem. */
 	DynamicDielectricProblem();
 
-	/** \brief Construct a dynamic dielectric problem from a geometry and two permittivities. (CLAUDE)
+	/** \brief Construct a dynamic dielectric problem from a geometry and two permittivities.
 	 *  \param src       The two-phase dispersion (geometry).
 	 *  \param epsilon1  Permittivity of the matrix phase.
 	 *  \param epsilon2  Permittivity of the inclusion phase. */
 	DynamicDielectricProblem(const TwoPhaseDispersion & src,
 		const std::complex<double> & epsilon1, const std::complex<double> & epsilon2);
 
-	/** \brief Define the dynamic dielectric problem geometry and incident wavevector. (CLAUDE)
-	 *  \param src              The two-phase dispersion (geometry).
-	 *  \param matrix_phase     Constant tensor for the matrix phase.
-	 *  \param inclusion_phase  Constant tensor for the inclusion phase.
-	 *  \param k1               Wavevector of the field in the reference phase. */
+	/** \brief Define the dynamic dielectric problem and set its incident phase-1 wavevector. \param src The two-phase dispersion. \param matrix_phase Constant tensor for the matrix phase. \param inclusion_phase Constant tensor for the inclusion phase. \param k1 Incident wavevector in phase 1; SetWavevector rescales it to the reference-phase wavevector. */
 	virtual void DefineProblem(const TwoPhaseDispersion& src, const ConstantTensor & matrix_phase, const ConstantTensor & inclusion_phase, const GeometryVector & k1);
 
-	/** \brief Make the two-argument base-class overload visible (fixes -Woverloaded-virtual). (CLAUDE) */
+	/** \brief Make the two-argument base-class overload visible (fixes -Woverloaded-virtual). */
 	using StaticDielectricProblem::DefineProperties;
 
-	/** \brief Set the permittivities and the incident wavevector. (CLAUDE)
-	 *  \param epsilon1  Permittivity of the matrix phase.
-	 *  \param epsilon2  Permittivity of the inclusion phase.
-	 *  \param k1        Wavevector of the field in the reference phase. */
+	/** \brief Set the permittivities and incident phase-1 wavevector. \param epsilon1 Permittivity of the matrix phase. \param epsilon2 Permittivity of the inclusion phase. \param k1 Incident wavevector in phase 1; SetWavevector rescales it to the reference-phase wavevector. */
 	virtual void DefineProperties(const std::complex<double> & epsilon1, const std::complex<double> & epsilon2, const GeometryVector & k1);
 
-	/** \brief Set the incident wavevector and shift the DFT wavevectors accordingly. (CLAUDE)
-	 *  \param k1  Wavevector of the field in the reference phase. */
+	/** \brief Rescale a phase-1 incident wavevector to the reference-phase wavevector and shift the DFT wavevectors by it. \param k1 Incident wavevector in phase 1. */
 	void SetWavevector(const GeometryVector & k1);
 
 	//virtual void Prepare(const ConstantTensor & applied_electric_field);
@@ -325,7 +312,7 @@ struct DynamicDielectricProblem : public StaticDielectricProblem {
 	/** \brief estimate the Green's function via the Monte Carlo method... */
 	void ComputeG_Fourier_test3();
 
-	/** \brief Compute the Fourier-space propagator with a regularized dyadic Green's function. (CLAUDE)
+	/** \brief Compute the Fourier-space propagator with a regularized dyadic Green's function.
 	 *  \param regularized_part  Imaginary regularization added to the denominator. */
 	void ComputeG_Fourier_test4(double regularized_part = 1e-10);
 protected:
@@ -334,13 +321,13 @@ protected:
 	/* Compute the displacement field D. */
 	//virtual void ComputeDivergenceFreeField_Fourier(TensorField & out) const;
 
-	/** \brief Compute the displacement field D in direct space, including the e^{ik1*x} phase factor. (CLAUDE)
+	/** \brief Compute the displacement field D in direct space, including the e^{ik1*x} phase factor.
 	 *  \param[out] out  The resulting displacement field. */
 	virtual void ComputeDivergenceFreeField_Direct(TensorField & out) const {
 		StaticDielectricProblem::ComputeDivergenceFreeField_Direct(out);
 		ShiftFieldByk1(out);
 	};
-	/** \brief Compute the electric field E in direct space, including the e^{ik1*x} phase factor. (CLAUDE)
+	/** \brief Compute the electric field E in direct space, including the e^{ik1*x} phase factor.
 	 *  \param[out] out  The resulting electric field. */
 	virtual void ComputeField_Direct(TensorField & out) const {
 		StaticDielectricProblem::ComputeField_Direct(out);
@@ -357,7 +344,7 @@ protected:
 	//virtual void ComputeL_strong();
 
 
-	/** \brief Evaluate the direct-space H-function (double-gradient Green's function). (CLAUDE)
+	/** \brief Evaluate the direct-space H-function (double-gradient Green's function).
 	 *  \param position  Direct-space position.
 	 *  \param k1        Wavevector of the field in the reference phase.
 	 *  \param d         Spatial dimension.
@@ -365,14 +352,14 @@ protected:
 	 *  \return          The rank-2 H-tensor at the position. */
 	ConstantTensor Hfunction_direct(const GeometryVector & position, const GeometryVector & k1, int d, double dx);
 
-	/** \brief Fourier-space dyadic Green's function at a wavevector. (CLAUDE)
+	/** \brief Fourier-space dyadic Green's function at a wavevector.
 	 *  \param q   The wavevector.
 	 *  \param qq  Squared magnitude of q.
 	 *  \param kk  Squared magnitude of the reference wavevector.
 	 *  \return    The rank-2 dyadic Green's function. */
 	inline ConstantTensor DyadicGreenFunction_Fourier(const GeometryVector & q, double qq, double kk);
 
-	/** \brief Regularized Fourier-space dyadic Green's function at a wavevector. (CLAUDE)
+	/** \brief Regularized Fourier-space dyadic Green's function at a wavevector.
 	 *  \param q        The wavevector.
 	 *  \param qq       Squared magnitude of q.
 	 *  \param kk       Squared magnitude of the reference wavevector.
@@ -417,13 +404,13 @@ struct Homo_ElasticProblem_static{
 	/* ------------------------- 
 		Constructors.
 	   ------------------------- */
-	/** \brief Construct an empty static elastic problem. (CLAUDE) */
+	/** \brief Construct an empty static elastic problem. */
 	Homo_ElasticProblem_static() {
 		d = 0; K1 = 0; G1 = 0; K2 = 0; G2 = 0; kappa = 0, mu=0;
 		update_propagator = false; update_plan = false; m = 0;
 		Use_StrongContrast = false; L = ConstantTensor(); D = ConstantTensor(), delta_C = ConstantTensor();
 	};
-	/** \brief Construct a static elastic problem from a geometry and phase moduli. (CLAUDE)
+	/** \brief Construct a static elastic problem from a geometry and phase moduli.
 	 *  \param src  The two-phase dispersion (geometry).
 	 *  \param K1   Bulk modulus of the reference (matrix) phase.
 	 *  \param G1   Shear modulus of the reference (matrix) phase.
@@ -432,7 +419,7 @@ struct Homo_ElasticProblem_static{
 	Homo_ElasticProblem_static(const TwoPhaseDispersion& src, const std::complex<double> & K1, const std::complex<double> & G1,
 		const std::complex<double> & K2, const std::complex<double> & G2);
 
-	/** \brief Destructor; destroys the fftw plans and tensor fields. (CLAUDE) */
+	/** \brief Destructor; destroys the fftw plans and tensor fields. */
 	~Homo_ElasticProblem_static() {
 		for (size_t i = 0; i < FourierTransform_P.size(); i++) {
 			fftw_destroy_plan(FourierTransform_P[i]);
@@ -445,7 +432,7 @@ struct Homo_ElasticProblem_static{
 	/* -------------------------
 		Member functions: define the problem.
 	------------------------- */
-	/** \brief Redefine the geometry and phase moduli of the problem. (CLAUDE)
+	/** \brief Redefine the geometry and phase moduli of the problem.
 	 *  \param src  The two-phase dispersion (geometry).
 	 *  \param K1   Bulk modulus of the reference (matrix) phase.
 	 *  \param G1   Shear modulus of the reference (matrix) phase.
@@ -454,32 +441,32 @@ struct Homo_ElasticProblem_static{
 	void RedefineProblem(const TwoPhaseDispersion& src, const std::complex<double> & K1, const std::complex<double> & G1,
 		const std::complex<double> & K2, const std::complex<double> & G2);
 
-	/** \brief Select the weak- or strong-contrast expansion and rebuild the L tensor. (CLAUDE)
+	/** \brief Select the weak- or strong-contrast expansion and rebuild the L tensor.
 	 *  \param use_strong_contrast  true = use the strong-contrast expansion. */
 	void SetStrongContrast(bool use_strong_contrast);
 
 	/* -------------------------
 	Member functions: solve the problem.
 	------------------------- */
-	/** \brief Initialize the solver for a given applied strain and build the fftw plans. (CLAUDE)
+	/** \brief Initialize the solver for a given applied strain and build the fftw plans.
 	 *  \param external_strain  The applied (constant) strain tensor. */
 	void Prepare(const ConstantTensor & external_strain);
 
-	/** \brief Advance the iterative solver by a number of stages. (CLAUDE)
+	/** \brief Advance the iterative solver by a number of stages.
 	 *  \param steps  Number of iteration stages. */
 	void Iterate(size_t steps = 1);
 
-	/** \brief Iterate until the field and divergence tolerances are met. (CLAUDE)
+	/** \brief Iterate until the field and divergence tolerances are met.
 	 *  \param tol_field  Target tolerance on the change in the field.
 	 *  \param tol_div    Target tolerance on the divergence of the stress. */
 	void Run(double tol_field = 1e-10, double tol_div = 1e-14);
 
-	/** \brief Check the change in the response field between two stages. (CLAUDE)
+	/** \brief Check the change in the response field between two stages.
 	 *  \param tol_field  Target tolerance.
 	 *  \return true if the change is below tol_field. */
 	bool CheckConvergence(double tol_field);
 
-	/** \brief Check the divergence of the stress field in Fourier space. (CLAUDE)
+	/** \brief Check the divergence of the stress field in Fourier space.
 	 *  \param tol_div  Target tolerance.
 	 *  \return true if the divergence is below tol_div. */
 	bool CheckDivergenceFree(double tol_div);
@@ -488,23 +475,23 @@ struct Homo_ElasticProblem_static{
 	 *  \param[out] moduli  [0] bulk modulus, [1] shear modulus. */
 	void ComputeEffectiveProperties(std::vector<std::complex<double>> & moduli) const;
 
-	/** \brief Compute the full effective stiffness tensor. (CLAUDE)
+	/** \brief Compute the full effective stiffness tensor.
 	 *  \return The effective rank-4 stiffness tensor. */
 	ConstantTensor ComputeEffectiveTensor() const;
 
-	/** \brief Print the response and polarization fields in direct space. (CLAUDE)
+	/** \brief Print the response and polarization fields in direct space.
 	 *  \param prefix  Output filename prefix. */
 	void Print(const std::string & prefix) const;
 
-	/** \brief Print the response and polarization fields in Fourier space. (CLAUDE)
+	/** \brief Print the response and polarization fields in Fourier space.
 	 *  \param prefix  Output filename prefix. */
 	void Print_Fourier(const std::string & prefix) const;
 
-	/** \brief Print the 2D discretized geometry grid. (CLAUDE)
+	/** \brief Print the 2D discretized geometry grid.
 	 *  \param prefix  Output filename prefix. */
 	void Print_Grid_2D(const std::string & prefix) const;
 
-	/** \brief Print the 2D Fourier-space Green's function components. (CLAUDE)
+	/** \brief Print the 2D Fourier-space Green's function components.
 	 *  \param prefix  Output filename prefix. */
 	void Print_GreenFn_2D(const std::string & prefix) const;
 
@@ -531,14 +518,12 @@ private:
 	void ComputeH_Fourier();
 };
 
-/** \brief Return the unit hydrostatic strain tensor in d dimensions. (CLAUDE)
+/** \brief Return the unit hydrostatic strain tensor in d dimensions.
  *  \param d  Spatial dimension.
  *  \return   The rank-2 hydrostatic strain tensor. */
 ConstantTensor HydrostaticStrain(DimensionType d);
 
-/** \brief Return a unit deviatoric (shear) strain tensor in d dimensions. (CLAUDE)
- *  \param d  Spatial dimension.
- *  \return   The rank-2 deviatoric strain tensor. */
+/** \brief Return a deviatoric strain tensor whose off-diagonal components are one and diagonal components are zero. \param d Spatial dimension. \return The rank-2 deviatoric strain tensor. */
 ConstantTensor DeviatoricStrain(DimensionType d);
 
 
@@ -548,10 +533,10 @@ ConstantTensor DeviatoricStrain(DimensionType d);
  *	Only isotropic phases are implemented. 
  *  mass densities of both phases are identical. */
 struct DynamicElasticProblem : FFH_base {
-	/** \brief Construct an empty dynamic elastic problem (mass density = 1). (CLAUDE) */
+	/** \brief Construct an empty dynamic elastic problem (mass density = 1). */
 	DynamicElasticProblem();
 
-	/** \brief Construct a dynamic elastic problem from a geometry and phase moduli. (CLAUDE)
+	/** \brief Construct a dynamic elastic problem from a geometry and phase moduli.
 	 *  \param src  The two-phase dispersion (geometry).
 	 *  \param K1   Bulk modulus of the reference (matrix) phase.
 	 *  \param G1   Shear modulus of the reference (matrix) phase.
@@ -561,7 +546,7 @@ struct DynamicElasticProblem : FFH_base {
 		const std::complex<double> & K1, const std::complex<double> & G1,
 		const std::complex<double> & K2, const std::complex<double> & G2);
 
-	/** \brief Define the dynamic elastic problem geometry. (CLAUDE)
+	/** \brief Define the dynamic elastic problem geometry.
 	 *  \param src              The two-phase dispersion (geometry).
 	 *  \param matrix_phase     Stiffness tensor of the matrix phase.
 	 *  \param inclusion_phase  Stiffness tensor of the inclusion phase. */
@@ -574,7 +559,7 @@ struct DynamicElasticProblem : FFH_base {
 	 *  \param kL	Wavevector of the longitudinal wave. */
 	virtual void DefineProblem(const TwoPhaseDispersion& src, const ConstantTensor & matrix_phase, const ConstantTensor & inclusion_phase, const GeometryVector kL);
 
-	/** \brief Set the phase moduli and the derived reference/polarizability parameters. (CLAUDE)
+	/** \brief Set the phase moduli and the derived reference/polarizability parameters.
 	 *  \param K1  Bulk modulus of the reference (matrix) phase.
 	 *  \param G1  Shear modulus of the reference (matrix) phase.
 	 *  \param K2  Bulk modulus of the polarized (inclusion) phase.
@@ -582,7 +567,7 @@ struct DynamicElasticProblem : FFH_base {
 	virtual void DefineProperties(const std::complex<double> & K1, const std::complex<double> & G1,
 		const std::complex<double> & K2, const std::complex<double> & G2);
 
-	/** \brief Set the propagation direction and the longitudinal/transverse wavenumbers. (CLAUDE)
+	/** \brief Set the propagation direction and the longitudinal/transverse wavenumbers.
 	 *  \param kL  Wavevector of the longitudinal wave. */
 	virtual void SetWavevector(const GeometryVector & kL);
 
@@ -595,7 +580,7 @@ struct DynamicElasticProblem : FFH_base {
 	 *  \param applied  The applied (constant) strain tensor. */
 	virtual void Prepare(const ConstantTensor & applied);
 
-	/** \brief Compute the effective bulk and shear moduli from the converged fields. (CLAUDE)
+	/** \brief Compute the effective bulk and shear moduli from the converged fields.
 	 *  \param[out] moduli  [0] effective bulk modulus, [1] effective shear modulus. */
 	virtual void ComputeEffectiveModuli(std::vector<std::complex<double>> & moduli) const;
 
@@ -633,13 +618,13 @@ protected:
 	 *  G_{ijkl}. */
 	virtual void ComputePropagator_weak();
 
-	/** \brief Compute the weak-contrast L tensors from the phase moduli. (CLAUDE) */
+	/** \brief Compute the weak-contrast L tensors from the phase moduli. */
 	virtual void ComputeL_weak();
 
 	/** \brief Fourier transform of the H-tensor*/
 	virtual void ComputePropagator_strong();
 
-	/** \brief Compute the strong-contrast L tensors from the phase moduli. (CLAUDE) */
+	/** \brief Compute the strong-contrast L tensors from the phase moduli. */
 	virtual void ComputeL_strong();
 
 	/** \brief Evaluate the Fourier-space rank-4 Green's function at a wavevector.

@@ -34,17 +34,17 @@ public:
 	std::function <double(int n)> f;
 	int N;
 
-	/** \brief Construct from an initial packing; sets phi=0 and a default voxel size. (CLAUDE)
+	/** \brief Construct from an initial packing; sets phi=0 and a default voxel size.
 	 *  \param config  Initial sphere packing used as the substrate. */
 	SpacefillingPacking(const SpherePacking& config);
 
-	/** \brief Construct and derive N and maxR from the scaling-function parameters. (CLAUDE)
-	 *  \param config  Initial sphere packing used as the substrate.
-	 *  \param param   param[0] = maximum particle volume, param[1] = scaling exponent/ratio.
-	 *  \param fnName  Scaling-function name ("Zeta" or "Power"). */
+	/** \brief Construct from scaling parameters, deriving N and maxR when the parameters and function name are valid.
+	 * \param config Initial sphere packing used as the substrate.
+	 * \param param Scaling parameters: maximum particle volume and exponent or ratio.
+	 * \param fnName Scaling-function name, "Zeta" or "Power". */
 	SpacefillingPacking(const SpherePacking& config, const std::vector<double> & param, const char * fnName);
 
-	/** \brief Replace the current packing and reset cell size and packing fraction. (CLAUDE)
+	/** \brief Replace the current packing and reset cell size and packing fraction.
 	 *  \param newPacking  New sphere packing to copy in as the current configuration. */
 	inline void ReplaceConfig(SpherePacking & newPacking) {
 		delete this->pSpheres;
@@ -53,11 +53,11 @@ public:
 		this->phi = this->pSpheres->PackingFraction();
 	}
 	//Manual inputs
-	/** \brief Set the number of spheres added per stage. (CLAUDE)
+	/** \brief Set the number of spheres added per stage.
 	 *  \param N  Number of spheres to insert at each stage. */
 	void setN(int N);
 
-	/** \brief Set the maximum (stage-1) particle radius. (CLAUDE)
+	/** \brief Set the maximum (stage-1) particle radius.
 	 *  \param Rmax  Maximum particle radius. */
 	void setRmax(double Rmax);
 
@@ -66,7 +66,7 @@ public:
 	 *  \param fnName  "Zeta": f(n) = 1/n^param[1]; "Power": f(n) = 1/param[1]^(n-1). */
 	void setScalingFunction(const std::vector<double> & param, const char * fnName);
 
-	/** \brief Set the per-stage volume scaling function directly. (CLAUDE)
+	/** \brief Set the per-stage volume scaling function directly.
 	 *  \param function  Callable mapping stage index n to the relative particle volume. */
 	void setScalingFunction(const std::function <double(int n)> & function);
 
@@ -116,7 +116,7 @@ double getSpacefillingPacking(SpherePacking & c, int numStages, double & maxPrtV
  *  \return             Difference between the achieved and the theoretical packing fraction. */
 double getSpacefillingPacking2(SpherePacking & c, int numStages, double & maxPrtVol, double parameter, const char * fnName, const char * prefix, int randomSeed, int numThreads=1, const std::vector<int> & outputIndex = std::vector<int>());
 
-/** \brief Stage-ranged variant of getSpacefillingPacking2 running stages initStage..finStages. (CLAUDE)
+/** \brief Stage-ranged variant of getSpacefillingPacking2 running stages initStage..finStages.
  *  \param c            Initial packing; the result accumulates here.
  *  \param initStage    First stage to fill.
  *  \param finStages    Final stage to fill.

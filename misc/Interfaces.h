@@ -8,30 +8,30 @@
 #include <Plots.h>
 #include <DisplaySpheres.h>
 
-/** \brief Run the inverse statistical-mechanics command-line interface. (CLAUDE)
+/** \brief Run the inverse statistical-mechanics command-line interface.
  *  \return  Exit status code. */
 int InvStatMechCLI();
 
-/** \brief Run the pair-statistics command-line interface. (CLAUDE)
+/** \brief Run the pair-statistics command-line interface.
  *  \return  Exit status code. */
 int PairStatisticsCLI();
 
-/** \brief Run the collective-coordinate command-line interface. (CLAUDE)
+/** \brief Run the collective-coordinate command-line interface.
  *  \return  Exit status code. */
 int CollectiveCoordinateCLI();
 
-/** \brief Run the tiling-problem command-line interface. (CLAUDE)
+/** \brief Run the tiling-problem command-line interface.
  *  \return  Exit status code. */
 int TilingProblemCLI();
 
-/** \brief Run the first collective-coordinate inversion problem. (CLAUDE)
- *  \param  TODO(CLAUDE): unclear - review */
-void CCInversionProblem1(bool );
+/** \brief Run the first collective-coordinate inversion problem.
+ *  \param outConfig Whether to write all numerical solutions. */
+void CCInversionProblem1(bool outConfig);
 
 //defined in debug.cpp
 //int Debug();
 
-/** \brief Run the simple debug routine. (CLAUDE)
+/** \brief Run the simple debug routine.
  *  \return  Exit status code. */
 int DebugSimple();
 //defined in debug.cpp
@@ -43,11 +43,11 @@ template<typename T> class InputParameters {
 	T parameter;
 	std::string question, response, keyword;
 
-	/** \brief Construct an input-parameter binding from a keyword, prompt, and response template. (CLAUDE)
-	 *  \param PARAMETER  Initial value of the bound parameter.
-	 *  \param KEYWORD    Keyword that selects this parameter on the command line.
-	 *  \param QUESTION   Prompt text shown when requesting the value.
-	 *  \param RESPONSE   Response/echo text associated with the parameter. */
+	/** \brief Construct an input-parameter record from an initial value, keyword, prompt, and response text.
+	 * \param PARAMETER Initial stored parameter value.
+	 * \param KEYWORD Keyword that selects this parameter.
+	 * \param QUESTION Prompt text shown when requesting the value.
+	 * \param RESPONSE Response or echo text associated with the parameter. */
 	InputParameters(T & PARAMETER, const std::string & KEYWORD, const std::string & QUESTION, const std::string & RESPONSE) {
 		keyword = std::string(KEYWORD);
 		response = std::string(RESPONSE);
@@ -55,7 +55,7 @@ template<typename T> class InputParameters {
 		parameter = PARAMETER;
 	}
 
-	/** \brief Test whether the given keyword matches this parameter's keyword. (CLAUDE)
+	/** \brief Test whether the given keyword matches this parameter's keyword.
 	 *  \param KEYWORD  Keyword to compare against.
 	 *  \return         True if the keywords are equal. */
 	bool CompareKeyword(const std::string & KEYWORD) { 
@@ -72,8 +72,8 @@ template<typename T> class InputParameters {
 };
 
 
-/** \brief Read commands from standard input and dispatch them to the program subsystems. (CLAUDE)
- *  \return  Exit status code returned by the selected command or 0 on "Exit". */
+/** \brief Read commands from standard input and dispatch them to program subsystems.
+ * \return Status returned by PairStatisticsCLI or CollectiveCoordinateCLI, or 0 on Exit or end of input. */
 inline int cli()
 {
 	char tempstring[1000] = {};

@@ -655,7 +655,7 @@ bool Polygon::IsPtInside(const GeometryVector & pos) {
 	}
 }
 
-/** Comparator that orders two GeometryVectors by their first component. (CLAUDE)
+/** Comparator that orders two GeometryVectors by their first component.
  * Used to sort a list of (distance, parameter) pairs in ascending distance.
  * \param a	The left GeometryVector.
  * \param b	The right GeometryVector.

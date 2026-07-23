@@ -17,7 +17,7 @@
 #include "PeriodicCellList.h"
 #include "RandomGenerator.h"
 
-/** \brief Smoke-test entry point: build a periodic point pattern and count neighbours. (CLAUDE)
+/** \brief Smoke-test entry point: build a periodic point pattern and count neighbours.
  *  \return  0 on success. */
 int main()
 {

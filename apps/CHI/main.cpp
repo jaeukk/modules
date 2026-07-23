@@ -23,7 +23,7 @@ public:
 	std::string filename;
 	int start_idx, num_configs;
 	double target_phi2 = -1.0;
-	/** \brief Construct by reading the text-file input parameters. (CLAUDE)
+	/** \brief Construct by reading the text-file input parameters.
 	 *  \param ifile  Input stream supplying filename, start_idx and num_configs.
 	 *  \param ofile  Output stream prompting for each parameter. */
 	ReadTextFiles(std::istream & ifile, std::ostream & ofile){
@@ -36,7 +36,7 @@ public:
 	}
 
 
-	/** \brief Load the i-th configuration from a text file, optionally rescaling to target_phi2. (CLAUDE)
+	/** \brief Load the i-th configuration from a text file, optionally rescaling to target_phi2.
 	 *  \param i  Offset added to start_idx to select the configuration file.
 	 *  \return   The loaded (and possibly rescaled) SpherePacking. */
 	SpherePacking operator() (size_t i)
@@ -76,7 +76,7 @@ public:
 	ConfigurationPack p;
 	RandomGenerator rng;
 	bool sequential_sampling = true;
-	/** \brief Construct by opening a ConfigurationPack from the given prefix. (CLAUDE)
+	/** \brief Construct by opening a ConfigurationPack from the given prefix.
 	 *  \param ifile  Input stream supplying the pack prefix.
 	 *  \param ofile  Output stream prompting for the prefix. */
 	ReadConfigPack(std::istream & ifile, std::ostream & ofile)
@@ -90,7 +90,7 @@ public:
 		p.Open(prefix);
 	}
 
-	/** \brief Load the i-th configuration from the pack as a SpherePacking at target_phi2. (CLAUDE)
+	/** \brief Load the i-th configuration from the pack as a SpherePacking at target_phi2.
 	 *  \param i  Offset added to StartIdx to select the configuration in the pack.
 	 *  \return   The SpherePacking whose radius is set to reach target_phi2 (empty if target_phi2<=0). */
 	SpherePacking operator() (size_t i)
@@ -114,14 +114,12 @@ public:
 
 
 
-/** \brief Run the interactive command loop driving the pair-statistics computations. (CLAUDE)
+/** \brief Run the interactive command loop driving the pair-statistics computations.
  *  \return  Status code: 0 on "Exit", 2 on end-of-input. */
 int PairStatisticsCLI();
 
-/** \brief Program entry point; dispatches to PairStatisticsCLI(). (CLAUDE)
- *  \param argc  Number of command-line arguments (unused).
- *  \param argv  Command-line argument values (unused).
- *  \return      Always 0. */
+/** \brief Program entry point; dispatches to PairStatisticsCLI().
+ * \return Always 0. */
 int main(int, char **){
 	PairStatisticsCLI();
 

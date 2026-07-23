@@ -30,7 +30,7 @@
 #include <algorithm>
 
 /** \brief Validate that a user-supplied filename pattern is a safe printf template
- *  with exactly one integer conversion. (CLAUDE)
+ *  with exactly one integer conversion.
  *
  *  The txt2CP path feeds the input prefix to snprintf as the FORMAT string
  *  (snprintf(name, ..., prefix.c_str(), idx)). An unrestricted format is classic

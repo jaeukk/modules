@@ -23,13 +23,13 @@
 #include <RandomGenerator.h>
 #include <etc.h>
 
-/** \brief Write a table of GeometryVector data to an output stream, with header fields. (CLAUDE)
+/** \brief Write a table of GeometryVector data to an output stream, with header fields.
  *  \param result  The table of GeometryVector rows to write.
  *  \param ofile   The output stream to write into.
  *  \param fields  Header/comment lines prepended to the output. */
 void WriteFunction(const std::vector<GeometryVector> & result, std::ostream & ofile, const std::vector<std::string> & fields);
 
-/** \brief Write a table of GeometryVector data to a file named by a prefix, with header fields. (CLAUDE)
+/** \brief Write a table of GeometryVector data to a file named by a prefix, with header fields.
  *  \param result         The table of GeometryVector rows to write.
  *  \param OutFilePrefix  Prefix of the output file name.
  *  \param fields         Header/comment lines prepended to the output. */
@@ -78,7 +78,7 @@ public:
 		CDF(source.CDF), CDF_uptodate(source.CDF_uptodate)
 	{}
 
-	/** \brief A copy-assignment operator (member-wise, matching the copy constructor). (CLAUDE) */
+	/** \brief A copy-assignment operator (member-wise, matching the copy constructor). */
 	LocalNumber & operator=(const LocalNumber & source) = default;
 
 	/** \brief A constructor by loading data written by WriteBinary().
@@ -132,11 +132,11 @@ public:
 	/** \brief Get a standard error in the estimated variance.
 	 * Bootstrap method is used.
 	 * \param Bootstrap_Size	The number of bootstrap replica.
-	 * \param seed	A seed for the random number generator used to draw bootstrap samples. (CLAUDE)
+	 * \param seed	A seed for the random number generator used to draw bootstrap samples.
 	 * \return Standard error of variance via the Bootstrap algorithm. */
 	double GetSE_Variance(int Bootstrap_Size = 50, int seed = 0) const;
 
-	/**	\brief Draw a random number according to the empirical distribution. (CLAUDE)
+	/**	\brief Draw a random number according to the empirical distribution.
 	 *	\param	rng	A random number generator.
 	 *	\return A random number between this->min to this->max
 	according to the empirical distribution. */
@@ -177,11 +177,7 @@ public:
 		return BootstrapSample;
 	}
 
-	/** \brief Generate a Bootstrap sample of this empirical distribution (const overload). (CLAUDE)
-	 *	Since its return object is a smart pointer, users don't need to deallocate memory.
-	 *	\param[in] seed	A seed for a random number generator.
-	 *	\param[in] sample_size	The size of a Bootstrap sample. ("0" means the BootstrapSample has the same size as the original sample.)
-	 *	\return	A unique pointer of a Bootstrap sample. */
+	/** \brief Generate a bootstrap sample from this empirical distribution (const overload). \param[in] seed Seed for the random-number generator. \param[in] sample_size Requested sample size; 0 uses totalCount. Values greater than totalCount are rejected and produce an empty sample after reporting an error. \return A unique pointer to the generated bootstrap sample. */
 	std::unique_ptr<LocalNumber> GetBootstrapSample(int seed = 0, size_t sample_size = 0) const {
 		std::unique_ptr<LocalNumber> BootstrapSample = std::make_unique<LocalNumber>(this->min, this->max);
 		RandomGenerator rng(seed);

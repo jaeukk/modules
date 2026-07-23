@@ -50,7 +50,7 @@ static long LastFrameTime;
 
 static int window_handle;
 
-/** \brief Fetch frame data and rebuild the per-sphere GLFrames for the given frame. (CLAUDE)
+/** \brief Fetch frame data and rebuild the per-sphere GLFrames for the given frame.
  *  \param FrameNumber  Index of the frame to prepare. */
 void PrepareFrame (long FrameNumber)
 {
@@ -191,9 +191,7 @@ void SavePovRay(void)
 // Draw spheres
 
 //get depth of spheres[i]
-/** \brief Get the camera-space depth of sphere i. (CLAUDE)
- *  \param i  Index of the sphere.
- *  \return   The depth (camera-space Z) of the sphere's center. */
+/** \brief Get sphere i's Z coordinate after applying the camera-orientation, scene, and sphere transforms; camera translation is not applied. \param i Index of the sphere. \return The transformed Z coordinate used for depth sorting. */
 double GetDepth(size_t i)
 {
 	M3DMatrix44f m0, m1, m2;
@@ -205,7 +203,7 @@ double GetDepth(size_t i)
 	return m0[14];
 }
 
-/** \brief Draw all spheres (depth-sorted) and lines of the current scene. (CLAUDE) */
+/** \brief Draw all spheres (depth-sorted) and lines of the current scene. */
 void DrawInhabitants()
 {
 	// Draw the spheres
@@ -283,7 +281,7 @@ void RenderScene(void)
 
 
 static double OrthoWindowSize=1.0;
-/** \brief Switch the projection to orthographic mode. (CLAUDE) */
+/** \brief Switch the projection to orthographic mode. */
 void ChangeToOrtho()
 {
 	OrthoProjection=true;
@@ -297,7 +295,7 @@ void ChangeToOrtho()
 	glLoadIdentity();    
 }
 
-/** \brief Switch the projection to perspective mode. (CLAUDE) */
+/** \brief Switch the projection to perspective mode. */
 void ChangeToPerspective()
 {
 	OrthoProjection=false;
@@ -312,7 +310,7 @@ void ChangeToPerspective()
 }
 
 // Respond to key strokes
-/** \brief GLUT special-key callback: arrow keys move/zoom the camera. (CLAUDE)
+/** \brief GLUT special-key callback: arrow keys move/zoom the camera.
  *  \param key  GLUT special key code.
  *  \param x    Mouse X position when the key was pressed.
  *  \param y    Mouse Y position when the key was pressed. */
@@ -346,7 +344,7 @@ void SpecialKeys(int key, int x, int y)
 	glutPostRedisplay();
 }
 
-/** \brief GLUT keyboard callback: handle precision, projection, movie, quit, and save keys. (CLAUDE)
+/** \brief GLUT keyboard callback: handle precision, projection, movie, quit, and save keys.
  *  \param key  ASCII code of the pressed key.
  *  \param x    Mouse X position when the key was pressed.
  *  \param y    Mouse Y position when the key was pressed. */
@@ -404,7 +402,7 @@ void KeyStroke(unsigned char key, int x, int y)
 		SavePovRay();
 }
 
-/** \brief GLUT idle callback: advance the movie frame when playing. (CLAUDE) */
+/** \brief GLUT idle callback: advance the movie frame when playing. */
 void IdleFunction(void)
 {
 	if(Playing)
@@ -436,7 +434,7 @@ void IdleFunction(void)
 }
 
 ///////////////////////////////////////////////////////////
-/** \brief GLUT reshape callback: update viewport and projection for a new window size. (CLAUDE)
+/** \brief GLUT reshape callback: update viewport and projection for a new window size.
  *  \param w  New window width in pixels.
  *  \param h  New window height in pixels. */
 void ChangeSize(int w, int h)
@@ -463,7 +461,7 @@ void ChangeSize(int w, int h)
 ///////////////////////////////////////////////////////////
 //this part of code deals with mouse dragging
 static int CurrentMouseX, CurrentMouseY;
-/** \brief GLUT passive-motion callback: track the current mouse position. (CLAUDE)
+/** \brief GLUT passive-motion callback: track the current mouse position.
  *  \param x  Mouse X position.
  *  \param y  Mouse Y position. */
 void PassiveMotion(int x, int y)
@@ -472,7 +470,7 @@ void PassiveMotion(int x, int y)
 	::CurrentMouseY=y;
 }
 float Sensitivity = 0.003;
-/** \brief GLUT motion callback: rotate the scene by the mouse drag delta. (CLAUDE)
+/** \brief GLUT motion callback: rotate the scene by the mouse drag delta.
  *  \param x  Current mouse X position.
  *  \param y  Current mouse Y position. */
 void Motion(int x, int y)
@@ -486,7 +484,7 @@ void Motion(int x, int y)
 	AllSpheres.RotateWorld( ::Sensitivity*dx, 0.0, 1.0, 0.0);
 }
 
-/** \brief Set up GLUT and run the main loop to display a multi-frame sphere/line scene. (CLAUDE)
+/** \brief Set up GLUT and run the main loop to display a multi-frame sphere/line scene.
  *  \param GetFrameFunc  Callback that fills spheres and lines for a given frame number.
  *  \param NumFrames     Total number of frames.
  *  \param Extra2DStuff  Callback receiving (window width, height) to draw extra 2D overlay content. */
@@ -542,7 +540,7 @@ void DisplaySpheres(const std::vector<sphere> & VSpheres, const std::vector<line
 }
 
 //transferred from PeriodicCellList.h
-/** \brief Embed a 1D, 2D, or 3D configuration into 3D space for display. (CLAUDE)
+/** \brief Embed a 1D, 2D, or 3D configuration into 3D space for display.
  *  \param a  Source configuration (dimension 1, 2, or 3).
  *  \return   An equivalent 3D configuration suitable for rendering. */
 Configuration To3D(const Configuration & a)
@@ -600,7 +598,7 @@ Configuration To3D(const Configuration & a)
 	}
 }
 
-/** \brief Convert a configuration into renderable spheres (particles), bonds, and box edges. (CLAUDE)
+/** \brief Convert a configuration into renderable spheres (particles), bonds, and box edges.
  *  \param list           Source 3D configuration.
  *  \param spheres        Destination vector receiving the particle spheres.
  *  \param lines          Destination vector receiving box-edge and bond lines.
@@ -722,7 +720,7 @@ void ConfigurationtoSpheres(const Configuration & list, std::vector<sphere> & sp
 
 }
 
-/** \brief Estimate a typical inter-particle spacing for a configuration. (CLAUDE)
+/** \brief Estimate a typical inter-particle spacing for a configuration.
  *  \param list  Configuration to measure.
  *  \return      A typical length scale (nearest-neighbor distance, bounded by density). */
 double findTypicalLength(const Configuration & list)

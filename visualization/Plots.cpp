@@ -8,7 +8,7 @@
 #endif
 
 #ifdef USE_MATHGL
-/** \brief Draw the outline of a circle on a MathGL graph. (CLAUDE)
+/** \brief Draw the outline of a circle on a MathGL graph.
  *  \param graph            Target MathGL graph.
  *  \param x                X coordinate of the circle center.
  *  \param y                Y coordinate of the circle center.
@@ -28,7 +28,7 @@ void PlotCircle2D(mglGraph & graph, double x, double y, double r, const char * M
 	graph.Plot(xc, yc, MGLOptions);
 }
 
-/** \brief Draw a filled disk on a MathGL graph. (CLAUDE)
+/** \brief Draw a filled disk on a MathGL graph.
  *  \param graph            Target MathGL graph.
  *  \param x                X coordinate of the disk center.
  *  \param y                Y coordinate of the disk center.

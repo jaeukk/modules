@@ -27,7 +27,7 @@ struct line
 };
 
 //should only be called inside the Extra2DStuff parameters of DisplaySpheres functions.
-/** \brief Draw 2D overlay text; only valid inside the Extra2DStuff callback of DisplaySpheres. (CLAUDE)
+/** \brief Draw 2D overlay text; only valid inside the Extra2DStuff callback of DisplaySpheres.
  *  \param text  Text string to draw.
  *  \param x     X position of the text in window coordinates.
  *  \param y     Y position of the text in window coordinates. */
@@ -61,19 +61,19 @@ void DisplaySpheres(const std::vector<sphere> & VSpheres, const std::vector<line
 void DisplaySpheres_Movie(std::function<void(std::vector<sphere> & VSpheres, std::vector<line> & VLines, long FrameNumber)> GetFrameFunc, long NumFrames);
 
 //transferred from PeriodicCellList.h
-/** \brief Display a particle configuration as 3D spheres (with optional bonds) in an OpenGL window. (CLAUDE)
+/** \brief Display a particle configuration as 3D spheres (with optional bonds) in an OpenGL window.
  *  \param a           Configuration to display (1D, 2D, or 3D).
  *  \param BondLength  Maximum neighbor distance to draw bonds; 0 draws no bonds.
  *  \param Radius      Sphere radius; 0 selects an automatic radius. */
 void DisplayConfiguration(const Configuration & a, double BondLength = 0.0, double Radius = 0.0);
 
-/** \brief Display a configuration pack as an animated 3D movie in an OpenGL window. (CLAUDE)
+/** \brief Display a configuration pack as an animated 3D movie in an OpenGL window.
  *  \param pk          Configuration pack providing one configuration per frame.
  *  \param BondLength  Maximum neighbor distance to draw bonds; 0 draws no bonds.
  *  \param Radius      Sphere radius; 0 selects an automatic radius. */
 void Display3DConfigurationMovie(ConfigurationPack & pk, double BondLength = 0.0, double Radius = 0.0);
 
-/** \brief Display the 3D structure factor of a configuration as colour-coded spheres. (CLAUDE)
+/** \brief Display the 3D structure factor of a configuration as colour-coded spheres.
  *  \param a              3D configuration to analyze.
  *  \param KCutOff        Maximum wavevector magnitude to include.
  *  \param KSphereRadius  Radius drawn for each k-point sphere; 0 selects an automatic radius. */

@@ -29,13 +29,13 @@ size_t Verbosity = 2;
 void WriteFunction(const std::vector<GeometryVector> & result, std::ostream & ofile, const std::vector<std::string> & fields);
 void WriteFunction(const std::vector<GeometryVector> & result, const std::string & OutFilePrefix, const std::vector<std::string> & fields);
 
-/** \brief Read a table of GeometryVector data from an input stream. (CLAUDE)
+/** \brief Read a table of GeometryVector data from an input stream.
  *  \param[out] result	The table of GeometryVector rows read from the stream.
  *  \param ifile		The input stream to read from.
  *  \param NumColumns	The number of columns to read per row. */
 void ReadFunction(std::vector<GeometryVector> & result, std::istream & ifile, size_t NumColumns);
 
-/** \brief Read a table of GeometryVector data from a file named by a prefix. (CLAUDE)
+/** \brief Read a table of GeometryVector data from a file named by a prefix.
  *  \param[out] result		The table of GeometryVector rows read from the file.
  *  \param InFilePrefix	Prefix of the input file name.
  *  \param NumColumns		The number of columns to read per row. */

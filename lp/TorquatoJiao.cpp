@@ -44,7 +44,7 @@ void TJJammer::TimerClass::Display()
 class LPClass 
 {
 public:
-	/** \brief Construct the LP helper bound to a parent jammer. (CLAUDE)
+	/** \brief Construct the LP helper bound to a parent jammer.
 	 *  \param src  Parent TJJammer whose state this helper reads and updates. */
 	LPClass(TJJammer & src)
 	{
@@ -130,37 +130,37 @@ private:
 	void ApplyBulkStrainConstraint();  //Prevents volume-increasing strains (to 1st order)
 
 	//Importing the problem into a solver:
-	/** \brief Import the generated constraints into the configured LP solver. (CLAUDE) */
+	/** \brief Import the generated constraints into the configured LP solver. */
 	void Import();
 
-	/** \brief Build the GLPK problem object, variables, and constraint bounds. (CLAUDE) */
+	/** \brief Build the GLPK problem object, variables, and constraint bounds. */
 	void Import_GLPK();
 	//void Import_HOPDM();
 	//void Import_BPMPD();
 
-	/** \brief Build the Gurobi environment, model, variables, and constraints. (CLAUDE) */
+	/** \brief Build the Gurobi environment, model, variables, and constraints. */
 	void   Import_Gurobi();
 
-	/** \brief Configure Gurobi tolerances, method, threads, and presolve settings. (CLAUDE) */
+	/** \brief Configure Gurobi tolerances, method, threads, and presolve settings. */
 	void   SetupEnvironment_Gurobi();
 
-	/** \brief Functions for adding variables to gVar (strain component variable). (CLAUDE)
-	 *  \param i         First strain-matrix index.
-	 *  \param l         Second strain-matrix index.
-	 *  \param varIndex  Slot in the gVar array to store the new variable. */
+	/** \brief Add one strain-component variable to the Gurobi model.
+	 * \param i First strain-matrix index.
+	 * \param l Second strain-matrix index.
+	 * \param varIndex Slot in the gVar array for the new variable. */
 	void   AddEpsilon_Gurobi(int i,
 		int l,
 		int varIndex); //Functions for adding variables to gVar
-	/** \brief Add one sphere-displacement variable to the Gurobi model. (CLAUDE)
+	/** \brief Add one sphere-displacement variable to the Gurobi model.
 	 *  \param InternalDeltaIndex  One-based number used to name the variable.
 	 *  \param varIndex            Slot in the gVar array to store the new variable. */
 	void   AddDelta_Gurobi(int InternalDeltaIndex,
 		int varIndex);
 
-	/** \brief Add all nonoverlap (and strain-trace) constraints to the Gurobi model. (CLAUDE) */
+	/** \brief Add all nonoverlap (and strain-trace) constraints to the Gurobi model. */
 	void   AddConstrs_Gurobi();
 
-	/** \brief Build and add a single linear constraint to the Gurobi model. (CLAUDE)
+	/** \brief Build and add a single linear constraint to the Gurobi model.
 	 *  \param constrIndex  Index of the constraint being added.
 	 *  \param numTerms     Number of coefficient terms in this constraint.
 	 *  \param offset       Starting offset into the ia/ja/ar coefficient arrays.
@@ -169,15 +169,15 @@ private:
 		int numTerms,
 		int offset);
 	//Solving using the LP software:
-	/** \brief Solve the LP using the configured solver. (CLAUDE) */
+	/** \brief Solve the LP using the configured solver. */
 	void Solve();
 
-	/** \brief Load and solve the problem with the GLPK simplex method. (CLAUDE) */
+	/** \brief Load and solve the problem with the GLPK simplex method. */
 	void Solve_GLPK();
 	//int Solve_HOPDM();
 	//int Solve_BPMPD();
 
-	/** \brief Optimize the Gurobi model, handling infeasible/unbounded/precision cases. (CLAUDE) */
+	/** \brief Optimize the Gurobi model, handling infeasible/unbounded/precision cases. */
 	void Solve_Gurobi();
 
 	//Exporting the solve's results:
@@ -185,18 +185,18 @@ private:
 	 *  \param lpIters  Current LP iteration index. */
 	void Export(int lpIters);
 
-	/** \brief Read the optimal strain matrix (I + epsilon) from the GLPK solution. (CLAUDE) */
+	/** \brief Read the optimal strain matrix (I + epsilon) from the GLPK solution. */
 	void ExportStrain_GLPK();
 	//void ExportStrain_HOPDM();
 	//void ExportStrain_BPMPD();
 
-	/** \brief Read the optimal strain matrix (I + epsilon) from the Gurobi solution. (CLAUDE) */
+	/** \brief Read the optimal strain matrix (I + epsilon) from the Gurobi solution. */
 	void ExportStrain_Gurobi();
 
-	/** \brief Apply the solved strain to the lattice matrix lambdas. (CLAUDE) */
+	/** \brief Compute the strained lattice in updateTemp from lambdas and the solved strain. */
 	void ApplyStrain();
 
-	/** \brief Apply the solved sphere displacements, updating coordinates and lattice. (CLAUDE)
+	/** \brief Apply the solved sphere displacements, updating coordinates and lattice.
 	 *  Also keeps track of which particle moved farthest (relative to the total packing
 	 *  displacement) if termCriterion is "maxDisp". */
 	void ExportMovements();
@@ -241,7 +241,7 @@ double TJJammer::getGlobalLength(double *inputVec)
   return dist;
 }
 
-/** \brief Compute the inverse of a square matrix via GSL LU decomposition. (CLAUDE)
+/** \brief Compute the inverse of a square matrix via GSL LU decomposition.
  *  \param matrixToInvert  Square matrix to invert (must be non-singular).
  *  \return                Newly allocated matrix holding the inverse. */
 gsl_matrix *getInverse(gsl_matrix *matrixToInvert) {

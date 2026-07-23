@@ -33,7 +33,7 @@ struct FirstPassageTimeParameters{
 	size_t num_test_prts;
 	size_t num_threads;
 
-	/** \brief Construct the simulation parameters and derive the conductivity ratio alpha. (CLAUDE)
+	/** \brief Construct the simulation parameters and derive the conductivity ratio alpha.
 	 *  \param sigma_host      Conductivity of the host phase.
 	 *  \param sigma_particle  Conductivity of the particle phase.
 	 *  \param Dimension       Spatial dimension of the simulation. */
@@ -48,17 +48,17 @@ struct FirstPassageTimeParameters{
 		}
 	}
 
-	/** \brief Reset the trajectory if its parameters differ from the current object; otherwise keep it. (CLAUDE)
+	/** \brief Reset the trajectory if its parameters differ from the current object; otherwise keep it.
 	 *  \param traj  Trajectory to validate and possibly re-initialize.
 	 *  \return      True if the trajectory matched and can be continued, false if it was reset. */
 	bool ContinueTrajectory(Trajectory & traj);
 
-	/** \brief Write the simulation parameters and a set of trajectories to a ".trajlog" file. (CLAUDE)
+	/** \brief Write the simulation parameters and a set of trajectories to a ".trajlog" file.
 	 *  \param name   Base name of the log file (".trajlog" is appended).
 	 *  \param trajs  Trajectories to serialize. */
 	void WriteLogs(const std::string & name, const std::vector<Trajectory> & trajs);
 
-	/** \brief Read trajectories from a ".trajlog" file, checking that the header matches the current object. (CLAUDE)
+	/** \brief Read trajectories from a ".trajlog" file, checking that the header matches the current object.
 	 *  \param name   Base name of the log file (".trajlog" is appended).
 	 *  \param trajs  Trajectory vector to populate from the file.
 	 *  \return       True if the file existed and its parameters were consistent, false otherwise. */
@@ -137,21 +137,21 @@ struct FirstPassageTimeParameters{
 	/* 2D version for packings of polygonal cells. */
 
 
-	/** \brief Run a fixed number of walk-on-spheres steps for a single test particle, logging debug info to file. (CLAUDE)
+	/** \brief Run a fixed number of walk-on-spheres steps for a single test particle, logging debug info to file.
 	 *  \param config      Polygonal-cell packing the test particle moves through.
 	 *  \param num_steps   Number of jump steps to perform.
 	 *  \param trajectory  Trajectory to advance and accumulate statistics into.
 	 *  \param rng         Random number generator. */
 	void PerformSimulation2D_test(const Dispersion & config, size_t num_steps, Trajectory & trajectory, RandomGenerator & rng);
 
-	/** \brief Advance a single test particle until the accumulated first-passage time reaches tau_max. (CLAUDE)
+	/** \brief Advance a single test particle until the accumulated first-passage time reaches tau_max.
 	 *  \param config      Polygonal-cell packing the test particle moves through.
 	 *  \param tau_max     Additional first-passage time to simulate.
 	 *  \param trajectory  Trajectory to advance and accumulate statistics into.
 	 *  \param rng         Random number generator. */
 	void PerformSimulation2D_time(const Dispersion & config, double tau_max, Trajectory & trajectory, RandomGenerator & rng);
 
-	/** \brief Run the first-passage-time simulation over many configurations in parallel and collect ensemble statistics. (CLAUDE)
+	/** \brief Run the first-passage-time simulation over many configurations in parallel and collect ensemble statistics.
 	 *  \param GetConfiguration  Functor returning the polygonal-cell packing for a given configuration index.
 	 *  \param num_configs       Number of configurations to process.
 	 *  \param time_max          Target simulation time per test particle.
@@ -159,7 +159,7 @@ struct FirstPassageTimeParameters{
 	 *  \param log_filename      Base name for per-configuration log files; empty disables logging. */
 	void PerformSimulation2D_parallel(std::function<const Dispersion(size_t)> GetConfiguration, size_t num_configs, double time_max, std::vector<GeometryVector> & results, const std::string & log_filename = "");
 
-	/** \brief Simulate a single configuration and record ensemble statistics at successive time slices. (CLAUDE)
+	/** \brief Simulate a single configuration and record ensemble statistics at successive time slices.
 	 *  \param config         Polygonal-cell packing to simulate.
 	 *  \param time_max        Total simulation time.
 	 *  \param time_interval   Time increment between recorded slices.
@@ -169,21 +169,21 @@ struct FirstPassageTimeParameters{
 
 	/* 2D version for disk(sphere) packings. */
 
-	/** \brief Run a fixed number of walk-on-spheres steps for a single test particle, logging debug info to file. (CLAUDE)
+	/** \brief Run a fixed number of walk-on-spheres steps for a single test particle, logging debug info to file.
 	 *  \param config      Disk (sphere) packing the test particle moves through.
 	 *  \param num_steps   Number of jump steps to perform.
 	 *  \param trajectory  Trajectory to advance and accumulate statistics into.
 	 *  \param rng         Random number generator. */
 	void PerformSimulation2D_test(const SpherePacking & config, size_t num_steps, Trajectory & trajectory, RandomGenerator & rng);
 
-	/** \brief Advance a single test particle until the accumulated first-passage time reaches tau_max. (CLAUDE)
+	/** \brief Advance a single test particle until the accumulated first-passage time reaches tau_max.
 	 *  \param config      Disk (sphere) packing the test particle moves through.
 	 *  \param tau_max     Additional first-passage time to simulate.
 	 *  \param trajectory  Trajectory to advance and accumulate statistics into.
 	 *  \param rng         Random number generator. */
 	void PerformSimulation2D_time(const SpherePacking & config, double tau_max, Trajectory & trajectory, RandomGenerator & rng);
 
-	/** \brief Run the first-passage-time simulation over many configurations in parallel and collect ensemble statistics. (CLAUDE)
+	/** \brief Run the first-passage-time simulation over many configurations in parallel and collect ensemble statistics.
 	 *  \param GetConfiguration  Functor returning the disk (sphere) packing for a given configuration index.
 	 *  \param num_configs       Number of configurations to process.
 	 *  \param time_max          Target simulation time per test particle.
@@ -191,7 +191,7 @@ struct FirstPassageTimeParameters{
 	 *  \param log_filename      Base name for per-configuration log files; empty disables logging. */
 	void PerformSimulation2D_parallel(std::function<const SpherePacking(size_t)> GetConfiguration, size_t num_configs, double time_max, std::vector<GeometryVector> & results, const std::string & log_filename = "");
 
-	/** \brief Simulate a single configuration and record ensemble statistics at successive time slices. (CLAUDE)
+	/** \brief Simulate a single configuration and record ensemble statistics at successive time slices.
 	 *  \param config         Disk (sphere) packing to simulate.
 	 *  \param time_max        Total simulation time.
 	 *  \param time_interval   Time increment between recorded slices.
@@ -200,7 +200,7 @@ struct FirstPassageTimeParameters{
 	void PerformSimulation2D_TimeEvolution(const SpherePacking & config, double time_max, double time_interval, std::vector<GeometryVector> & results, const std::string & log_filename = "");
 
 protected:
-	/** \brief Perform a single walk-on-spheres jump for a test particle in a polygonal-cell packing. (CLAUDE)
+	/** \brief Perform a single walk-on-spheres jump for a test particle in a polygonal-cell packing.
 	 *  \param config       Polygonal-cell packing the test particle moves through.
 	 *  \param trajectory   Trajectory to advance and accumulate statistics into.
 	 *  \param rng          Random number generator.
@@ -208,7 +208,7 @@ protected:
 	 *  \param debug        Whether to populate debug_info for this step. */
 	void JumpOneStep_2D(const Dispersion & config, Trajectory & trajectory, RandomGenerator & rng, std::vector<double> & debug_info, bool debug = false);
 
-	/** \brief Perform a single walk-on-spheres jump for a test particle in a disk (sphere) packing. (CLAUDE)
+	/** \brief Perform a single walk-on-spheres jump for a test particle in a disk (sphere) packing.
 	 *  \param config       Disk (sphere) packing the test particle moves through.
 	 *  \param trajectory   Trajectory to advance and accumulate statistics into.
 	 *  \param rng          Random number generator.

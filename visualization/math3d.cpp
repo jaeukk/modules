@@ -106,7 +106,7 @@ void m3dMatrixMultiply44(M3DMatrix44f product, const M3DMatrix44f a, const M3DMa
 }
 
 // Ditto above, but for doubles
-/** \brief Multiply two 4x4 double matrices: product = a * b. (CLAUDE)
+/** \brief Multiply two 4x4 double matrices: product = a * b.
  *  \param product  Destination 4x4 matrix receiving the product.
  *  \param a        Left 4x4 matrix.
  *  \param b        Right 4x4 matrix. */
@@ -142,7 +142,7 @@ void m3dMatrixMultiply33(M3DMatrix33f product, const M3DMatrix33f a, const M3DMa
 }
 
 // Ditto above, but for doubles
-/** \brief Multiply two 3x3 double matrices: product = a * b. (CLAUDE)
+/** \brief Multiply two 3x3 double matrices: product = a * b.
  *  \param product  Destination 3x3 matrix receiving the product.
  *  \param a        Left 3x3 matrix.
  *  \param b        Right 3x3 matrix. */
@@ -632,7 +632,7 @@ bool m3dInvertMatrix44(M3DMatrix44d dst, const M3DMatrix44d src)
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // Get Window coordinates, discard Z...
-/** \brief Project a 3D point to 2D window coordinates, discarding Z. (CLAUDE)
+/** \brief Project a 3D point to 2D window coordinates, discarding Z.
  *  \param vPointOut    Destination 2D window coordinates.
  *  \param mModelView   Model-view matrix.
  *  \param mProjection  Projection matrix.
@@ -665,7 +665,7 @@ void m3dProjectXY(M3DVector2f vPointOut, const M3DMatrix44f mModelView, const M3
     
 ///////////////////////////////////////////////////////////////////////////////////////
 // Get window coordinates, we also want Z....
-/** \brief Project a 3D point to 3D window coordinates, keeping Z. (CLAUDE)
+/** \brief Project a 3D point to 3D window coordinates, keeping Z.
  *  \param vPointOut    Destination 3D window coordinates.
  *  \param mModelView   Model-view matrix.
  *  \param mProjection  Projection matrix.
@@ -807,7 +807,7 @@ void m3dGetPlaneEquation(M3DVector4d planeEq, const M3DVector3d p1, const M3DVec
 // floating point number between 0.0 and 1.0. The curve is interpolated between the middle two points.
 // Coded by RSW
 // http://www.mvps.org/directx/articles/catmull/
-/** \brief Catmull-Rom curve interpolation in 3D between vP1 and vP2. (CLAUDE)
+/** \brief Catmull-Rom curve interpolation in 3D between vP1 and vP2.
  *  \param vOut  Destination 3D vector receiving the interpolated point.
  *  \param vP0   Control point before the segment.
  *  \param vP1   Start point of the interpolated segment.
@@ -844,7 +844,7 @@ void m3dCatmullRom3(M3DVector3f vOut, M3DVector3f vP0, M3DVector3f vP1, M3DVecto
 // floating point number between 0.0 and 1.0. The curve is interpolated between the middle two points.
 // Coded by RSW
 // http://www.mvps.org/directx/articles/catmull/
-/** \brief Catmull-Rom curve interpolation in 3D between vP1 and vP2. (CLAUDE)
+/** \brief Catmull-Rom curve interpolation in 3D between vP1 and vP2.
  *  \param vOut  Destination 3D vector receiving the interpolated point.
  *  \param vP0   Control point before the segment.
  *  \param vP1   Start point of the interpolated segment.

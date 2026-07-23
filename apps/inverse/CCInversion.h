@@ -1,19 +1,19 @@
 #include <Potential.h>          // base class of the CC-inversion potentials
 
 //------------------Reconstruction via the collective coordinates
-/** \brief Collective-coordinate inversion potential: penalizes deviation of the structure factor from target values at a set of k-points. (CLAUDE) */
+/** \brief Collective-coordinate inversion potential that penalizes deviations of the real and imaginary collective coordinates from target values at selected k-points. */
 class FrankInvertCCPotential : public Potential
 {
 protected:
 	const Configuration * pConfig;
 public:
-	/** \brief A single k-point constraint: target real/imaginary structure-factor amplitude with a rescaling weight. (CLAUDE) */
+	/** \brief A k-point constraint containing target real and imaginary collective-coordinate components and an energy weight. */
 	struct KPointConstraint
 	{
 		GeometryVector k;//absolute k, not relative to basis vectors
 		double V;//rescaling constant
 		double targetRhoReal, targetRhoImag;
-		/** \brief Construct a k-point constraint. (CLAUDE)
+		/** \brief Construct a k-point constraint.
 		 *  \param k              Absolute wavevector of the constraint.
 		 *  \param V              Rescaling (weight) constant for this constraint.
 		 *  \param targetRhoReal  Target real part of the collective coordinate at k.
@@ -31,7 +31,7 @@ public:
 	//this class will manage these members, users can also read it.
 	std::vector<double> RhoReal, RhoImag;
 	bool RhoValid;
-	/** \brief Compute and cache the real/imaginary parts of the collective coordinates at every constraint k-point. (CLAUDE) */
+	/** \brief Compute and cache the real/imaginary parts of the collective coordinates at every constraint k-point. */
 	virtual void GetRho(void)
 	{
 		assert(this->pConfig != nullptr);
@@ -61,7 +61,7 @@ public:
 		this->RhoValid = true;
 	}
 
-	/** \brief Construct a CC-inversion potential of the given dimension with an empty constraint set. (CLAUDE)
+	/** \brief Construct a CC-inversion potential of the given dimension with an empty constraint set.
 	 *  \param dimension  Spatial dimension. */
 	FrankInvertCCPotential(DimensionType dimension) :Potential(dimension)
 	{
@@ -71,12 +71,12 @@ public:
 		this->Shift = 0.0;
 	}
 
-	/** \brief Destructor. (CLAUDE) */
+	/** \brief Destructor. */
 	virtual ~FrankInvertCCPotential()
 	{
 	}
 
-	/** \brief Return a heap-allocated copy of this potential. (CLAUDE)
+	/** \brief Return a heap-allocated copy of this potential.
 	 *  \return  A new FrankInvertCCPotential that copies this one. */
 	FrankInvertCCPotential * clone()
 	{
@@ -135,7 +135,7 @@ public:
 		}
 	}
 
-	/** \brief Compute the forces on all particles. (CLAUDE)
+	/** \brief Compute the forces on all particles.
 	 *  \param[out] results  Resized to hold the force on every particle. */
 	virtual void AllForce(std::vector<GeometryVector> & results)
 	{
@@ -151,8 +151,8 @@ public:
 		std::swap(tempNumThread, this->ParallelNumThread);
 	}
 
-	/** \brief Set the configuration to evaluate and invalidate the cached structure factors. (CLAUDE)
-	 *  \param Position  Configuration whose collective coordinates are constrained; its dimension must match. */
+	/** \brief Set the configuration to evaluate and invalidate the cached collective coordinates.
+	 * \param Position Configuration to evaluate; its dimension must match the potential. */
 	virtual void SetConfiguration(const Configuration & Position)
 	{
 		assert(this->Dimension == Position.GetDimension());
@@ -163,7 +163,7 @@ public:
 
 
 //------------------Reconstruction via the collective coordinates 2 <- consider real and imaginary parts of collective coordinates separately...
-/** \brief CC-inversion potential that constrains real and imaginary parts of the collective coordinates separately (handles an odd constraint count). (CLAUDE) */
+/** \brief CC-inversion potential that constrains real and imaginary parts of the collective coordinates separately (handles an odd constraint count). */
 class FrankInvertCCPotential_re : public FrankInvertCCPotential
 {
 protected:
@@ -171,7 +171,7 @@ protected:
 	size_t numkPoints;
 	bool odd=true;
 public:
-	/** \brief Construct from a total number of (real+imaginary) constraints, deriving the number of k-points used. (CLAUDE)
+	/** \brief Construct from a total number of (real+imaginary) constraints, deriving the number of k-points used.
 	 *  \param d               Spatial dimension.
 	 *  \param numConstraints  Total number of scalar constraints (real and imaginary parts counted separately). */
 	FrankInvertCCPotential_re(DimensionType d, size_t numConstraints) : FrankInvertCCPotential(d)
@@ -254,7 +254,7 @@ public:
 
 //------------------Reconstruction via the collective coordinates 2 
 //	consider real and imaginary parts of collective coordinates separately & possible to choose your constraints...
-/** \brief CC-inversion potential with a selectable constraint type (real/imaginary/both) choosing which parts of the collective coordinates are constrained. (CLAUDE) */
+/** \brief CC-inversion potential whose constraint mode controls scalar counting and, for an odd one-dimensional count, which component of the final k-point is retained. */
 class FrankInvertCCPotential2 : public FrankInvertCCPotential
 {
 protected:
@@ -264,7 +264,7 @@ protected:
 	bool realPartFirst = true; //true: if the number of constraints is odd, then consider real parts first.
 	bool isNumConstraintsOdd = true;
 public:
-	/** \brief Construct from a dimension and number of constraints (the k-point count is finalized by SetConstraintType). (CLAUDE)
+	/** \brief Construct from a dimension and number of constraints (the k-point count is finalized by SetConstraintType).
 	 *  \param d               Spatial dimension.
 	 *  \param numConstraints  Number of constraints requested. */
 	FrankInvertCCPotential2(DimensionType d, size_t numConstraints) : FrankInvertCCPotential(d)
@@ -272,7 +272,7 @@ public:
 		this->numConstraints = numConstraints;
 	}
 
-	/** \brief Select the constraint type and finalize the k-point count (separate real/imaginary counting only for d=1). (CLAUDE)
+	/** \brief Select the constraint type and finalize the k-point count (separate real/imaginary counting only for d=1).
 	 *  \param type  "real" (real parts first), "image" (imaginary parts first), or any other value for "both". */
 	void SetConstraintType(const char * type) {
 		if (strcmp(type, "real") == 0) {
@@ -304,7 +304,7 @@ public:
 	
 	}
 
-	/** \brief Return the number of k-points used by the current constraint type. (CLAUDE)
+	/** \brief Return the number of k-points used by the current constraint type.
 	 *  \return  Number of k-points. */
 	size_t GetnumKPoints() {
 		return this->numkPoints;

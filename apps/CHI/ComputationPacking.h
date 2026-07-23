@@ -39,34 +39,32 @@ class ComputationPacking
 public:
 	int numThreads = 1;
 
-	/** \brief Run the computation over an ensemble of configurations. (CLAUDE)
+	/** \brief Run the computation over an ensemble of configurations.
 	 *  \param GetConfigsFunction  Functor returning the i-th SpherePacking configuration.
 	 *  \param NumConfig           Number of configurations to process. */
 	virtual void Compute(std::function<const SpherePacking(size_t i)> GetConfigsFunction, size_t NumConfig) =0;
 
-	/** \brief Write the computed result to output files. (CLAUDE)
+	/** \brief Write the computed result to output files.
 	 *  \param OutputPrefix  Prefix used to build the output file name(s). */
 	virtual void Write(const std::string OutputPrefix) =0;
 	//virtual void Plot(const std::string OutputPrefix, const std::string & Title) =0;
 
 	//some computations allow additional options
 	//any command not understood by PairStatisticsCLI() is passed to here
-	/** \brief Handle an extra command not recognized by PairStatisticsCLI(). (CLAUDE)
-	 *  \param option  The unrecognized command token.
-	 *  \param input   Stream to read any further parameters from.
-	 *  \param output  Stream to report messages to. */
+	/** \brief Report that an additional command is unrecognized.
+	 * \param output Stream receiving the diagnostic. */
 	virtual void ProcessAdditionalOption(const std::string &, std::istream &, std::ostream & output)
 	{
 		//by default, accept no additional option.
 		output << "Unrecognized command!\n";
 	}
 
-	/** \brief Virtual destructor. (CLAUDE) */
+	/** \brief Virtual destructor. */
 	virtual ~ComputationPacking()
 	{
 	}
 
-	/** \brief Set the number of OpenMP threads to use. (CLAUDE)
+	/** \brief Set the number of OpenMP threads to use.
 	 *  \param n  Number of threads. */
 	void SetNumThreads(int n){
 		this->numThreads = n;
@@ -78,7 +76,7 @@ public:
 	std::vector<GeometryVector> result;
 	double CircularKMax, LinearKMax, KPrecision;
 
-	/** \brief Construct by reading the spectral-density parameters. (CLAUDE)
+	/** \brief Construct by reading the spectral-density parameters.
 	 *  \param ifile  Input stream supplying CircularKMax, LinearKMax and KPrecision.
 	 *  \param ofile  Output stream echoing the parsed parameters. */
 	chivComputation(std::istream & ifile, std::ostream & ofile) {
@@ -91,7 +89,7 @@ public:
 		//SampleProbability = 1.0;
 	}
 
-	/** \brief Compute the isotropic spectral density over the ensemble. (CLAUDE)
+	/** \brief Compute the isotropic spectral density over the ensemble.
 	 *  \param GetConfig   Functor returning the i-th SpherePacking configuration.
 	 *  \param numConfigs  Number of configurations to process. */
 	virtual void Compute(std::function<const SpherePacking(size_t i)> GetConfig, size_t numConfigs) {
@@ -100,7 +98,7 @@ public:
 		IsotropicSpectralDensity(GetConfig, numConfigs, CircularKMax, LinearKMax, result, KPrecision);
 	}
 
-	/** \brief Write the spectral density to "<OutputPrefix>_chiv". (CLAUDE)
+	/** \brief Write the spectral density to "<OutputPrefix>_chiv".
 	 *  \param OutputPrefix  Prefix used to build the output file name. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_chiv");
@@ -142,7 +140,7 @@ public:
 	double Rmax, dR;
 	std::vector<GeometryVector> result;
 
-	/** \brief Construct by reading the hole-probability parameters. (CLAUDE)
+	/** \brief Construct by reading the hole-probability parameters.
 	 *  \param ifile  Input stream supplying Rmax, dR, numSamplingPts and phase.
 	 *  \param ofile  Output stream echoing the parsed parameters. */
 	HoleProbability(std::istream & ifile, std::ostream & ofile) {
@@ -157,16 +155,14 @@ public:
 		ofile << "\t" << phase << "\n";
 	}
 
-	/** \brief Compute the hole probability function over the ensemble (not yet implemented). (CLAUDE)
-	 *  \param GetConfigs  Functor returning the i-th SpherePacking configuration.
-	 *  \param numConfigs  Number of configurations to process. */
+	/** \brief Placeholder for computing the hole-probability function; currently only sets the OpenMP thread count. */
 	virtual void Compute(std::function<const SpherePacking(size_t)>, size_t) {
 		omp_set_num_threads(this->numThreads);
 		// ToDo
 
 	}
 
-	/** \brief Write the hole probability function to a phase-specific file. (CLAUDE)
+	/** \brief Write the hole probability function to a phase-specific file.
 	 *  \param OutputPrefix  Prefix used to build the output file name. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_Ev_");
@@ -188,7 +184,7 @@ public:
 	std::vector<GeometryVector> result0;
 	std::vector<GeometryVector> result1;
 
-	/** \brief Construct by reading the lineal-path parameters. (CLAUDE)
+	/** \brief Construct by reading the lineal-path parameters.
 	 *  \param ifile  Input stream supplying Rmax, dR, numSamplingPts and rng_seed.
 	 *  \param ofile  Output stream echoing the parsed parameters. */
 	LinealPath(std::istream & ifile, std::ostream & ofile) {
@@ -203,7 +199,7 @@ public:
 		ofile << "\t" << rng_seed << "\n";
 	}
 
-	/** \brief Compute the lineal-path function for both phases over the ensemble. (CLAUDE)
+	/** \brief Compute the lineal-path function for both phases over the ensemble.
 	 *  \param GetConfigs  Functor returning the i-th SpherePacking configuration.
 	 *  \param numConfigs  Number of configurations to process. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
@@ -211,7 +207,7 @@ public:
 		LinealPathFunction(GetConfigs, numConfigs, result0, result1, this->Rmax, this->dR, this->numSamplingPts, this->rng_seed);
 	}
 
-	/** \brief Write the matrix- and particle-phase lineal-path functions to files. (CLAUDE)
+	/** \brief Write the matrix- and particle-phase lineal-path functions to files.
 	 *  \param OutputPrefix  Prefix used to build the output file names. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_Lz_");
@@ -239,7 +235,7 @@ public:
 	std::vector<GeometryVector> result0;
 	std::vector<GeometryVector> result1;
 
-	/** \brief Construct by reading the chord-length parameters. (CLAUDE)
+	/** \brief Construct by reading the chord-length parameters.
 	 *  \param ifile  Input stream supplying Rmax, dR, numSamplingPts and rng_seed.
 	 *  \param ofile  Output stream echoing the parsed parameters. */
 	ChordLength(std::istream & ifile, std::ostream & ofile) {
@@ -254,7 +250,7 @@ public:
 		ofile << "\t" << rng_seed << "\n";
 	}
 
-	/** \brief Compute the chord-length distribution for both phases over the ensemble. (CLAUDE)
+	/** \brief Compute the chord-length distribution for both phases over the ensemble.
 	 *  \param GetConfigs  Functor returning the i-th SpherePacking configuration.
 	 *  \param numConfigs  Number of configurations to process. */
 	virtual void Compute(std::function<const SpherePacking(size_t)> GetConfigs, size_t numConfigs) {
@@ -262,7 +258,7 @@ public:
 		ChordLengthDistribution(GetConfigs, numConfigs, result0, result1, this->Rmax, this->dR, this->numSamplingPts, this->rng_seed);
 	}
 
-	/** \brief Write the matrix- and particle-phase chord-length distributions to files. (CLAUDE)
+	/** \brief Write the matrix- and particle-phase chord-length distributions to files.
 	 *  \param OutputPrefix  Prefix used to build the output file names. */
 	virtual void Write(const std::string OutputPrefix) {
 		std::string name = OutputPrefix + std::string("_pz_");
