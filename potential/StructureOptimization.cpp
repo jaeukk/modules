@@ -30,15 +30,15 @@ void PrintAllElasticConstants(std::ostream & out, Configuration stru, Potential 
 				}
 }
 
-/** \brief Compute the derivative of the (enthalpy) energy with respect to the ij strain component. (CLAUDE)
-	\param pot         Interaction potential.
-	\param structure   Configuration to deform.
-	\param i           First strain index.
-	\param j           Second strain index.
-	\param epsilon2    Finite-difference strain used when analytic cell derivatives are unavailable.
-	\param Pressure    Constant pressure for the isobaric ensemble.
-	\param newbasis    Scratch array (size dim) for the deformed basis vectors.
-	\return The energy derivative with respect to the ij strain. */
+/** \brief Compute the derivative of enthalpy with respect to the ij strain component.
+	\param pot Interaction potential.
+	\param structure Configuration to deform.
+	\param i First strain index.
+	\param j Second strain index.
+	\param epsilon2 Finite-difference strain used when analytic cell derivatives are unavailable.
+	\param Pressure Pressure used in the enthalpy.
+	\param newbasis Scratch array of at least dimension basis vectors.
+	\return Enthalpy derivative with respect to the ij strain. */
 double EnergyDerivativeToDeformation(Potential & pot, Configuration structure, DimensionType i, DimensionType j, double epsilon2, double Pressure, GeometryVector * newbasis)
 {
 	DimensionType dim=structure.GetDimension(); 
@@ -117,7 +117,7 @@ double ElasticConstant(Potential & pot, Configuration structure, DimensionType i
 
 
 //EulerAngles should have size d(d-1)/2
-/** \brief Build a d-dimensional rotation matrix from a set of generalized Euler angles. (CLAUDE)
+/** \brief Build a d-dimensional rotation matrix from a set of generalized Euler angles.
 	\param EulerAngles  Rotation angles; should have size d(d-1)/2.
 	\param d            Dimension of the rotation.
 	\return A newly allocated d-by-d GSL rotation matrix (caller frees it). */
@@ -150,16 +150,16 @@ gsl_matrix * GetRotation(std::vector<double> EulerAngles, int d)
 }
 #include <gsl/gsl_matrix.h>
 //it is possible to optimize this class by using symmetry of the elastic tensor, not implemented yet
-/** \brief Holds the full fourth-rank elastic-constant tensor C_{ijkl} as a flat BigVector. (CLAUDE) */
+/** \brief Holds the full fourth-rank elastic-constant tensor C_{ijkl} as a flat BigVector. */
 class AllElasticConstants : public BigVector
 {
 public:
 	DimensionType d;
 	//relax the structure before calling this function
 	/** \brief Compute all elastic constants of a (relaxed) configuration; relax the structure before calling this function.
-		\param c         Relaxed configuration to probe. (CLAUDE)
-		\param p         Interaction potential. (CLAUDE)
-		\param Pressure  Constant pressure for the isobaric ensemble. (CLAUDE) */
+		\param c         Relaxed configuration to probe.
+		\param p         Interaction potential.
+		\param Pressure  Constant pressure for the isobaric ensemble. */
 	AllElasticConstants(const Configuration & c, Potential & p, double Pressure) : BigVector(c.GetDimension()*c.GetDimension()*c.GetDimension()*c.GetDimension())
 	{	
 		this->d=c.GetDimension();
@@ -170,27 +170,27 @@ public:
 						this->x[i*d*d*d+j*d*d+k*d+l]=ElasticConstant(p, c, i, j, k, l, Pressure);
 	}
 
-	/** \brief Construct a zero elastic tensor of a given dimension. (CLAUDE)
+	/** \brief Construct a zero elastic tensor of a given dimension.
 		\param d  Spatial dimension. */
 	AllElasticConstants(DimensionType d) : BigVector(d*d*d*d)
 	{
 		this->d=d;
 	}
 
-	/** \brief Construct from a flat BigVector, inferring the dimension from its length. (CLAUDE)
+	/** \brief Construct from a flat BigVector, inferring the dimension from its length.
 		\param src  Source vector holding dimension^4 entries. */
 	AllElasticConstants(const BigVector & src) : BigVector(src)
 	{
 		this->d=std::floor(0.5+std::pow(src.dim, 0.25));
 	}
 
-	/** \brief Copy constructor. (CLAUDE)
+	/** \brief Copy constructor.
 		\param src  Source elastic tensor to copy. */
 	AllElasticConstants(const AllElasticConstants & src) : BigVector(src), d(src.d)
 	{
 	}
 
-	/** \brief Return the elastic tensor rotated by a given rotation matrix. (CLAUDE)
+	/** \brief Return the elastic tensor rotated by a given rotation matrix.
 		\param rot  d-by-d rotation matrix.
 		\return The rotated elastic tensor. */
 	AllElasticConstants Rotate(gsl_matrix * rot)
@@ -215,7 +215,7 @@ public:
 	}
 };
 
-/** \brief Auxiliary data passed to the elastic-model fitting objective. (CLAUDE) */
+/** \brief Auxiliary data passed to the elastic-model fitting objective. */
 struct ElasticOptimizeStruct
 {
 	int d;//dimension of the configuration
@@ -224,7 +224,7 @@ struct ElasticOptimizeStruct
 	const AllElasticConstants * pElastic;
 	size_t EvaluateCount;
 };
-/** \brief NLopt objective: squared relative distance between the rotated model elastic tensor and the target. (CLAUDE)
+/** \brief NLopt objective: squared relative distance between the rotated model elastic tensor and the target.
 	\param n     Number of optimization variables (model parameters plus rotation angles).
 	\param x     Optimization variables: model parameters followed by Euler angles.
 	\param grad  Gradient output (must be null; this is a derivative-free objective).
@@ -283,16 +283,16 @@ void ElasticOptimize(std::function<BigVector(const std::vector<double> & param)>
 
 ////////////////////////////////////////////////////////////////////////////
 //codes related to RelaxStructure
-/** \brief Exception thrown when the optimizer proposes a physically invalid structure. (CLAUDE) */
+/** \brief Exception thrown when the optimizer proposes a physically invalid structure. */
 class InvalidStructure : public std::exception
 {
 public:
-	/** \brief Construct the exception. (CLAUDE) */
+	/** \brief Construct the exception. */
 	InvalidStructure()
 	{
 	}
 
-	/** \brief Return the exception's descriptive message. (CLAUDE)
+	/** \brief Return the exception's descriptive message.
 		\return A C-string describing the error. */
 	virtual const char * what() const throw()
 	{
@@ -303,7 +303,7 @@ public:
 
 namespace
 {
-	/** \brief Auxiliary state shared by the optimizer's objective and gradient callbacks. (CLAUDE) */
+	/** \brief Auxiliary state shared by the optimizer's objective and gradient callbacks. */
 	struct Aux
 	{
 		Potential * pPot;
@@ -315,13 +315,13 @@ namespace
 		int Switch;//Switch==1: move Basis Vectors, Switch==0: move atoms, Switch==2:move both
 		double RelativeCoordinatesRescale;
 		size_t NumParam;
-		/** \brief Construct the auxiliary state from the original configuration. (CLAUDE)
+		/** \brief Construct the auxiliary state from the original configuration.
 			\param orig  Original (template) configuration. */
 		Aux(const Configuration & orig) : origConfig(orig)
 		{
 		}
 	};
-	/** \brief Build a Configuration from the optimizer's parameter vector, validating it and saving progress. (CLAUDE)
+	/** \brief Build a Configuration from the optimizer's parameter vector, validating it and saving progress.
 		\param pAux  Auxiliary state describing the optimization (dimension, switch, rescale, etc.).
 		\param x     Optimization parameter vector encoding basis vectors and/or relative coordinates.
 		\return The reconstructed configuration (throws InvalidStructure or NotANumberFound on invalid input). */
@@ -414,7 +414,7 @@ namespace
 		return list;
 	}
 
-	/** \brief Optimizer objective: the enthalpy (energy + pressure*volume) of the configuration encoded by x, with optional gradient. (CLAUDE)
+	/** \brief Optimizer objective: the enthalpy (energy + pressure*volume) of the configuration encoded by x, with optional gradient.
 		\param n     Number of optimization variables.
 		\param x     Optimization parameter vector.
 		\param grad  If non-null, filled with the gradient of the objective.
@@ -439,7 +439,7 @@ namespace
 				{
 					//Configuration::particle * pa=list.GetParticle(i);
 					bool TooNearNeighbor=false;
-					list.IterateThroughNeighbors(list.GetRelativeCoordinates(i), *pAux->pMinDisntace, [&TooNearNeighbor, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) -> void 
+					list.IterateThroughNeighbors(list.GetRelativeCoordinates(i), *pAux->pMinDisntace, [&TooNearNeighbor, &i](const GeometryVector & /*shift*/, const GeometryVector & LatticeShift, const signed long * /*PeriodicShift*/, const size_t SourceAtom) -> void 
 					{
 						if(SourceAtom!=i || LatticeShift.Modulus2()!=0)
 							TooNearNeighbor=true;
@@ -538,7 +538,7 @@ namespace
 		}
 	}
 
-	/** \brief Optimizer gradient callback: fill grad with the gradient of the enthalpy at x. (CLAUDE)
+	/** \brief Optimizer gradient callback: fill grad with the gradient of the enthalpy at x.
 		\param n     Number of optimization variables.
 		\param x     Optimization parameter vector.
 		\param grad  Output gradient of the objective.
@@ -562,7 +562,7 @@ namespace
 				{
 					//Configuration::particle * pa=list.GetParticle(i);
 					bool TooNearNeighbor=false;
-					list.IterateThroughNeighbors(list.GetRelativeCoordinates(i), *pAux->pMinDisntace, [&TooNearNeighbor, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) -> void 
+					list.IterateThroughNeighbors(list.GetRelativeCoordinates(i), *pAux->pMinDisntace, [&TooNearNeighbor, &i](const GeometryVector & /*shift*/, const GeometryVector & LatticeShift, const signed long * /*PeriodicShift*/, const size_t SourceAtom) -> void 
 					{
 						if(SourceAtom!=i || LatticeShift.Modulus2()!=0)
 							TooNearNeighbor=true;
@@ -663,11 +663,11 @@ namespace
 
 	//convert the configuration into parameters
 	/** \brief convert the configuration into parameters.
-		\param List            Configuration to encode. (CLAUDE)
-		\param Switch          0: atom coordinates, 1: basis vectors, 2: both. (CLAUDE)
-		\param rescale         Scale factor applied to the relative coordinates. (CLAUDE)
-		\param[out] NumParam   Number of parameters in the returned array. (CLAUDE)
-		\return A newly allocated parameter array (caller frees it), or nullptr on an unsupported Switch. (CLAUDE) */
+		\param List            Configuration to encode.
+		\param Switch          0: atom coordinates, 1: basis vectors, 2: both.
+		\param rescale         Scale factor applied to the relative coordinates.
+		\param[out] NumParam   Number of parameters in the returned array.
+		\return A newly allocated parameter array (caller frees it), or nullptr on an unsupported Switch. */
 	double * GetParam(Configuration & List, int Switch, double rescale, size_t & NumParam)
 	{
 		DimensionType dim=List.GetDimension();
@@ -772,6 +772,8 @@ void RelaxStructure_LocalGradientDescent(Configuration & List, Potential & pot, 
 		for(size_t i=0; i<NumParam; i++)
 			sum+=gradient[i]*gradient[i];
 		double norm=std::sqrt(sum);
+		if(!(norm>0.0))
+			break;//zero (or non-finite) gradient norm: already at a stationary point, treat as converged
 		for(size_t i=0; i<NumParam; i++)
 			gradient[i]/=norm;
 
@@ -795,13 +797,13 @@ void RelaxStructure_LocalGradientDescent(Configuration & List, Potential & pot, 
 			std::memcpy(pParams, newx, sizeof(double)*NumParam);
 		}
 
-		MaxStep-=2;
+		MaxStep = (MaxStep>=2) ? MaxStep-2 : 0;//two evaluations consumed per iteration; clamp so size_t never underflows
 	}
 	delete [] gradient;
 	delete [] newx;
 
 	if (Verbosity >= 3){
-		std::cout<<"Num evals:"<<aux.NumEvaluation<< " / " << MaxStep << "  (" << (double)aux.NumEvaluation/ (double)MaxStep * 100.0 << "\%)\n";
+		std::cout<<"Num evals:"<<aux.NumEvaluation<< " / " << MaxStep << "  (" << (double)aux.NumEvaluation/ (double)MaxStep * 100.0 << "%)\n";
 	}
 
 
@@ -828,15 +830,15 @@ void RelaxStructure_LocalGradientDescent(Configuration & List, Potential & pot, 
 
 
 
-/** \brief Run one NLopt L-BFGS minimization pass at a given coordinate rescale. (CLAUDE)
-	\param[in,out] List   Initial configuration; replaced by the optimized one.
-	\param pot            Interaction potential to minimize.
-	\param Pressure       Constant pressure for the isobaric ensemble.
-	\param Switch         0: move atoms, 1: move basis vectors, 2: move both.
-	\param MinDistance    Reject moves that bring particles closer than this distance.
-	\param rescale        Scale factor applied to the relative-coordinate variables.
-	\param MaxStep        Maximum number of optimization steps.
-	\param fmin           Target energy below which optimization stops early. */
+/** \brief Run one NLopt L-BFGS enthalpy-minimization pass at a specified relative-coordinate scale.
+	\param[in,out] List Initial configuration, replaced by the optimized configuration.
+	\param pot Interaction potential.
+	\param Pressure Pressure used in the objective enthalpy.
+	\param Switch Zero optimizes positions, one basis vectors, and two both.
+	\param MinDistance Minimum permitted interparticle distance.
+	\param rescale Scale applied to relative-coordinate variables.
+	\param MaxStep Maximum number of objective evaluations.
+	\param fmin Objective stop value; an initial potential energy below this value also skips the pass. */
 void RelaxStructure_NLOPT_inner(Configuration & List, Potential & pot, double Pressure, int Switch, double MinDistance, double rescale, size_t MaxStep, double fmin)//Switch==1: move Basis Vectors, Switch==0: move atoms, Switch==2:move both
 {
 	pot.SetConfiguration(List);
@@ -891,7 +893,7 @@ void RelaxStructure_NLOPT_inner(Configuration & List, Potential & pot, double Pr
 		std::cout<<"NLopt fvalue after:"<<minf<<'\n';
 	}
 	if (Verbosity >= 3){
-		std::cout<<"Num evals:"<<aux.NumEvaluation<< " / " << MaxStep << "  (" << (double)aux.NumEvaluation/ (double)MaxStep * 100.0 << "\%)\n";
+		std::cout<<"Num evals:"<<aux.NumEvaluation<< " / " << MaxStep << "  (" << (double)aux.NumEvaluation/ (double)MaxStep * 100.0 << "%)\n";
 	}
 
 	try
@@ -1020,32 +1022,32 @@ void RelaxStructure_NLOPT_Emin(Configuration & List, Potential & pot, double Pre
 /////////////////////////////////////
 // interface for gsl
 #include <gsl/gsl_multimin.h>
-/** \brief GSL multimin adapter: evaluate the objective at x. (CLAUDE)
+/** \brief GSL multimin adapter: evaluate the objective at x.
 	\param x       Parameter vector.
 	\param params  Pointer to the Aux state.
 	\return The objective value. */
-double my_f (const gsl_vector  * x, void * params)
+static double my_f (const gsl_vector  * x, void * params)
 {
 	Aux * pParam = reinterpret_cast<Aux *>(params);
 	return Objective(pParam->NumParam, x->data, nullptr, params);
 }
 
-/** \brief GSL multimin adapter: evaluate the gradient at x. (CLAUDE)
+/** \brief GSL multimin adapter: evaluate the gradient at x.
 	\param x       Parameter vector.
 	\param params  Pointer to the Aux state.
 	\param[out] df  Output gradient vector. */
-void my_df (const gsl_vector * x, void * params,gsl_vector * df)
+static void my_df (const gsl_vector * x, void * params,gsl_vector * df)
 {
 	Aux * pParam = reinterpret_cast<Aux *>(params);
 	Gradient(pParam->NumParam, x->data, df->data, params);
 }
 
-/** \brief GSL multimin adapter: evaluate both the objective and gradient at x. (CLAUDE)
+/** \brief GSL multimin adapter: evaluate both the objective and gradient at x.
 	\param x       Parameter vector.
 	\param params  Pointer to the Aux state.
 	\param[out] f   Output objective value.
 	\param[out] df  Output gradient vector. */
-void my_fdf (const gsl_vector * x, void * params,double *f,gsl_vector * df)
+static void my_fdf (const gsl_vector * x, void * params,double *f,gsl_vector * df)
 {
 	Aux * pParam = reinterpret_cast<Aux *>(params);
 	(*f)=Objective(pParam->NumParam, x->data, df->data, params);
@@ -1246,7 +1248,7 @@ void RelaxStructure_ConjugateGradient(Configuration & List, Potential & pot, dou
 
 ///////////////////////////////////////////////////////
 //  RelaxStructure_MINOP
-/** \brief Adapter exposing the structure-optimization objective to the MINOP algorithm. (CLAUDE) */
+/** \brief Adapter exposing the structure-optimization objective to the MINOP algorithm. */
 class OptimFunc{
 public:
 
@@ -1260,30 +1262,30 @@ public:
 	Aux * pAux;
 
 	// Functions required by the MINOP algorithm:
-	/** \brief Return the number of optimization variables. (CLAUDE)
+	/** \brief Return the number of optimization variables.
 		\return The length of the parameter vector. */
 	int getDataLength() const;
 
-	/** \brief Evaluate the objective (enthalpy) at a parameter vector. (CLAUDE)
+	/** \brief Evaluate the objective (enthalpy) at a parameter vector.
 		\param input  Parameter vector.
 		\return The objective value. */
 	double evalF(const gsl_vector* input) const;
 
-	/** \brief Evaluate the gradient of the objective at a parameter vector. (CLAUDE)
+	/** \brief Evaluate the gradient of the objective at a parameter vector.
 		\param input        Parameter vector.
 		\param[out] output  Output gradient vector. */
 	void evalG(const gsl_vector* input, gsl_vector* output) const;
 
-	/** \brief Wrap relative coordinates back into the unit cell. (CLAUDE)
+	/** \brief Wrap relative coordinates back into the unit cell.
 		\param[in,out] input  Parameter vector whose coordinate entries are wrapped in place. */
 	void normalize(gsl_vector* input) const;
 
-	/** \brief Default constructor. (CLAUDE) */
+	/** \brief Default constructor. */
 	OptimFunc()
 	{
 	}
 	// Destructor, only non-pure virtual method
-	/** \brief Destructor. (CLAUDE) */
+	/** \brief Destructor. */
 	~OptimFunc();
 };
 
@@ -1461,14 +1463,14 @@ void RelaxStructure_MINOP(Configuration & List, Potential & pot, double Pressure
 	return;
 }
 
-/** \brief Minimize a function using the MINOP (Dennis-Mei 1979) quasi-Newton trust-region algorithm. (CLAUDE)
-	\param function       Objective adapter providing value, gradient, and length.
-	\param startPos       Starting parameter vector.
-	\param[out] resultPos  Optimized parameter vector.
-	\param maxIter        Maximum number of iterations.
-	\param goal           Target function value below which to stop.
-	\param minG           Gradient-norm threshold for convergence.
-	\param verbose        Verbosity level; if >= 2, display the optimization progress. */
+/** \brief Minimize a function with the MINOP79 quasi-Newton trust-region implementation.
+	\param function Objective adapter providing value, gradient, normalization, and parameter count.
+	\param startPos Starting parameter vector.
+	\param[out] resultPos Final normalized parameter vector.
+	\param maxIter Maximum number of iterations.
+	\param goal Objective value below which to stop.
+	\param minG Gradient-norm convergence threshold.
+	\param verbose Verbosity level; values at least one print the termination summary, and values at least three also report small curvature updates. */
 void runMINOP79(const OptimFunc& function, 
 		const gsl_vector* startPos, gsl_vector* resultPos,
 		int maxIter, double goal, double minG, int verbose)

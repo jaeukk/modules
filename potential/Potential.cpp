@@ -1,4 +1,6 @@
 #include "Potential.h"
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_linalg.h>
 
 const double Potential_Check_Delta = 1e-7;
 void Potential::Check(Configuration c, size_t Nbr)
@@ -88,7 +90,7 @@ double PairPotential::Energy()
 	{
 		PairPotential & backup = ( *this);
 		//Configuration::particle * trial = this->pConfig->GetParticle(i);
-		conf.IterateThroughNeighbors(conf.GetRelativeCoordinates(i), this->Rcut, [&Energy, &backup, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) ->void 
+		conf.IterateThroughNeighbors(conf.GetRelativeCoordinates(i), this->Rcut, [&Energy, &backup, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * /*PeriodicShift*/, const size_t SourceAtom) ->void 
 		{
 			if(SourceAtom!=(size_t)i || LatticeShift.Modulus2()!=0)
 			{
@@ -108,7 +110,7 @@ double PairPotential::Energy(const Configuration & conf)
 	{
 		PairPotential & backup = ( *this);
 		//Configuration::particle * trial = this->pConfig->GetParticle(i);
-		conf.IterateThroughNeighbors(conf.GetRelativeCoordinates(i), this->Rcut, [&Energy, &backup, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) ->void 
+		conf.IterateThroughNeighbors(conf.GetRelativeCoordinates(i), this->Rcut, [&Energy, &backup, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * /*PeriodicShift*/, const size_t SourceAtom) ->void 
 		{
 			if(SourceAtom!=i || LatticeShift.Modulus2()!=0) 
 			{
@@ -127,7 +129,7 @@ void PairPotential::Force(GeometryVector & result, size_t i)
 
 	PairPotential & backup = ( *this);
 	//Configuration::particle * trial = this->pConfig->GetParticle(i);
-	this->pConfig->IterateThroughNeighbors(this->pConfig->GetRelativeCoordinates(i), this->Rcut, [&result, &backup, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) ->void 
+	this->pConfig->IterateThroughNeighbors(this->pConfig->GetRelativeCoordinates(i), this->Rcut, [&result, &backup, &i](const GeometryVector & shift, const GeometryVector & /*LatticeShift*/, const signed long * /*PeriodicShift*/, const size_t SourceAtom) ->void 
 	{
 		if(SourceAtom==i)
 			return;
@@ -143,7 +145,7 @@ void PairPotential::Force(const Configuration & conf, GeometryVector & result, s
 	result=GeometryVector(this->Dimension);
 
 	PairPotential & backup = ( *this);
-	conf.IterateThroughNeighbors(conf.GetRelativeCoordinates(i), this->Rcut, [&result, &backup, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) ->void 
+	conf.IterateThroughNeighbors(conf.GetRelativeCoordinates(i), this->Rcut, [&result, &backup, &i](const GeometryVector & shift, const GeometryVector & /*LatticeShift*/, const signed long * /*PeriodicShift*/, const size_t SourceAtom) ->void 
 	{
 		if(SourceAtom==i)
 			return;
@@ -237,7 +239,7 @@ void PairPotential::EnergyDerivativeToBasisVectors(double * grad, double Pressur
 		const Configuration * pTemp=this->pConfig;
 		//derivatives of cell basis vectors
 		this->pConfig->IterateThroughNeighbors(this->pConfig->GetRelativeCoordinates(i), this->Rcut, 
-			[&] (const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t srcAtom) ->void
+			[&] (const GeometryVector & shift, const GeometryVector & /*LatticeShift*/, const signed long * PeriodicShift, const size_t srcAtom) ->void
 		{
 			if(shift.Modulus2()< LengthPrecision*LengthPrecision)
 				return;

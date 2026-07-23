@@ -28,5 +28,7 @@ Comments:	Jaeuk Kim (June 2019).*/
 
 	inline double LJPotential::IsotropicForceFormula(double distance)
 	{
-		return (-1.0)*this->epsilon4*(6/std::pow(distance, (double)(7))-12/std::pow(distance, (double)(13)));
+		double term6 = this->sigma / distance ; 
+		term6 = term6 * term6 * term6 * term6 * term6 * term6; //term6 = (sigma / distance)^6
+		return (-1.0)*this->epsilon4* (6.0*term6 - 12.0*term6*term6) / distance;
 	}

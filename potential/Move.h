@@ -16,11 +16,11 @@
 #include <RandomGenerator.h>
 
 #include "Potential.h"
-#include "CollectiveCoordinatePotential.h"
 
 #include <iostream>
 #include <cassert>
 #include <exception>
+#include <memory>
 const size_t AcceptanceSampleSize=1000;
 const double MaxAcceptance=0.7;
 const double MinAcceptance=0.3;
@@ -41,10 +41,10 @@ public:
 	 	\param sys	Define current state of a system.
 		\param add	Define interaction
 		\param gen	Random number generator.
-		\param PreFactor	Acceptance prefactor; set when it differs from 1. (CLAUDE)
-		\param LockStepSize	If true, do not auto-adjust the trial-move step size. (CLAUDE)
+		\param PreFactor	Acceptance prefactor; set when it differs from 1.
+		\param LockStepSize	If true, do not auto-adjust the trial-move step size.
 		\param CurrentEnergy	Energy of the current state.
-		\return Change in energy from the trial move. (CLAUDE) */
+		\return Change in energy from the trial move. */
 	virtual double DeltaEnergy(System & sys, AdditionalInfo add, RandomGenerator & gen,
 		double & PreFactor, bool LockStepSize, double CurrentEnergy) =0;
 
@@ -53,7 +53,7 @@ public:
 		\param add	Define interaction. */
 	virtual void Accept(System & sys, AdditionalInfo add) =0;
 
-	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
+	/** \brief Return a heap-allocated copy of this move.
 		\return A new clone of this move. */
 	virtual MCMove<System, AdditionalInfo> * clone() =0;
 
@@ -103,17 +103,15 @@ public:
 		PairPotential * pPair = dynamic_cast<PairPotential *>(pot);
 		forMCPotential * pForMCPotential = dynamic_cast<forMCPotential *>(pot);
 		CombinedPotential * pComb = dynamic_cast<CombinedPotential *>(pot);
-		//if(pCC!=nullptr && pForMCPotential==nullptr)
-		//	std::cout<<"Warning in AtomMove : ShiftedCCPotential does not have good performance for this purpose. Use forMCPotential instead!\n";
 		if(pPair!=nullptr)
 		{
 			double deltaEnergy=0;
-			list.IterateThroughNeighbors(newcoord, pPair->Rcut, [&](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) -> void 
+			list.IterateThroughNeighbors(newcoord, pPair->Rcut, [&](const GeometryVector & shift, const GeometryVector & /*LatticeShift*/, const signed long * /*PeriodicShift*/, const size_t SourceAtom) -> void 
 			{
 				if(SourceAtom!=moved)
 					deltaEnergy+=pPair->EnergyFormula(shift);
 			});
-			list.IterateThroughNeighbors(list.GetRelativeCoordinates(moved), pPair->Rcut, [&](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) -> void 
+			list.IterateThroughNeighbors(list.GetRelativeCoordinates(moved), pPair->Rcut, [&](const GeometryVector & shift, const GeometryVector & /*LatticeShift*/, const signed long * /*PeriodicShift*/, const size_t SourceAtom) -> void 
 			{
 				if(SourceAtom!=moved)
 					deltaEnergy-=pPair->EnergyFormula(shift);
@@ -146,16 +144,16 @@ public:
 		}
 	}
 
-	/** \brief Generate a random single-particle displacement and return the energy difference. (CLAUDE)
-		\param list	Current point configuration.
-		\param pot	Interaction potential.
-		\param gen	Random number generator.
-		\param[out] PreFactor	Acceptance prefactor; set when it differs from 1.
-		\param LockStepSize	If true, do not auto-adjust the displacement step size.
-		\param CurrentEnergy	Energy of the current state.
-		\return Change in energy from the trial displacement (MaxEnergy if a too-near neighbor is found). */
+	/** \brief Generate a random single-particle displacement and return its energy difference.
+		\param list Current point configuration.
+		\param pot Interaction potential.
+		\param gen Random number generator.
+		\param PreFactor Acceptance prefactor; left unchanged by this move.
+		\param LockStepSize If true, do not auto-adjust the displacement step size.
+		\param CurrentEnergy Energy of the current state.
+		\return Change in energy from the trial displacement, or MaxEnergy if a too-near neighbor is found. */
 	virtual double DeltaEnergy(Configuration & list, Potential * pot, RandomGenerator & gen,
-		double & PreFactor, bool LockStepSize, double CurrentEnergy)//Generate a random move, return Energy difference
+		double & /*PreFactor*/, bool LockStepSize, double CurrentEnergy)//Generate a random move, return Energy difference
 	{
 		if(this->TrialCount>=::AcceptanceSampleSize )
 		{
@@ -193,7 +191,7 @@ public:
 
 		TooNearNeighborFound=false;
 		auto moved=this->moved;
-		list.IterateThroughNeighbors(newcoord, this->MinDistance, [&TooNearNeighborFound, &moved](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) -> void 
+		list.IterateThroughNeighbors(newcoord, this->MinDistance, [&TooNearNeighborFound, &moved](const GeometryVector & /*shift*/, const GeometryVector & /*LatticeShift*/, const signed long * /*PeriodicShift*/, const size_t SourceAtom) -> void 
 		{
 			if(SourceAtom!=moved)
 				TooNearNeighborFound=true;
@@ -208,7 +206,7 @@ public:
 	}
 
 	//check if the potential needs specific operation for accepting the move
-	/** \brief Notify the potential (recursing into combined potentials) that the move was accepted. (CLAUDE)
+	/** \brief Notify the potential (recursing into combined potentials) that the move was accepted.
 		\param pot  Interaction potential to update on acceptance. */
 	void AcceptCheck(Potential * pot)
 	{
@@ -223,7 +221,7 @@ public:
 		}
 	}
 
-	/** \brief Accept the last trial displacement, applying it to the configuration. (CLAUDE)
+	/** \brief Accept the last trial displacement, applying it to the configuration.
 		\param list  Configuration to update with the accepted move.
 		\param pot   Interaction potential to notify of the acceptance. */
 	virtual void Accept(Configuration & list, Potential * pot)
@@ -235,7 +233,7 @@ public:
 		this->AcceptCheck(pot);
 	}
 
-	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
+	/** \brief Return a heap-allocated copy of this move.
 		\return A new clone of this AtomMove. */
 	virtual MCMove<Configuration, Potential *> * clone()
 	{
@@ -243,7 +241,7 @@ public:
 	}
 };
 
-/** \brief A MCMove that proposes changes to the simulation-cell basis vectors (isobaric ensemble). (CLAUDE) */
+/** \brief A MCMove that proposes changes to the simulation-cell basis vectors (isobaric ensemble). */
 class CellMove : public MCMove<Configuration, Potential *>
 {
 private:
@@ -254,7 +252,7 @@ private:
 public:
 	double sigma;
 	double MinDistance;//abandon this move immediately if particles are within this distance
-	/** \brief A default constructor (zero pressure). (CLAUDE) */
+	/** \brief A default constructor (zero pressure). */
 	CellMove()
 	{
 		this->sigma=3e-2;
@@ -264,7 +262,7 @@ public:
 		this->MinDistance=0;
 	}
 
-	/** \brief Construct a cell move at a given pressure. (CLAUDE)
+	/** \brief Construct a cell move at a given pressure.
 		\param pressure  Pressure used to form the enthalpy in the acceptance criterion. */
 	CellMove(double pressure)
 	{
@@ -275,7 +273,7 @@ public:
 		this->MinDistance=0;
 	}
 
-	/** \brief Generate a random change of the cell basis vectors and return the enthalpy difference. (CLAUDE)
+	/** \brief Generate a random change of the cell basis vectors and return the enthalpy difference.
 		\param list	Current point configuration.
 		\param pot	Interaction potential.
 		\param gen	Random number generator.
@@ -363,7 +361,7 @@ public:
 			for(size_t i=0; i<newlist.NumParticle(); i++)
 			{
 				//Configuration::particle * pa=newlist.GetParticle(i);
-				newlist.IterateThroughNeighbors(newlist.GetRelativeCoordinates(i), this->MinDistance, [&TooNearNeighborFound, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) -> void 
+				newlist.IterateThroughNeighbors(newlist.GetRelativeCoordinates(i), this->MinDistance, [&TooNearNeighborFound, &i](const GeometryVector & /*shift*/, const GeometryVector & LatticeShift, const signed long * /*PeriodicShift*/, const size_t SourceAtom) -> void 
 				{
 					if(SourceAtom!=i || LatticeShift.Modulus2()!=0)
 						TooNearNeighborFound=true;
@@ -377,6 +375,18 @@ public:
 		while( (CellWeired || TooNearNeighborFound) );
 
 		double NewH;
+		// newlist is a local trial configuration that dies on return. Once the potential is bound
+		// to it, EVERY exit from here (normal return, the OOM abandon path, or any other exception
+		// propagating out) must rebind it to the caller's live configuration `list`. An RAII guard
+		// does this on destruction; it is never dismissed because the move is not applied yet, so
+		// DeltaEnergy always leaves the potential bound to `list` (Accept rebinds after applying it).
+		struct RebindGuard
+		{
+			Potential * pot;
+			const Configuration * live;
+			bool dismissed;
+			~RebindGuard() { if(!dismissed) pot->SetConfiguration(*live); }
+		} rebindGuard{pot, &list, false};
 		try
 		{
 			pot->SetConfiguration(newlist);
@@ -385,27 +395,28 @@ public:
 		catch(std::bad_alloc & a)
 		{
 			std::cerr<<"Warning : not enough memory in cell resize, abandon move!";
-			return ::MaxEnergy;
+			return ::MaxEnergy;//rebindGuard restores the binding
 		}
 
 		PreFactor=std::pow(newlist.PeriodicVolume()/list.PeriodicVolume(), (double)(list.NumParticle()));
 
 		double DeltaE= NewH-OldH;
 		//std::cout <<" \t"<< PreFactor << " \t" << DeltaE << '\n';
-		return DeltaE;
+		return DeltaE;//rebindGuard restores the binding
 	}
 
-	/** \brief Accept the last trial cell move, applying the new basis vectors. (CLAUDE)
+	/** \brief Accept the last trial cell move, applying the new basis vectors.
 		\param list  Configuration to update with the accepted basis vectors.
-		\param pot   Interaction potential (unused here). */
+		\param pot   Interaction potential; rebound to the accepted configuration. */
 	virtual void Accept(Configuration & list, Potential * pot)
 	{
 		list.ChangeBasisVector(newvec);
 		list.TryRefineBasisVectors();
+		pot->SetConfiguration(list);//the basis just changed; rebind so the potential tracks the accepted configuration
 		this->AcceptCount++;
 	}
 
-	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
+	/** \brief Return a heap-allocated copy of this move.
 		\return A new clone of this CellMove. */
 	virtual MCMove<Configuration, Potential *> * clone()
 	{
@@ -414,18 +425,18 @@ public:
 };
 
 
-/** \brief A MCMove that randomly selects between two sub-moves with a fixed probability. (CLAUDE) */
+/** \brief A MCMove that randomly selects between two sub-moves with a fixed probability. */
 template <typename System, typename AdditionalInfo>
 class CombinedMove : public MCMove<System, AdditionalInfo>
 {
-	MCMove<System, AdditionalInfo> * m1;
-	MCMove<System, AdditionalInfo> * m2;
+	std::unique_ptr<MCMove<System, AdditionalInfo> > m1;
+	std::unique_ptr<MCMove<System, AdditionalInfo> > m2;
 	double Move1Probability;
 	RandomGenerator gen;
 	bool IsMoving1;
 
 public:
-	/** \brief Construct from two moves and the probability of choosing the first. (CLAUDE)
+	/** \brief Construct from two moves and the probability of choosing the first.
 		\param m1               First sub-move; cloned and owned by this object.
 		\param m2               Second sub-move; cloned and owned by this object.
 		\param Move1Probability  Probability in [0,1] of attempting the first move.
@@ -436,17 +447,13 @@ public:
 		assert(Move1Probability<=1);
 	}
 
-	/** \brief Destructor; frees the two owned sub-moves. (CLAUDE) */
-	~CombinedMove()
-	{
-		delete this->m1;
-		delete this->m2;
-	}
+	/** \brief Destructor; the owned sub-moves are freed automatically by their unique_ptrs. */
+	~CombinedMove() = default;
 
-	/** \brief Randomly select one sub-move, perform it, and return the energy difference. (CLAUDE)
+	/** \brief Randomly select one sub-move, perform it, and return the energy difference.
 		\param sys	Current system state.
 		\param add	Additional information (e.g. the interaction potential).
-		\param gen	Random number generator (unused; the internal generator selects the sub-move).
+		\param gen	Random number generator; also selects which sub-move is attempted (the member generator is only used to seed clones).
 		\param[out] PreFactor	Acceptance prefactor set by the selected sub-move.
 		\param LockStepSize	If true, do not auto-adjust step sizes.
 		\param CurrentEnergy	Energy of the current state.
@@ -465,7 +472,7 @@ public:
 		}
 	}
 
-	/** \brief Accept the most recently selected sub-move. (CLAUDE)
+	/** \brief Accept the most recently selected sub-move.
 		\param sys  System to update.
 		\param add  Additional information (e.g. the interaction potential). */
 	virtual void Accept(System & sys, AdditionalInfo add)
@@ -476,11 +483,11 @@ public:
 			this->m2->Accept(sys, add);
 	}
 
-	/** \brief Return a heap-allocated copy of this move. (CLAUDE)
+	/** \brief Return a heap-allocated copy of this move.
 		\return A new clone of this CombinedMove. */
 	virtual MCMove<System, AdditionalInfo> * clone()
 	{
-		return new CombinedMove(*this->m1, *this->m2, this->Move1Probability, this->gen.RandomDouble()*10000);
+		return new CombinedMove(*this->m1, *this->m2, this->Move1Probability, this->gen.RandomInt());//full-width child seed (was RandomDouble()*10000, only 10^4 values)
 	}
 };
 

@@ -24,9 +24,9 @@ struct Constraint_Fourier
 	GeometryVector k;//absolute k, not relative to basis vectors
 	double V;
 	double rho_real, rho_imag;
-	/** \brief Construct a Fourier-space constraint at a wavevector with a target energy. (CLAUDE)
-	 *  \param k  Absolute wavevector of the constraint.
-	 *  \param V  Fourier-space energy weight at this wavevector. */
+	/** \brief Construct a Fourier-space constraint with a wavevector and energy weight.
+	 *  \param k Absolute wavevector of the constraint.
+	 *  \param V Fourier-space energy weight at this wavevector. */
 	Constraint_Fourier(const GeometryVector & k, double V): k(k), V(V)
 	{
 	}
@@ -46,21 +46,21 @@ struct EnergyConstraints
 		this->constraints.emplace_back(k, v);
 	}
 
-	/** \brief Print the defined constraints with the indices of species
-	 *  \param ofile  Destination output stream. */
-	void PrintConstraints(std::ostream & ofile = std::cout){
-		// particle indices
-		ofile << "indices:";
-		for (auto i = idx.begin(); i != idx.end(); i++)
-			ofile << "\t" << &i ;
+	// /** \brief Print the defined constraints with the indices of species
+	//  *  \param ofile  Destination output stream. */
+	// void PrintConstraints(std::ostream & ofile = std::cout){
+	// 	// particle indices
+	// 	ofile << "indices:";
+	// 	for (auto i = idx.begin(); i != idx.end(); i++)
+	// 		ofile << "\t" << &i ;
 
-		ofile <<"\n";
-		// constraints
-		for (size_t i =0; i<this->constraints.size(); i++){
-			ofile << "@ k= " << this->constraints[i].k << ": v="<<this->constraints[i].V <<"\n";
-		}
-		ofile << "\n\n";
-	}
+	// 	ofile <<"\n";
+	// 	// constraints
+	// 	for (size_t i =0; i<this->constraints.size(); i++){
+	// 		ofile << "@ k= " << this->constraints[i].k << ": v="<<this->constraints[i].V <<"\n";
+	// 	}
+	// 	ofile << "\n\n";
+	// }
 };
 
 /* collective-coordinate potential in a species. */
@@ -68,17 +68,20 @@ struct species_potential{
 	std::unique_ptr<ShiftedCCPotential> CCPotential;
 	std::vector<size_t> idx ;   // particle i in CCPotential -> pConfig  =  particle idx[i] in the mother configuration.
 
-	/** \brief Construct an empty species potential with a fresh collective-coordinate potential. (CLAUDE)
+	/** \brief Construct an empty species potential with a fresh collective-coordinate potential.
 	 *  \param dim  Spatial dimension of the configuration. */
 	species_potential (DimensionType dim): CCPotential(std::make_unique<ShiftedCCPotential>(dim)), idx() {}
 	// non-copyable to preserve unique ownership of CCPotential
-	/** \brief Deleted copy constructor (preserves unique ownership of CCPotential). (CLAUDE) */
+	/** \brief Deleted copy constructor (preserves unique ownership of CCPotential). */
 	species_potential(const species_potential&) = delete;
-	/** \brief Deleted copy assignment (preserves unique ownership of CCPotential). (CLAUDE) */
+
+	/** \brief Deleted copy assignment (preserves unique ownership of CCPotential). */
 	species_potential& operator=(const species_potential&) = delete;
-	/** \brief Defaulted move constructor. (CLAUDE) */
+
+	/** \brief Defaulted move constructor. */
 	species_potential(species_potential&&) = default;
-	/** \brief Defaulted move assignment. (CLAUDE) */
+
+	/** \brief Defaulted move assignment. */
 	species_potential& operator=(species_potential&&) = default;
 
 	/** \brief Print the defined constraints with the indices of species
@@ -87,7 +90,7 @@ struct species_potential{
 		// particle indices
 		ofile << "indices:";
 		for (auto i = idx.begin(); i != idx.end(); i++)
-			ofile << "\t" << &i ;
+			ofile << "\t" << *i ;
 
 		ofile <<"\n";
 		// constraints
@@ -104,7 +107,7 @@ struct spec_index{
 	int species;
 	size_t index;
 
-	/** \brief Construct a species/index pair locating a particle within its species sub-configuration. (CLAUDE)
+	/** \brief Construct a species/index pair locating a particle within its species sub-configuration.
 	 *  \param s    Species id (-1 if unspecified).
 	 *  \param idx  Index of the particle within that species. */
 	spec_index(int s, size_t idx): species(s), index(idx){}
@@ -148,21 +151,20 @@ public :
 		}
 	}
 
-	/** \brief Defaulted destructor. (CLAUDE) */
+	/** \brief Defaulted destructor. */
 	~MultiStealthyPotential() override = default;
-	/** \brief Deleted copy constructor (preserves unique ownership of pConfig). (CLAUDE) */
+
+	/** \brief Deleted copy constructor (preserves unique ownership of pConfig). */
 	MultiStealthyPotential(const MultiStealthyPotential&) = delete;
-	/** \brief Deleted copy assignment (preserves unique ownership of pConfig). (CLAUDE) */
+
+	/** \brief Deleted copy assignment (preserves unique ownership of pConfig). */
 	MultiStealthyPotential& operator=(const MultiStealthyPotential&) = delete;
-	/** \brief Defaulted move constructor. (CLAUDE) */
+
+	/** \brief Defaulted move constructor. */
 	MultiStealthyPotential(MultiStealthyPotential&&) = default;
-	/** \brief Defaulted move assignment. (CLAUDE) */
+
+	/** \brief Defaulted move assignment. */
 	MultiStealthyPotential& operator=(MultiStealthyPotential&&) = default;
-
-	/** \brief Return a polymorphic copy of this potential. (CLAUDE)
-	 *  \return  Pointer to the cloned potential. */
-	MultiStealthyPotential * clone(){}
-
 
 	/* -------------------------------------
 	 * 	Methods to define configuration and potential
@@ -223,10 +225,12 @@ public :
 	/** \brief Compute total potential energy.
 	 *  \return  The total potential energy. */
 	virtual double Energy();
+
 	/** \brief Compute force on a particle.
 	 *  \param result  Output force vector.
 	 *  \param i       Particle index. */
 	virtual void Force(GeometryVector & result, size_t i);
+
 	/** \brief Compute forces on all particles.
 	 *  \param results  Output vector of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results);

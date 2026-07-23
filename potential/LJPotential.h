@@ -19,14 +19,14 @@ public:
 	double epsilon4;//< 4*epsilon
 	double sigma;	//< Length scale.
 
-	/** \brief Destructor. (CLAUDE) */
+	/** \brief Destructor. */
 	virtual ~LJPotential();
 
-	/** \brief A default constructor.
-		\param Dimension  Spatial dimension of the system. (CLAUDE)
-		\param epsilon    Depth of the potential well. (CLAUDE)
-		\param sigma      Length scale of the potential. (CLAUDE)
-		\param Rcut       Cutoff distance of the potential. (CLAUDE) */
+	/** \brief Construct a Lennard-Jones potential.
+		\param Dimension Spatial dimension of the system.
+		\param epsilon Potential-well depth.
+		\param sigma Lennard-Jones length scale.
+		\param Rcut Pair-interaction cutoff distance. */
 	LJPotential(DimensionType Dimension, double epsilon, double sigma, double Rcut);
 
 	/** \brief LJ potential.

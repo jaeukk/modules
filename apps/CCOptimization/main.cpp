@@ -88,7 +88,7 @@ class ReadConfigPack
 public:
 	double Rescale;
 	ConfigurationPack p;
-	/** \brief Open a ConfigurationPack whose prefix is read interactively from a stream. (CLAUDE)
+	/** \brief Open a ConfigurationPack whose prefix is read interactively from a stream.
 	 *  \param ifile    Input stream supplying the pack prefix.
 	 *  \param ofile    Output stream for the input prompt.
 	 *  \param Rescale  Linear scale factor applied to each retrieved configuration. */
@@ -100,7 +100,8 @@ public:
 		ifile>>prefix;
 		p.Open(prefix);
 	}
-	/** \brief Open a ConfigurationPack with the given prefix. (CLAUDE)
+
+	/** \brief Open a ConfigurationPack with the given prefix.
 	 *  \param prefix   Prefix of the ConfigurationPack to open.
 	 *  \param Rescale  Linear scale factor applied to each retrieved configuration. */
 	ReadConfigPack(std::string prefix, double Rescale)
@@ -108,7 +109,8 @@ public:
 		this->Rescale=Rescale;
 		p.Open(prefix);
 	}
-	/** \brief Retrieve and rescale the i-th configuration from the pack. (CLAUDE)
+
+	/** \brief Retrieve and rescale the i-th configuration from the pack.
 	 *  \param i  Index of the configuration in the pack.
 	 *  \return   The i-th configuration, rescaled by Rescale. */
 	Configuration operator() (size_t i)
@@ -201,7 +203,7 @@ int GetCCO(int argc, char ** argv){
 		
 		if (strcmp (tempstring, "random") == 0){
 		/* Randomg initial conditions */
-			GetInitConfigs = [&rngGod, &dim, &num, &L](size_t i) ->Configuration {
+			GetInitConfigs = [&rngGod, &dim, &num, &L](size_t) ->Configuration {
 				Configuration pConfig = GetUnitCubicBox(dim, 0.1);
 				pConfig.Rescale(L);
 				for (size_t i = 0; i < num; i++)
@@ -235,11 +237,11 @@ int GetCCO(int argc, char ** argv){
 
 		/* Define potential */
 		ofile << "Define potential \n";
-		RepulsiveCCPotential * potential = nullptr;
+		std::unique_ptr<RepulsiveCCPotential> potential;//owns the potential; freed automatically on every exit path
 		{
 			double k1 = K1 / a, k2 = K2 / a;
 			Configuration Config = GetInitConfigs(beg_idx);
-			potential = new RepulsiveCCPotential(dim, val, sigma, S0);
+			potential = std::make_unique<RepulsiveCCPotential>(dim, val, sigma, S0);
 			ofile << "With repulsion, val = " << val << ", sigma = " << sigma << "\n";
 
 			potential->ParallelNumThread = num_threads;
@@ -251,7 +253,7 @@ int GetCCO(int argc, char ** argv){
 				std::function<double (double k)> v;
 				if (vtilde.compare("flat") == 0){
 					ofile << "vtilde function = flat (by default)\n";
-					v = [](double k) -> double { return 1.0; };
+					v = [](double) -> double { return 1.0; };
 				}
 				else if (vtilde.compare("overlap") == 0){
 					ofile << "vtilde function = overlap function\n";
@@ -265,6 +267,11 @@ int GetCCO(int argc, char ** argv){
 					param_vtilde.emplace_back(k2);
 					param_vtilde.emplace_back(m);
 					v = [&param_vtilde](double k) -> double { return std::pow(1. - k/param_vtilde[0], param_vtilde[1]);};
+				}
+				if (!v){
+					//no branch set v: an unknown vtilde name would leave v empty and calling it below is UB
+					ofile << "Error: unknown vtilde function '" << vtilde << "'.\n";
+					return 1;
 				}
 
 				double K1_modulus = k1 * k1;
@@ -320,7 +327,7 @@ int GetCCO(int argc, char ** argv){
 			/* Input parameters */
 			for(;;){
 				ifile >> tempstring2;
-				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),::tolower); // make the input in the lower case
+				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),[](unsigned char c){ return static_cast<char>(::tolower(c)); }); // make the input in the lower case (cast through unsigned char: passing a negative char to tolower is UB)
 				if (tempstring2.compare("run") == 0){
 					/* start MD simulation */
 					break;
@@ -379,7 +386,7 @@ int GetCCO(int argc, char ** argv){
 				
 				size_t MDEquilibrateSamples = numEquilSamples;
 				//bool MDAutoTimeStep = false;
-				CollectiveCoordinateMD(&pConfig, potential, rngGod, MDTimeStep, MD_Temperature, savename, numConfig, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
+				CollectiveCoordinateMD(&pConfig, potential.get(), rngGod, MDTimeStep, MD_Temperature, savename, numConfig, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
 			}
 			else if	(strcmp (tempstring, "input") == 0){
 				/* For continue from the latest configuration in the previous run. */
@@ -391,10 +398,10 @@ int GetCCO(int argc, char ** argv){
 				size_t numConfig_comp = (numConfig > num_in_Init)? numConfig - num_in_Init : 0 ;
 				
 				//bool MDAutoTimeStep = false;
-				CollectiveCoordinateMD(&pConfig, potential, rngGod, MDTimeStep, MD_Temperature, savename, numConfig_comp, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
+				CollectiveCoordinateMD(&pConfig, potential.get(), rngGod, MDTimeStep, MD_Temperature, savename, numConfig_comp, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
 			//TODO
 			}
-			
+			//potential is a unique_ptr; freed automatically on scope exit
 			
 			
 		}
@@ -411,7 +418,7 @@ int GetCCO(int argc, char ** argv){
 			ofile << "--------------------------------------- \n";
 			for(;;){
 				ifile >> tempstring2;
-				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),::tolower); // make the input in the lower case
+				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),[](unsigned char c){ return static_cast<char>(::tolower(c)); }); // make the input in the lower case (cast through unsigned char: passing a negative char to tolower is UB)
 				if (tempstring2.compare("run") == 0){
 					/* start minimizations simulation */
 					break;
@@ -454,15 +461,14 @@ int GetCCO(int argc, char ** argv){
 				ofile << "just compute "<< numConfig_comp <<" more Configurations \n";
 
 				ofile << "max_eval = " << max_steps << std::endl;
-				CollectiveCoordinateMultiRun(&pConfig, potential, rngGod, savename, numConfig_comp, TimeLimit, algorithm, tolerance, max_steps);
-				delete potential;
+				CollectiveCoordinateMultiRun(&pConfig, potential.get(), rngGod, savename, numConfig_comp, TimeLimit, algorithm, tolerance, max_steps);
+				//potential is a unique_ptr; freed automatically on scope exit
 
 			}
 			else if	(strcmp (tempstring, "input") == 0){
 				/* ReadConfigPack */
-				size_t idx_beg = 0;
 				{
-					ConfigurationPack load_(savename+"_InitConfig");				
+					ConfigurationPack load_(savename+"_InitConfig");
 					num_in_Init = load_.NumConfig();
 					ConfigurationPack success_(savename+"_InitConfig");				
 					num_in_Success = success_.NumConfig();
@@ -478,11 +484,11 @@ int GetCCO(int argc, char ** argv){
 					if ( id < num_in_load ){
 						Configuration pConfig = GetInitConfigs(id);
 						pConfig.PrepareIterateThroughNeighbors(sigma);
-						CollectiveCoordinateMultiRun(&pConfig, potential, rngGod, savename, 1, TimeLimit, algorithm, tolerance, max_steps);
+						CollectiveCoordinateMultiRun(&pConfig, potential.get(), rngGod, savename, 1, TimeLimit, algorithm, tolerance, max_steps);
 					}
 					id ++ ;
 				}
-				delete potential;				
+				//potential is a unique_ptr; freed automatically on scope exit
 			}
 
 		}
@@ -548,7 +554,7 @@ int GetCCO(int argc, char ** argv){
 	return 0;
 }
 
-/** \brief Generate stealthy collective-coordinate ground states via simulated-annealing Monte Carlo. (CLAUDE)
+/** \brief Generate stealthy collective-coordinate ground states via simulated-annealing Monte Carlo.
  *  \param argc  Argument count, used to read run parameters (time limit, seed, start index, verbosity, vtilde).
  *  \param argv  Argument vector carrying the run parameters.
  *  \return      0 on success, 1 on invalid input. */
@@ -588,7 +594,7 @@ int MC_CCO(int argc, char ** argv){
 	TimeLimit = ProgramStart + timelimit_in_hour*3600 - 5*60;//default time limit of 144 hours - 5 mins (for saving progress)
 
 	/* parameters for potential */
-	double K1, chi_target, val, L, sigma, phi = 0.1, S0=0.0;
+	double K1, chi_target, val, L, sigma, S0=0.0;
 	std::vector<double> param_vtilde;	// parameter used in vtilde functions
 	DimensionType dim = 2;
 	size_t num; 
@@ -606,9 +612,8 @@ int MC_CCO(int argc, char ** argv){
 	L = pow(num, 1.0/(double)dim);	
 
 	/* Define initial conditions */
-	size_t numConfig = 300, num_in_load = 0, num_in_Init = 0;
-	char mode[100] = {};
-	std::string loadname, savename;		
+	size_t numConfig = 300, num_in_load = 0;
+	std::string loadname, savename;
 	std::function<const Configuration(size_t i)> GetInitConfigs = nullptr;
 
 	{
@@ -623,7 +628,7 @@ int MC_CCO(int argc, char ** argv){
 
 		if (strcmp (tempstring, "random") == 0){
 		/* Randomg initial conditions */
-			GetInitConfigs = [&rngGod, &dim, &num, &L](size_t i) ->Configuration {
+			GetInitConfigs = [&rngGod, &dim, &num, &L](size_t) ->Configuration {
 				Configuration pConfig = GetUnitCubicBox(dim, 0.1);
 				pConfig.Rescale(L);
 				for (size_t i = 0; i < num; i++)
@@ -664,20 +669,36 @@ int MC_CCO(int argc, char ** argv){
 		/* Adjust the number of constraints to be closest to the target chi value. */
 		{
 			size_t expected_num_constraints = (size_t) (dim * c.NumParticle() * chi_target );
+			if (ks_temp.empty()){
+				ofile << "Error: no candidate wavevectors were found for the target chi.\n";
+				return 1;
+			}
+			// clamp the target count into [1, size] so the indexing below cannot run out of bounds
+			if (expected_num_constraints < 1)
+				expected_num_constraints = 1;
+			if (expected_num_constraints > ks_temp.size())
+				expected_num_constraints = ks_temp.size();
 			double K_search_squared = ks_temp[expected_num_constraints-1].Modulus2();
+			// Same-|k|^2 shell test with a relative tolerance: symmetry-related k
+			// vectors can differ in the last ULP, so exact == could split a shell.
+			const double K2_tol = 1e-9 * K_search_squared;
+			auto in_shell = [K_search_squared, K2_tol](const GeometryVector & k) -> bool {
+				return std::abs(k.Modulus2() - K_search_squared) <= K2_tol;
+			};
 			size_t i1 = expected_num_constraints-1, i2 = i1;  // i1 < expected_num_constraints < i2.
-			while (i1 > 0 && ks_temp[i1].Modulus2() == K_search_squared) i1--;
-			while (i2 < ks_temp.size() && ks_temp[i2].Modulus2() == K_search_squared) i2++;
+			while (i1 > 0 && in_shell(ks_temp[i1])) i1--;
+			while (i2 < ks_temp.size() && in_shell(ks_temp[i2])) i2++;
 			ofile << "i1, target, i2 = " << i1 << "\t" << expected_num_constraints <<"\t" << i2 << std::endl;
 			if (expected_num_constraints - i1 < i2 - expected_num_constraints){
 				// i1 is the closest
 				ks_temp.erase(ks_temp.begin() + i1 + 1, ks_temp.end());
 			}
-			else{
-				// i2 is the closest
+			else if (i2 < ks_temp.size()){
+				// i2 is the closest; when i2==size the whole tail is in-shell, so keep everything
+				// (begin()+i2+1 would otherwise point past end() and make erase UB)
 				ks_temp.erase(ks_temp.begin() + i2 + 1, ks_temp.end());
-			}			
-			K2 = std::sqrt(ks_temp.end()->Modulus2());
+			}
+			K2 = std::sqrt(ks_temp.back().Modulus2());//back(): end() is past-the-end and must not be dereferenced
 		}
 		double chi_exact = ks_temp.size() / (double)(dim * (num - 1));
 		ofile << "chi_exact = " << chi_exact << ",\tchi_target = " << chi_target << std::endl;
@@ -692,7 +713,7 @@ int MC_CCO(int argc, char ** argv){
 			{
 				if (vtilde.compare("flat") == 0){
 					ofile << "vtilde function = flat (by default)\n";
-					v = [](double k) -> double { return 1.0; };
+					v = [](double) -> double { return 1.0; };
 				}
 				else if (vtilde.compare("overlap") == 0){
 					ofile << "vtilde function = overlap function\n";
@@ -707,7 +728,12 @@ int MC_CCO(int argc, char ** argv){
 					param_vtilde.emplace_back(m);
 					v = [&param_vtilde](double k) -> double { return std::pow(1. - k/param_vtilde[0], param_vtilde[1]);};
 				}
-			
+				if (!v){
+					//no branch set v: an unknown vtilde name would leave v empty and calling it below is UB
+					ofile << "Error: unknown vtilde function '" << vtilde << "'.\n";
+					return 1;
+				}
+
 				for (auto k = ks_temp.begin(); k != ks_temp.end(); k++)
 				{
 					vals[0] = v(std::sqrt(k->Modulus2()));
@@ -748,7 +774,7 @@ int MC_CCO(int argc, char ** argv){
 	for(size_t id=0; id < max_inputs; id ++ ){
 //		ofile << id << "--------------------------------------- \n";
 		ifile >> tempstring2;
-		std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),::tolower); // make the input in the lower case
+		std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),[](unsigned char c){ return static_cast<char>(::tolower(c)); }); // make the input in the lower case (cast through unsigned char: passing a negative char to tolower is UB)
 		if (tempstring2.compare("run") == 0){
 			/* start MC simulation */
 			break;
@@ -808,12 +834,16 @@ int MC_CCO(int argc, char ** argv){
 
 	ConfigurationPack AfterRelaxPack(savename);
 	ConfigurationPack SuccessPack(savename + "_Success");
-	
+
+	// Default in case the first cooling loop body never runs (E already below
+	// tolerance): stepsize_init would otherwise be read uninitialized at i>0.
+	stepsize_init = stepsize;
 	for (size_t i = 0; i < numConfig; i++ ){
 		Configuration result = GetInitConfigs(i);
 		pCCPot -> SetConfiguration(result);
 		double E_curr = pCCPot -> Energy();
-		double T_curr = T_init; 
+		double T_curr = T_init;
+		bool first_T_stage = true;	// replaces the float-equality T_curr == T_init test
 		if (i > 0){
 			/* load stepsize in the previous cooling */
 			stepsize = stepsize_init;
@@ -870,8 +900,9 @@ int MC_CCO(int argc, char ** argv){
 					stepsize *= incr;
 				}
 			}
-			if (T_curr == T_init){
+			if (first_T_stage){
 				stepsize_init = stepsize;
+				first_T_stage = false;
 			}
 
 			if (Verbosity > 2){
@@ -1041,7 +1072,7 @@ int GetMultiCCO(int argc, char ** argv){
 			sizes.reserve(num_radii);
 			ofile << "Input the number of particles and the relative radius \n";
 			N = 0;
-			for (int i=0; i < num_radii; i++){
+			for (size_t i=0; i < num_radii; i++){
 				ofile << "number: "; ifile >> tempstring; 
 				sizes.emplace_back(atoi(tempstring));
 				N += atoi(tempstring);
@@ -1056,13 +1087,13 @@ int GetMultiCCO(int argc, char ** argv){
 			{
 
 				double curr_phi = 0;
-				for (int i=0; i < num_radii; i++){
+				for (size_t i=0; i < num_radii; i++){
 					curr_phi += sizes[i] * HyperSphere_Volume(dim, radii[i]);
 				}
 				curr_phi /= N;
 
 				double factor = std::pow( phi/curr_phi , 1.0/dim);
-				for (int i=0; i < num_radii; i++){
+				for (size_t i=0; i < num_radii; i++){
 					radii[i] *= factor;
 					ofile << sizes[i] << "\t" << radii[i] <<"\n";
 				}
@@ -1070,7 +1101,7 @@ int GetMultiCCO(int argc, char ** argv){
 			}		
 
 			/* a function to generate a random configuration of spheres. */
-			GetInitConfigs = [&rngGod, &dim, &sizes, &radii, L](size_t idx) ->SpherePacking {
+			GetInitConfigs = [&rngGod, &dim, &sizes, &radii, L](size_t) ->SpherePacking {
 				SpherePacking pConfig(GetUnitCubicBox(dim, 0.1),0);
 				pConfig.Rescale(L);
 				for (size_t i = 0; i < sizes.size(); i++){					
@@ -1088,10 +1119,14 @@ int GetMultiCCO(int argc, char ** argv){
 			ifile >> loadname;
 
 			GetInitConfigs = [&loadname](size_t idx) -> SpherePacking{
-				char name[300];
-				std::sprintf(name, loadname.c_str(), idx);
-				SpherePacking temp; 
-				ReadConfiguration(temp, name);
+				//Substitute a single documented "%d" placeholder with the configuration index WITHOUT
+				//passing user input as a printf format string (mismatched/malicious specifiers are UB).
+				std::string name = loadname;
+				std::string::size_type pos = name.find("%d");
+				if (pos != std::string::npos)
+					name.replace(pos, 2, std::to_string(idx));
+				SpherePacking temp;
+				ReadConfiguration(temp, name.c_str());
 				return temp;
 			};
 
@@ -1111,7 +1146,7 @@ int GetMultiCCO(int argc, char ** argv){
 	
 	/* 2. Define stealthy potential */
 	ofile << "Define a stealthy potential \n";
-	MultiStealthyPotential * potential = new MultiStealthyPotential(dim, val);
+	std::unique_ptr<MultiStealthyPotential> potential = std::make_unique<MultiStealthyPotential>(dim, val);//owns the potential; freed automatically on every exit path
 	{
 		ofile << "number of different collective potentials = ";
 		ifile >> num_species;	ofile << " (" << num_species <<" )\n";
@@ -1140,7 +1175,7 @@ int GetMultiCCO(int argc, char ** argv){
 			}
 			N_curr += N_s;
 
-			double lower, upper, S0, chi;
+			double lower, upper, S0, chi = 0;
 			std::vector<double> param_vtilde;	// parameter used in vtilde functions
 
 			ofile << "S(0) = ";	ifile >> S0;	ofile << S0 << std::endl;
@@ -1162,7 +1197,7 @@ int GetMultiCCO(int argc, char ** argv){
 				ofile << "Stealthy:\n";
 				if (vtilde.compare("flat") == 0){
 					ofile << "vtilde function = flat (by default)\n";
-					v = [](double k) -> std::vector<double> { return std::vector<double>({1.0}); };
+					v = [](double) -> std::vector<double> { return std::vector<double>({1.0}); };
 				}
 				else if (vtilde.compare("overlap") == 0){
 					ofile << "vtilde function = overlap function\n";
@@ -1177,10 +1212,15 @@ int GetMultiCCO(int argc, char ** argv){
 					param_vtilde.emplace_back(m);
 					v = [&param_vtilde](double k) -> std::vector<double> { return std::vector<double>({std::pow(1. - k/param_vtilde[0], param_vtilde[1])}); };
 				}
+				if (!v){
+					//no branch set v: an unknown vtilde name would leave v empty and calling it below is UB
+					ofile << "Error: unknown vtilde function '" << vtilde << "'.\n";
+					return 1;
+				}
 			}
 			else{
 				ofile << "equiluminous patterns with S0 = " << S0 << "\n";
-				v = [S0](double k) -> std::vector<double> { return std::vector<double>(1.0, S0); }; 
+				v = [S0](double) -> std::vector<double> { return std::vector<double>{1.0, S0}; };
 			}
 
 			double k1_modulus = lower*lower;
@@ -1191,8 +1231,14 @@ int GetMultiCCO(int argc, char ** argv){
 					chi++;
 				}					
 			}
-			chi /= dim * (N_s - 1);				
-			ofile << "chi (of a subconfig) = " << chi << std::endl;			
+			//N_s>=2 required: N_s==1 divides by zero and N_s==0 underflows (size_t) the denominator
+			if (N_s >= 2)
+				chi /= dim * (N_s - 1);
+			else{
+				ofile << "Warning: species has fewer than 2 particles; chi normalization is undefined, reporting 0.\n";
+				chi = 0.0;
+			}
+			ofile << "chi (of a subconfig) = " << chi << std::endl;
 		}
 	}
 		
@@ -1230,7 +1276,7 @@ int GetMultiCCO(int argc, char ** argv){
 			/* Input parameters */
 			for(;;){
 				ifile >> tempstring2;
-				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),::tolower); // make the input in the lower case
+				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),[](unsigned char c){ return static_cast<char>(::tolower(c)); }); // make the input in the lower case (cast through unsigned char: passing a negative char to tolower is UB)
 				if (tempstring2.compare("run") == 0){
 					/* start MD simulation */
 					break;
@@ -1290,13 +1336,21 @@ int GetMultiCCO(int argc, char ** argv){
 				Configuration pConfig(pck, "a");
 				size_t MDEquilibrateSamples = numEquilSamples;
 				//bool MDAutoTimeStep = false;
-				CollectiveCoordinateMD(&pConfig, potential, rngGod, MDTimeStep, MD_Temperature, savename, N_config, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
+				CollectiveCoordinateMD(&pConfig, potential.get(), rngGod, MDTimeStep, MD_Temperature, savename, N_config, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
 			}
 			else if	(strcmp (tempstring, "input") == 0){
 				/* For continue from the latest configuration in the previous run. */
 				ofile << "MD Temperature = "<< MD_Temperature << std::endl;
 
-				SpherePacking pck = GetInitConfigs(N_load - 1);
+				//The filename-based input path does not resolve a configuration count, so N_load stays 0
+				//and there is nothing to continue from. Fail loudly instead of loading a nonexistent
+				//file (N_load-1 would underflow to SIZE_MAX) or looping over nothing.
+				if (N_load == 0){
+					ofile << "Error: input mode selected but the resolved input configuration count (N_load) is 0; cannot continue from a previous run.\n";
+					return 1;
+				}
+				size_t loadIdx = N_load - 1;
+				SpherePacking pck = GetInitConfigs(loadIdx);
 				potential -> SetPacking(pck);
 				Configuration pConfig(pck, "a");
 
@@ -1305,7 +1359,7 @@ int GetMultiCCO(int argc, char ** argv){
 				size_t numConfig_comp = (N_config > N_init)? N_config - N_init : 0 ;
 				
 				//bool MDAutoTimeStep = false;
-				CollectiveCoordinateMD(&pConfig, potential, rngGod, MDTimeStep, MD_Temperature, savename, numConfig_comp, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
+				CollectiveCoordinateMD(&pConfig, potential.get(), rngGod, MDTimeStep, MD_Temperature, savename, numConfig_comp, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
 			//TODO
 			}
 			
@@ -1326,7 +1380,7 @@ int GetMultiCCO(int argc, char ** argv){
 			ofile << "--------------------------------------- \n";
 			for(;;){
 				ifile >> tempstring2;
-				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),::tolower); // make the input in the lower case
+				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),[](unsigned char c){ return static_cast<char>(::tolower(c)); }); // make the input in the lower case (cast through unsigned char: passing a negative char to tolower is UB)
 				if (tempstring2.compare("run") == 0){
 					/* start minimizations simulation */
 					break;
@@ -1376,19 +1430,19 @@ int GetMultiCCO(int argc, char ** argv){
 				ofile << "just compute "<< numConfig_comp <<" more Configurations \n";
 
 				ofile << "max_eval = " << max_steps << std::endl;
-				CollectiveCoordinateMultiRun(&pConfig, potential, rngGod, savename, numConfig_comp, TimeLimit, algorithm, tolerance, max_steps);
+				CollectiveCoordinateMultiRun(&pConfig, potential.get(), rngGod, savename, numConfig_comp, TimeLimit, algorithm, tolerance, max_steps);
 
 				// separate configurations 
 				if (split_species){
 					std::vector<ConfigurationPack> cp;
 					for(size_t s = 0; s  < potential->species_constraints.size(); s++){
 						char name[300];
-						sprintf(name, "%s_s%d_Success", savename.c_str(), s);
+						snprintf(name, sizeof(name), "%s_s%zu_Success", savename.c_str(), s);
 						cp.emplace_back(name);
 					}
 					ConfigurationPack success(savename+"_Success");
 
-					for (size_t i = N_success; i < success.NumConfig(); i++){
+					for (long long i = N_success; i < success.NumConfig(); i++){
 						Configuration c = success.GetConfig(i);
 						Configuration empty_cell(c);
 						empty_cell.RemoveParticles();
@@ -1401,17 +1455,22 @@ int GetMultiCCO(int argc, char ** argv){
 						}
 					}
 				}
-				delete potential;
+				//potential is a unique_ptr; freed automatically on scope exit
 
 			}
 			else if	(strcmp (InitCondition.c_str(), "input") == 0){
 				/* ReadConfigPack */
-				size_t idx_beg = 0;
 				{
 					ConfigurationPack load_(savename+"_InitConfig");				
 					N_init = load_.NumConfig();
-					ConfigurationPack success_(savename+"_InitConfig");				
+					ConfigurationPack success_(savename+"_InitConfig");
 					N_success = success_.NumConfig();
+				}
+				//N_load stays 0 for the filename-based input path; the loop below would then silently
+				//process nothing (id < N_load is never true). Fail loudly instead.
+				if (N_load == 0){
+					ofile << "Error: input mode selected but the resolved input configuration count (N_load) is 0; nothing to process.\n";
+					return 1;
 				}
 				size_t numConfig_upper = std::min(N_load, beg_idx+N_config);
 
@@ -1425,11 +1484,11 @@ int GetMultiCCO(int argc, char ** argv){
 						SpherePacking pck = GetInitConfigs(id);
 						Configuration pConfig(pck, "a");
 						pConfig.PrepareIterateThroughNeighbors(potential->GetRc());
-						CollectiveCoordinateMultiRun(&pConfig, potential, rngGod, savename, 1, TimeLimit, algorithm, tolerance, max_steps);
+						CollectiveCoordinateMultiRun(&pConfig, potential.get(), rngGod, savename, 1, TimeLimit, algorithm, tolerance, max_steps);
 					}
 					id ++ ;
 				}
-				delete potential;				
+				//potential is a unique_ptr; freed automatically on scope exit
 			}
 
 		}
@@ -1493,28 +1552,32 @@ int GetMultiCCO(int argc, char ** argv){
 
 
 
-/** \brief Program entry point; dispatches to the multi-species or single-species CC driver. (CLAUDE)
+/** \brief Program entry point; dispatches to the multi-species or single-species CC driver.
  *  \param argc  Argument count; argv[1]=="multi" selects the multi-species driver.
  *  \param argv  Argument vector forwarded to the selected driver.
  *  \return      0 on success. */
 int main(int argc, char ** argv){
-	char tempstring[1000] = {};
-	char tempstring2[300] = {};
 	std::istream & ifile = std::cin;
 	std::ostream & ofile = std::cout;
 	RandomGenerator rngGod(0), rng(0);
 
+	int driverResult = 0;
 	if (argc > 1 && strcmp(argv[1], "multi") == 0){
-		GetMultiCCO(argc, argv);
+		driverResult = GetMultiCCO(argc, argv);
 	}
 	else
 	{
-		GetCCO(argc, argv);
+		driverResult = GetCCO(argc, argv);
 	}
-	return 0;
-	{
-		MC_CCO(argc, argv);
-	}
+
+	// The MC_CCO driver and the configuration-stitching experiment below are retained legacy
+	// code but disabled by default: the normal flow returns the selected driver's exit code.
+	// Flip EnableLegacyModes to true to re-enable them.
+	const bool EnableLegacyModes = false;
+	if (!EnableLegacyModes)
+		return driverResult;
+
+	MC_CCO(argc, argv);
 	return 0;
 	{
 		// generate stitched point configurations from an ensemble.
@@ -1560,7 +1623,7 @@ int main(int argc, char ** argv){
 
 			for (size_t j = 0; j < num_selected; j++){
 				if (option == 1){
-					size_t id = static_cast<size_t> (std::floor(std::floor(num_configs * rng.RandomDouble())));
+					id = static_cast<size_t> (std::floor(std::floor(num_configs * rng.RandomDouble())));
 				}
 				Configuration patch = loaded_ensemble.GetConfig(id);
 
@@ -1655,9 +1718,6 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 	if(OneTenthStepPerSample==0)
 		OneTenthStepPerSample=1;
 
-	DimensionType dim=pConfig->GetDimension();
-	size_t Num=pConfig->NumParticle();
-	size_t dimTensor=dim*Num;
 	Potential * pPot=pPotential;
 	//unsigned long tempNumThread=1;//use this when doing MD because there is parallelization in MD code, so no need to parallelize in the potential
 	ParticleMolecularDynamics * psystem = NULL;
@@ -1690,12 +1750,11 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 		/* equilibration starts from a ground state */
 		RelaxStructure_NLOPT(*pConfig, *pPotential, 0.0, 0, 0.0, 1000);
 		pPot->SetConfiguration(* pConfig);
-		double E=pPot->Energy();
+		pPot->Energy();
 
-		psystem = new ParticleMolecularDynamics(*pConfig, TimeStep, 1.0); 
+		psystem = new ParticleMolecularDynamics(*pConfig, TimeStep, 1.0);
 	}
 
-	size_t NumExistConfig=0;
 	std::cout<<"CCMD start. Temperature="<<Temperature<<'\n';
 	
 	if(stage==0)
@@ -1710,7 +1769,7 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 		std::cout << "------------------------\n";
 		std::cout << "	Equilibration step    \n";
 		std::cout << "------------------------\n";	
-		for(long long i=step; i<EquilibrateSamples; i++)
+		for(long long i=step; i<(long long)EquilibrateSamples; i++)
 		{
 			if (std::time(nullptr) > TimeLimit || std::time(nullptr) > ::TimeLimit)
 			{
@@ -1723,8 +1782,6 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 				ofile2<<"Not Completed. Please run again\n";
 				return 0;
 			}
-			double c0=psystem->Position.GetCartesianCoordinates(0).x[0];
-
 			for(size_t ii=0; ii<2; ii++)
 			{
 				psystem->SetRandomSpeed(Temperature, gen);
@@ -1750,7 +1807,7 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 	std::cout << "		Sampling step     \n";
 	std::cout << "------------------------\n";
 	long long final_step=0;
-	for(long long i=step; i<SampleNumber; i++)
+	for(long long i=step; i<(long long)SampleNumber; i++)
 	{
 		if (std::time(nullptr) > TimeLimit || std::time(nullptr) > ::TimeLimit)
 		{

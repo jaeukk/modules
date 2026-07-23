@@ -4,8 +4,13 @@
  *  Annotated by Jaeuk Kim (2019). */
 
 /** \file MonteCarlo.h
- *	\brief	Header file for performing the Monte Carlo simulations for general systems, 
-	including point configurations. */
+ *	\brief	Header file for performing the Monte Carlo simulations for general systems,
+	including point configurations. Contains the sampling drivers (MonteCarlo,
+	WangLandauMonteCarlo, ParallelTempering); the cooling schedules were split
+	into CoolingSchedule.h (2026-07-07). The base MonteCarlo::Move / ::Anneal
+	bodies are restored inline from the legacy c++/Potential/MonteCarlo.h
+	(the split-out new_c++/Potential/MonteCarlo.cpp was ill-formed and never
+	compiled, leaving them undefined). */
 #ifndef MONTECARLO_INCLUDED
 #define MONTECARLO_INCLUDED
 
@@ -14,25 +19,10 @@
 #include <etc.h>
 #include <RandomGenerator.h>
 #include "Move.h"
+#include "CoolingSchedule.h"
 
 #include <functional>
-
-/**	\class	An abstract class to define and control the cooling schedule. */
-class CoolingSchedule
-{
-public:
-	bool Continue;	//< true = continue cooling the system.
-	double Temperature;	//< Current temperature.
-	size_t NumTry;		//< 
-
-	/** \brief Report the current energy so the schedule can advance to the next cooling stage. (CLAUDE)
-		\param Energy  Current (average) energy reported by the Monte Carlo driver. */
-	virtual void Report(double Energy) = 0;
-	//when initialized, the variables are set to the 1st stage cooling.
-	//after class SimulatedAnnealing performs these MC trials, it will call Report to report it's current energy
-	//the class need to decide if another stage is needed, and update the variables
-};
-
+#include <cmath>
 
 //General-Purpose Monte Carlo, not necessary for particles
 template<typename System, typename AdditionalInfo> class MonteCarlo
@@ -50,7 +40,7 @@ public:
 	//Set LockStepSize=true to turn off automatic adjustment of trial move parameters.
 	bool LockStepSize;
 
-	/** \brief Construct a Monte Carlo driver bound to a system. (CLAUDE)
+	/** \brief Construct a Monte Carlo driver bound to a system.
 		\param sys         System to simulate.
 		\param RandomSeed  Seed for the random number generator.
 		\param Energy      Initial recorded energy of the system. */
@@ -62,26 +52,53 @@ public:
 		this->LockStepSize=false;
 	}
 
-	/** \brief Destructor. (CLAUDE) */
+	/** \brief Destructor. */
 	virtual ~MonteCarlo()
 	{
 	}
 
 
 	/** \brief Monte Carlo move function at a given temperature.
-		\param Temperature  Temperature at which the Metropolis acceptance is evaluated. (CLAUDE)
+		\param Temperature  Temperature at which the Metropolis acceptance is evaluated.
 		\param Repeat The number of total trial moves.
 		\param move	Definition of a trial move
-		\param add  Additional information (e.g. the interaction potential) passed to the move. (CLAUDE) */
-	virtual void Move(double Temperature, size_t Repeat, MCMove<System, AdditionalInfo> & move, AdditionalInfo add);
+		\param add  Additional information (e.g. the interaction potential) passed to the move. */
+	virtual void Move(double Temperature, size_t Repeat, MCMove<System, AdditionalInfo> & move, AdditionalInfo add)
+	{
+		for(size_t i=0; i<Repeat; i++)
+		{
+			MoveCount++;
+			double PreFactor=1.0;
+			double dE=move.DeltaEnergy(*this->pSys, add, this->gen, PreFactor, LockStepSize, RecordEnergy);
+			if(Temperature ==0)
+			{
+				if(dE>0)
+					continue;
+			}
+			else if(gen.RandomDouble() > PreFactor*std::exp((-1)*dE/Temperature))
+				continue;
+
+			move.Accept(*this->pSys, add);
+			this->RecordEnergy+=dE;
+		}
+	}
 
 
 	/** \brief Perform simulated annealing with a cooling schedule.
-		\param add  Additional information (e.g. the interaction potential) passed to the move. (CLAUDE)
-		\param cool  Cooling schedule that controls the temperature sequence. (CLAUDE)
-		\param move  Definition of a trial move. (CLAUDE)
-		\param CallBack  Function called after each cooling stage with the energy, temperature, and system. (CLAUDE) */
-	virtual void Anneal(AdditionalInfo add, CoolingSchedule & cool, MCMove<System, AdditionalInfo> & move, std::function<void(double & Energy, double Temperature, System & sys)> CallBack);
+		\param add  Additional information (e.g. the interaction potential) passed to the move.
+		\param cool  Cooling schedule that controls the temperature sequence.
+		\param move  Definition of a trial move.
+		\param CallBack  Function called after each cooling stage with the energy, temperature, and system. */
+	virtual void Anneal(AdditionalInfo add, CoolingSchedule & cool, MCMove<System, AdditionalInfo> & move, std::function<void(double & Energy, double Temperature, System & sys)> CallBack)
+	{
+		while(cool.Continue)
+		{
+			this->Move(cool.Temperature, cool.NumTry, move, add);
+			CallBack(this->RecordEnergy, cool.Temperature, *pSys);
+
+			cool.Report(this->RecordEnergy);
+		}
+	}
 };
 //class for Wang-Landau Monte Carlo
 //class BinDecider should have the following member functions:
@@ -90,7 +107,7 @@ public:
 	//double GetBinLowerBound(size_t NumBin)
 	//double GetBinUpperBound(size_t NumBin)
 //The user is responsible for adjusting SIncrease
-/** \brief Wang-Landau Monte Carlo driver that estimates the density of states over energy bins. (CLAUDE) */
+/** \brief Wang-Landau Monte Carlo driver that estimates the density of states over energy bins. */
 template<typename System, typename AdditionalInfo, typename BinDecider> class WangLandauMonteCarlo
 {
 private:
@@ -104,39 +121,40 @@ public:
 	double RecordEnergy;
 	System * pSys;
 	double SIncrease;
-	/** \brief Construct a Wang-Landau driver bound to a system and energy-bin decider. (CLAUDE)
+	/** \brief Construct a Wang-Landau driver bound to a system and energy-bin decider.
 		\param sys         System to simulate.
 		\param RandomSeed  Seed for the random number generator.
 		\param Energy      Initial energy of the system; must lie within the bin range.
 		\param d           Bin decider that maps energies to histogram bins. */
-	WangLandauMonteCarlo(System & sys, int RandomSeed, double Energy, BinDecider & d) : 
-		gen(RandomSeed), s(d.NumBins(), 0.0), Histogram(d.NumBins(), 0), RecordEnergy(Energy)
+	WangLandauMonteCarlo(System & sys, int RandomSeed, double Energy, BinDecider & d) :
+		s(d.NumBins(), 0.0), Histogram(d.NumBins(), 0), gen(RandomSeed), RecordEnergy(Energy)
 	{
 		this->MoveCount=0;
 		this->pSys= & sys;
 		this->LockStepSize=false;
 		this->pBinDecider=& d;
-		if(d.GetBin(Energy) >= d.NumBins() || d.GetBin(Energy)<0 )
+		long initBin = d.GetBin(Energy);//GetBin returns a signed bin index (may be -1 or NumBins)
+		if(initBin >= static_cast<long>(d.NumBins()) || initBin<0 )
 		{
-			std::cerr<<"Error in WangLandauMonteCarlo : initial energy not within bounds! Bin="<<d.GetBin(Energy)<<"\n";
+			std::cerr<<"Error in WangLandauMonteCarlo : initial energy not within bounds! Bin="<<initBin<<"\n";
 			assert(false);
 		}
 		this->SIncrease=1.0;
 	}
 
-	/** \brief Reset the visit histogram to zero. (CLAUDE) */
+	/** \brief Reset the visit histogram to zero. */
 	void ClearHistogram(void)
 	{
 		for(auto iter=this->Histogram.begin(); iter!=this->Histogram.end(); iter++)
 			*iter=0;
 	}
 
-	/** \brief Return the visit histogram as (bin-center energy, count) pairs. (CLAUDE)
+	/** \brief Return the visit histogram as (bin-center energy, count) pairs.
 		\return A vector of 2D points: bin-center energy and visit count. */
 	std::vector<GeometryVector> GetHistogram(void)
 	{
 		std::vector<GeometryVector> result;
-		for(int i=0; i<this->Histogram.size(); i++)
+		for(size_t i=0; i<this->Histogram.size(); i++)
 		{
 			GeometryVector t(2);
 			t.x[0]=(pBinDecider->GetBinLowerBound(i)+pBinDecider->GetBinUpperBound(i))*0.5;
@@ -146,12 +164,12 @@ public:
 		return result;
 	}
 
-	/** \brief Return the estimated entropy (log density of states) as (bin-center energy, entropy) pairs. (CLAUDE)
+	/** \brief Return the estimated entropy (log density of states) as (bin-center energy, entropy) pairs.
 		\return A vector of 2D points: bin-center energy and entropy. */
 	std::vector<GeometryVector> GetEntropy(void)
 	{
 		std::vector<GeometryVector> result;
-		for(int i=0; i<this->Histogram.size(); i++)
+		for(size_t i=0; i<this->Histogram.size(); i++)
 		{
 			GeometryVector t(2);
 			t.x[0]=(pBinDecider->GetBinLowerBound(i)+pBinDecider->GetBinUpperBound(i))*0.5;
@@ -161,14 +179,14 @@ public:
 		return result;
 	}
 
-	/** \brief Perform Wang-Landau trial moves, updating the entropy estimate and histogram. (CLAUDE)
+	/** \brief Perform Wang-Landau trial moves, updating the entropy estimate and histogram.
 		\param Repeat         Number of trial moves to perform.
 		\param move           Definition of a trial move.
 		\param add            Additional information (e.g. the interaction potential) passed to the move.
 		\param GetEnergyFunc  Function returning the exact energy of a system, used to periodically re-sync RecordEnergy. */
 	void Move(size_t Repeat, MCMove<System, AdditionalInfo> & move, AdditionalInfo add, std::function<double(const System & sys)> GetEnergyFunc)
 	{
-		size_t Nbins = pBinDecider->NumBins();
+		long Nbins = static_cast<long>(pBinDecider->NumBins());//signed: GetBin() may return -1 or Nbins for out-of-range energies
 		for(size_t i=0; i<Repeat; i++)
 		{
 			MoveCount++;
@@ -208,7 +226,10 @@ public:
 			if(MoveCount%1000==0)
 			{
 				double newE=GetEnergyFunc(*pSys);
-				if(newE<1e5 && std::abs((newE-RecordEnergy)/(RecordEnergy)) > 1e-8 && std::abs((newE-RecordEnergy)) > 1e-8)
+				//scale-aware tolerance (absolute floor 1e-8 plus 1e-8 relative to the larger magnitude);
+				//replaces the former newE<1e5 magic gate that silently trusted large energies
+				double EScale=std::abs(newE)>std::abs(RecordEnergy)?std::abs(newE):std::abs(RecordEnergy);
+				if(std::isfinite(newE) && std::abs(newE-RecordEnergy) > 1e-8*(1.0+EScale))
 					std::cerr<<"Error in WangLandauMonteCarlo: Energy not consistent, newE="<<newE<<", record E="<<RecordEnergy<<'\n';
 
 				this->RecordEnergy=newE;
@@ -219,7 +240,7 @@ public:
 
 const size_t IndividualMoveTime=25;
 //const double SwapMovePropability=0.2;
-/** \brief Parallel-tempering Monte Carlo driver that runs replicas at rescaled temperatures and swaps them. (CLAUDE) */
+/** \brief Parallel-tempering Monte Carlo driver that runs replicas at rescaled temperatures and swaps them. */
 template<typename System, typename AdditionalInfo> class ParallelTempering : public MonteCarlo<System, AdditionalInfo>
 {
 public:
@@ -229,12 +250,12 @@ public:
 	size_t SwapSuccessCount, SwapFailCount;
 	System * pOriginalSys;
 
-	/** \brief Construct a parallel-tempering driver with several replicas. (CLAUDE)
+	/** \brief Construct a parallel-tempering driver with several replicas.
 		\param sys         System for the first replica; additional replicas are copied from it.
 		\param RandomSeed  Base seed for the replicas' random number generators.
 		\param NumCopy     Number of replicas (temperature copies).
 		\param Energy      Initial energy assigned to every replica. */
-	ParallelTempering<System, AdditionalInfo>(System & sys, int RandomSeed, size_t NumCopy, double Energy) : MonteCarlo<System, AdditionalInfo>(sys, RandomSeed, Energy)
+	ParallelTempering(System & sys, int RandomSeed, size_t NumCopy, double Energy) : MonteCarlo<System, AdditionalInfo>(sys, RandomSeed, Energy)
 	{
 		if(NumCopy==0)
 		{
@@ -265,7 +286,7 @@ public:
 		this->SwapSuccessCount=0;
 	}
 
-	/** \brief Destructor; frees the replica systems allocated by this class. (CLAUDE) */
+	/** \brief Destructor; frees the replica systems allocated by this class. */
 	~ParallelTempering()
 	{
 		//debug temp
@@ -276,7 +297,12 @@ public:
 				delete this->vMonteCarlos[i].pSys;
 	}
 
-	/** \brief Advance each replica independently at its rescaled temperature. (CLAUDE)
+	//This driver owns the replica systems it allocated (freed above by pointer comparison),
+	//so a shallow copy would double-delete them; copying a running driver is never needed.
+	ParallelTempering(const ParallelTempering &) = delete;
+	ParallelTempering & operator=(const ParallelTempering &) = delete;
+
+	/** \brief Advance each replica independently at its rescaled temperature.
 		\param Temperature  Base temperature; replica i runs at Temperature divided by its energy factor.
 		\param Repeat       Number of trial moves per replica.
 		\param moves        Per-replica trial move definitions.
@@ -287,16 +313,13 @@ public:
 		assert(this->vMonteCarlos.size() == stop);
 		assert(moves.size() == stop);
 
-		size_t NumThreads=PTParallelConfigurationsPerSystem;
-		if(stop < NumThreads)
-			NumThreads=stop;
-
-		//#pragma omp parallel for num_threads(NumThreads)
+		//#pragma omp parallel for
+		//(the former per-call NumThreads computation was dead: the pragma above is disabled)
 		for(signed long i=0; i<(signed long)stop; i++)
 			this->vMonteCarlos[i].Move(Temperature/this->vEnergyFactors[i], Repeat, *moves[i], add);
 	}
 
-	/** \brief Perform parallel-tempering moves, mixing replica swaps and individual moves. (CLAUDE)
+	/** \brief Perform parallel-tempering moves, mixing replica swaps and individual moves.
 		\param Temperature  Base temperature controlling swap acceptance and replica temperatures.
 		\param Repeat       Number of moves to perform.
 		\param moves        Per-replica trial move definitions.
@@ -317,7 +340,9 @@ public:
 		{
 			if(this->gen.RandomDouble() < 0.9)
 			{
-				//swap moves
+				//swap moves (need at least two replicas; a single replica has nothing to swap,
+				//and the index modulo (size-1) below would divide by zero when size==1)
+				if(this->vMonteCarlos.size()>=2)
 				for(size_t i=0; i<this->vMonteCarlos.size(); i++)
 				{
 					size_t m=static_cast<size_t>(this->gen.RandomDouble()*100000000)%(this->vMonteCarlos.size()-1);
@@ -395,7 +420,7 @@ public:
 		}
 	}
 
-	/** \brief Perform parallel-tempering moves using a single move template cloned per replica. (CLAUDE)
+	/** \brief Perform parallel-tempering moves using a single move template cloned per replica.
 		\param Temperature  Base temperature controlling swap acceptance and replica temperatures.
 		\param Repeat       Number of moves to perform.
 		\param move         Trial move template cloned once per replica.
@@ -412,7 +437,7 @@ public:
 			delete *iter;
 	}
 
-	/** \brief Run parallel-tempering simulated annealing with a cooling schedule. (CLAUDE)
+	/** \brief Run parallel-tempering simulated annealing with a cooling schedule.
 		\param add       Additional information (e.g. the interaction potential) passed to the moves.
 		\param cool      Cooling schedule that controls the temperature sequence.
 		\param move      Trial move template cloned once per replica.
@@ -450,189 +475,6 @@ public:
 		//the one with lowest temperature is returned
 		if(this->pOriginalSys!=this->pSys)
 			(*this->pOriginalSys)=(*this->vMonteCarlos.back().pSys);
-	}
-};
-
-
-
-
-const size_t StageSize=1000;
-
-/** \brief A class to define and control the exponential cooling schedule. Inherited from the CoolingSchedule class. */
-class ExpCool : public CoolingSchedule
-{
-	double StageAlpha;	//< 
-	double Tcut;		//< The final temperature, below which the system is cooled to the zero temperature.
-	signed long ZeroMove;
-public:
-	/** \brief Construct an exponential cooling schedule. (CLAUDE)
-		\param Alpha     Per-step cooling factor (temperature multiplier raised to the stage size).
-		\param Tinit     Initial temperature.
-		\param Tcut      Final temperature below which the system is cooled to zero temperature.
-		\param ZeroMove  Number of trial moves to perform at zero temperature. */
-	ExpCool(double Alpha, double Tinit, double Tcut, long ZeroMove) : Tcut(Tcut), ZeroMove(ZeroMove)
-	{
-		this->StageAlpha=std::pow(Alpha, static_cast<double>(StageSize));
-		this->Continue=true;
-		this->Temperature=Tinit;
-		this->NumTry=StageSize;
-	}
-
-	/** \brief Advance the temperature exponentially after a cooling stage. (CLAUDE)
-		\param Energy  Current energy (unused by this schedule). */
-	virtual void Report(double Energy)
-	{
-		//////////////////////////
-		if(this->Temperature==0)
-		{
-			this->ZeroMove-=this->NumTry;
-			if(this->ZeroMove<=0)
-				this->Continue=false;
-		}
-		else
-		{
-			this->Temperature*=this->StageAlpha;
-			if(this->Temperature<this->Tcut)
-			{
-				this->Temperature=0;
-				if(this->NumTry>(size_t)this->ZeroMove)
-					this->NumTry=this->ZeroMove;
-			}
-		}
-	}
-};
-
-
-
-const size_t ReportTime=100;
-/** \brief A cooling schedule that holds the temperature at zero for a fixed number of reports. (CLAUDE) */
-class ZeroCool : public CoolingSchedule
-{
-	size_t NumReport;
-
-public:
-	/** \brief Construct a zero-temperature schedule. (CLAUDE)
-		\param ZeroMoveTime  Total number of zero-temperature trial moves, split across the reports. */
-	ZeroCool(long ZeroMoveTime)
-	{
-		this->Temperature=0.0;
-		this->NumTry=ZeroMoveTime/ReportTime;
-		this->Continue=true;
-		this->NumReport=0;
-	}
-
-	/** \brief Stop after a fixed number of reports. (CLAUDE)
-		\param Energy  Current energy (unused by this schedule). */
-	virtual void Report(double Energy)
-	{
-		this->NumReport++;
-		if(this->NumReport>ReportTime)
-			this->Continue=false;
-	}
-};
-
-
-#include "AnalyzeData.h"
-const size_t DefaultSampleInterval = 100;
-const double DefaultVsCoeff=500;
-const size_t DefaultInitAnalyzeSize=200;
-class ThermoCool : public CoolingSchedule
-{
-	size_t SampleInterval;
-	double VsCoeff;
-	size_t InitAnalyzeSize;
-
-	double Vs;
-	double Tcut;
-	signed long ZeroMove;//deprecated parameter
-
-	size_t AnalyzeSize;
-
-	std::vector<double> data;
-public:
-	/** \brief Construct an adaptive (thermodynamic) cooling schedule driven by the measured heat capacity. (CLAUDE)
-		\param Alpha            Reference per-step cooling factor used to set the entropy step Vs.
-		\param Tinit            Initial temperature.
-		\param Tcut             Final temperature below which the system is cooled to zero temperature.
-		\param ZeroMove         Number of zero-temperature trial moves (deprecated parameter).
-		\param SampleInterval   Number of trial moves between energy samples.
-		\param VsCoeff          Coefficient setting the target entropy decrease per cooling step.
-		\param InitAnalyzeSize  Initial number of samples collected before analyzing the energy series. */
-	ThermoCool(double Alpha, double Tinit, double Tcut, long ZeroMove, 
-		size_t SampleInterval=DefaultSampleInterval, double VsCoeff=DefaultVsCoeff, 
-		size_t InitAnalyzeSize=DefaultInitAnalyzeSize) : SampleInterval(SampleInterval),
-		VsCoeff(VsCoeff), InitAnalyzeSize(InitAnalyzeSize), Tcut(Tcut), ZeroMove(ZeroMove)
-	{
-		this->Vs=(1.0-Alpha)*SampleInterval*VsCoeff;
-		this->Continue=true;
-		this->Temperature=Tinit;
-		this->NumTry=SampleInterval;
-
-		this->AnalyzeSize=InitAnalyzeSize;
-	}
-
-	/** \brief Sample the energy and adaptively lower the temperature based on the estimated heat capacity. (CLAUDE)
-		\param Energy  Current energy sample to add to the analysis buffer. */
-	virtual void Report(double Energy)
-	{
-		//////////////////////////
-		if(this->Temperature==0)
-		{
-			this->Continue=false;
-		}
-		else
-		{
-			data.push_back(Energy);
-
-			if(data.size()>=AnalyzeSize)
-			{
-				double Average, error, Corrtime;
-				AnalyzeData(data, Average, error, Corrtime);
-				double H2c=error*error*data.size()/(1+2*Corrtime);//this is T^2*C_v
-				double dlnT=this->Vs*this->Temperature/Corrtime/std::sqrt(H2c);
-
-					//debug temp
-					//std::fstream file("ErrorLog.txt", std::fstream::out);
-					//for(auto iter=data.begin(); iter!=data.end(); iter++)
-					//	file<<(*iter)<<'\n';
-					//file.close();
-					//exit(0);
-				if( (!(dlnT>0)) )
-				{
-					if(this->AnalyzeSize < 5*InitAnalyzeSize)
-					{
-						this->Vs*=2;
-						this->AnalyzeSize*=2;
-					}
-					this->Temperature/=std::exp(0.000001);//cool very cautiously when can't analyze data
-				}
-				else if(dlnT>0.1)
-				{
-					//std::cout<<"Warning in ThermoCool : Temperature dropping too quickly, decrease sample size.\n";
-					if(this->AnalyzeSize>InitAnalyzeSize/2 && this->AnalyzeSize>1)
-					{
-						this->Vs/=2;
-						this->AnalyzeSize/=2;
-					}
-					this->Temperature/=std::exp(0.1);
-				}
-				else
-				{
-					this->Temperature/=std::exp(dlnT);
-				}
-
-				data.clear();
-			}
-
-			if(this->Temperature<this->Tcut)
-			{
-				this->Temperature=0;
-				if(this->ZeroMove==0)
-					this->Continue=false;
-				else
-					this->NumTry=this->ZeroMove;
-			}
-		}
 	}
 };
 

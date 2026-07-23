@@ -1,4 +1,7 @@
 #include "MD_System.h"
+#include "CoolingSchedule.h"
+#include "Move.h"
+#include "StructureOptimization.h"
 
 
 //debug temp
@@ -21,6 +24,7 @@ ParticleMolecularDynamics::ParticleMolecularDynamics(const Configuration & Posit
 	this->TimeStep=TimeStep;
 	this->Time=0;
 	this->MassQ=0;
+	this->AccelerationInitialized=false;
 }
 
 ParticleMolecularDynamics::~ParticleMolecularDynamics()
@@ -41,6 +45,7 @@ ParticleMolecularDynamics::ParticleMolecularDynamics(std::istream & ifile) : Pos
 	ifile.read( (char*)(&Velocity[0]), sizeof(Velocity[0])*this->NumParticle );
 	this->Acceleration.resize(this->NumParticle);
 	ifile.read( (char*)(&Acceleration[0]), sizeof(Acceleration[0])*this->NumParticle );
+	this->AccelerationInitialized=true;//Acceleration was restored from the stream
 }
 void ParticleMolecularDynamics::WriteBinary(std::ostream & ofile)
 {
@@ -65,6 +70,15 @@ void ParticleMolecularDynamics::_GetAcc(Potential & potential)
 	potential.AllForce(this->Acceleration);
 	for(size_t i=0; i<this->Acceleration.size(); i++)
 		this->Acceleration[i].MultiplyFrom( 1.0/this->Mass[i] );
+}
+
+void ParticleMolecularDynamics::_EnsureInitialAcceleration(Potential & potential)
+{
+	if(this->AccelerationInitialized)
+		return;
+	potential.SetConfiguration(this->Position);
+	this->_GetAcc(potential);
+	this->AccelerationInitialized=true;
 }
 
 double ParticleMolecularDynamics::GetPotentialEnergy(Potential & potential)
@@ -118,6 +132,7 @@ void ParticleMolecularDynamics::FindOptimalTimeStep(Potential & potential, doubl
 
 void ParticleMolecularDynamics::Evolve(size_t repeat, Potential & potential)//flag=0: serial, flag=1:omp parallel;
 {
+	this->_EnsureInitialAcceleration(potential);
 ////#pragma omp parallel default(shared)
 	{
 		for(size_t u=0; u<repeat; u++)
@@ -190,6 +205,7 @@ void ParticleMolecularDynamics::Evolve_AutoTimeStep(size_t repeat, Potential & p
 
 void ParticleMolecularDynamics::AndersonEvolve(size_t repeat, Potential & potential, double kT, double ResetSpeedProbability, RandomGenerator & gen)
 {
+	this->_EnsureInitialAcceleration(potential);
 	double ResetCount=0.0;
 ////#pragma omp parallel default(shared)
 	{
@@ -257,6 +273,7 @@ void ParticleMolecularDynamics::AndersonEvolve(size_t repeat, Potential & potent
 
 void ParticleMolecularDynamics::Evolve_RecordDeltaForce(size_t repeat, Potential & potential)//flag=0: serial, flag=1:omp parallel;
 {
+	this->_EnsureInitialAcceleration(potential);
 	{
 		for(size_t u=0; u<repeat; u++)
 		{
@@ -309,18 +326,21 @@ void ParticleMolecularDynamics::NoseHooverEvolve(size_t repeat, Potential & pote
 	double oldxi, temp;
 	std::vector<GeometryVector> halfvelocity, newvelocity(this->NumParticle, GeometryVector(this->Dimension));
 
+	this->_EnsureInitialAcceleration(potential);
 ////#pragma omp parallel default(shared)
 	{
 		for(size_t u=0; u<repeat; u++)
 		{
-////#pragma omp master
-			halfvelocity = std::vector<GeometryVector>(this->NumParticle, GeometryVector(this->Dimension));
-
 ////#pragma omp barrier
 			//calculate v(t+0.5dt)
 ////#pragma omp for
 			for(long i=0; i<(long)this->NumParticle; i++)
 				this->Velocity[i].AddFrom(0.5*this->TimeStep*this->Acceleration[i]);
+
+			//save the half-step velocity v(t+0.5dt); the implicit second half-kick below needs it,
+			//and it was previously left all-zero (bug: newvelocity discarded the current velocity)
+////#pragma omp master
+			halfvelocity = this->Velocity;
 
 			//calculate x(t+dt)
 ////#pragma omp single
@@ -494,7 +514,7 @@ bool ParticleMDAnnealing::StopSignal=false;
 //		RelaxStructure_GSL(List, pot, Pressure, Switch, MinDistance, 10000);
 //	};
 //}
-ParticleMDAnnealing::ParticleMDAnnealing(const Configuration & InitConfig, int RandomSeed, double Pressure, Potential & pot, bool BoxMCMove, std::ostream * output, double CoolingScheduleRescale, bool UseSortedList) : 
+ParticleMDAnnealing::ParticleMDAnnealing(const Configuration & InitConfig, int RandomSeed, double Pressure, Potential & pot, bool BoxMCMove, std::ostream * output, double CoolingScheduleRescale, bool /*UseSortedList*/) : 
 	gen(RandomSeed), Output(output), BoxMCMove(BoxMCMove), AutoTimeStep(true)
 {
 	if(BoxMCMove)
@@ -543,12 +563,11 @@ ParticleMDAnnealing::ParticleMDAnnealing(const Configuration & InitConfig, int R
 }
 
 
-#include "MonteCarlo.h"
-/** \brief Exception-like marker thrown to terminate the annealing loop early. (CLAUDE) */
+/** \brief Exception-like marker thrown to terminate the annealing loop early. */
 class StopMDAnnealing
 {
 public:
-	/** \brief Construct the stop marker. (CLAUDE) */
+	/** \brief Construct the stop marker. */
 	StopMDAnnealing()
 	{}
 };

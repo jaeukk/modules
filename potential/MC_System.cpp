@@ -6,8 +6,10 @@
 /** \file	MC_System.cpp
 	\brief	Functional implementations for simulated annealing */
 #include <cassert>
+#include <cmath>
 
 #include "MC_System.h"
+#include "Move.h"
 #include "Potential.h"
 #include "StructureOptimization.h"
 
@@ -46,7 +48,7 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(DimensionType Dimension, 
 		std::cerr<<"Error in MC_System::MC_System : NumParticle is 0\n";
 		assert(false);
 	}
-	unsigned short cellrank = std::floor( std::pow(NumParticle/ParticlePerCell, static_cast<double>(1)/Dimension) );//about 1 particles per cell
+	unsigned short cellrank = std::floor( std::pow(static_cast<double>(NumParticle)/ParticlePerCell, static_cast<double>(1)/Dimension) );//about 1 particles per cell
 	double initsize=std::pow(NumParticle/InitialDensity, static_cast<double>(1)/Dimension);
 	std::vector<GeometryVector> base;
 	for(DimensionType i=0; i<Dimension; i++)
@@ -65,7 +67,7 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(DimensionType Dimension, 
 			temp.x[j]=gen.RandomDouble();
 		bool TooNearNeighbor=false;
 		this->pList->IterateThroughNeighbors(temp, MinDistance, 
-			[&TooNearNeighbor](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom)->void
+			[&TooNearNeighbor](const GeometryVector & /*shift*/, const GeometryVector & /*LatticeShift*/, const signed long * /*PeriodicShift*/, const size_t /*SourceAtom*/)->void
 				{
 					TooNearNeighbor=true;
 				}, 
@@ -90,10 +92,13 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(DimensionType Dimension, 
 
 	///////////////////////
 	//initialize this->pSys
+	//Seed splitting: the child driver's seed is a full-width (32-bit) draw from the parent
+	//generator (gen.RandomInt()) rather than the former RandomDouble()*10000 which spanned only
+	//10^4 values. The parent is seeded from RandomSeed, so a given RandomSeed still reproduces the run.
 	if(AlgorithmLevel>1)
-		this->pSys= new ParallelTempering<Configuration, Potential *> (*this->pList, gen.RandomDouble()*10000 , AlgorithmLevel, Enthalpy);
+		this->pSys= new ParallelTempering<Configuration, Potential *> (*this->pList, gen.RandomInt() , AlgorithmLevel, Enthalpy);
 	else if(AlgorithmLevel==1)
-		this->pSys= new MonteCarlo<Configuration, Potential *> (*this->pList, gen.RandomDouble()*10000, Enthalpy );
+		this->pSys= new MonteCarlo<Configuration, Potential *> (*this->pList, gen.RandomInt(), Enthalpy );
 	else
 		this->pSys=nullptr;
 
@@ -107,7 +112,7 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(DimensionType Dimension, 
 		RelaxStructure_ConjugateGradient(List, pot, Pressure, Switch, MinDistance, 10000);
 	};
 }
-ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(const Configuration & pInitConfig, int RandomSeed, double Pressure, Potential & pot, std::ostream * output, double CoolingScheduleRescale, double MinDistance, int AlgorithmLevel, bool UseSortedList) : gen(RandomSeed), Output(output), MinDistance(MinDistance)
+ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(const Configuration & pInitConfig, int RandomSeed, double Pressure, Potential & pot, std::ostream * output, double CoolingScheduleRescale, double MinDistance, int AlgorithmLevel, bool /*UseSortedList*/) : gen(RandomSeed), Output(output), MinDistance(MinDistance)
 {
 	this->alpha=1.0- coeff1*std::pow( power1, pInitConfig.GetDimension())/pInitConfig.NumParticle()/CoolingScheduleRescale;
 	if(alpha==1)
@@ -130,10 +135,13 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(const Configuration & pIn
 
 	///////////////////////
 	//initialize this->pSys
+	//Seed splitting: the child driver's seed is a full-width (32-bit) draw from the parent
+	//generator (gen.RandomInt()) rather than the former RandomDouble()*10000 which spanned only
+	//10^4 values. The parent is seeded from RandomSeed, so a given RandomSeed still reproduces the run.
 	if(AlgorithmLevel>1)
-		this->pSys= new ParallelTempering<Configuration, Potential *> (*this->pList, gen.RandomDouble()*10000 , AlgorithmLevel, Enthalpy);
+		this->pSys= new ParallelTempering<Configuration, Potential *> (*this->pList, gen.RandomInt() , AlgorithmLevel, Enthalpy);
 	else if(AlgorithmLevel==1)
-		this->pSys= new MonteCarlo<Configuration, Potential *> (*this->pList, gen.RandomDouble()*10000, Enthalpy );
+		this->pSys= new MonteCarlo<Configuration, Potential *> (*this->pList, gen.RandomInt(), Enthalpy );
 	else
 		this->pSys=nullptr;
 
@@ -143,11 +151,11 @@ ParticleSimulatedAnnealing::ParticleSimulatedAnnealing(const Configuration & pIn
 	};
 }
 
-/** \brief Exception-like marker thrown to terminate the annealing loop early. (CLAUDE) */
+/** \brief Exception-like marker thrown to terminate the annealing loop early. */
 class StopMCAnnealing
 {
 public:
-	/** \brief Construct the stop marker. (CLAUDE) */
+	/** \brief Construct the stop marker. */
 	StopMCAnnealing()
 	{}
 };
@@ -166,7 +174,7 @@ void ParticleSimulatedAnnealing::Anneal(Potential & pot)
 
 	//debug temp
 	//this->CellMoveProbability=1.0;
-	CombinedMove<Configuration, Potential *> comb(ma, mb, 1.0-this->CellMoveProbability, this->gen.RandomDouble()*10000);
+	CombinedMove<Configuration, Potential *> comb(ma, mb, 1.0-this->CellMoveProbability, this->gen.RandomInt());
 
 	double p = this->Pressure;
 	std::ostream * op= Output;
@@ -193,7 +201,10 @@ void ParticleSimulatedAnnealing::Anneal(Potential & pot)
 			{
 				pot.SetConfiguration(l);
 				double newE=pot.Energy()+p*l.PeriodicVolume();
-				if(newE<1e5 && std::abs((newE-Energy)/(Energy)) > 1e-8 && std::abs((newE-Energy)) > 1e-8)
+				//scale-aware tolerance (absolute floor 1e-8 plus 1e-8 relative to the larger magnitude);
+				//replaces the former newE<1e5 magic gate that silently trusted large energies
+				double EScale=std::abs(newE)>std::abs(Energy)?std::abs(newE):std::abs(Energy);
+				if(std::isfinite(newE) && std::abs(newE-Energy) > 1e-8*(1.0+EScale))
 					std::cerr<<"Error in MC_System.cpp: Energy not consistent, newE="<<newE<<", record E="<<Energy<<'\n';
 				Energy=newE;
 				if(Temperature!=prevT)

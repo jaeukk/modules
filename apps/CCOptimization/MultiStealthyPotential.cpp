@@ -15,38 +15,32 @@
  *  \param species Target species id. */
 void MultiStealthyPotential::SetSpeciesOfParticle(size_t prt_idx, size_t species)
 {
-	this->species_constraints[species].idx.emplace_back(prt_idx);
+	int oldspecies = this->idx2species[prt_idx].species;
 
-	if(this->idx2species[prt_idx].species!= species){
-		/* species is replaced! */
-		if (this->idx2species[prt_idx].species >= 0){ // the species of a particle was designated previously.
-			//std::cout << "change species of particle " << prt_idx << " from " << this->idx2species[prt_idx].species << " to " << species << "\n";
-			this->species_constraints[this->idx2species[prt_idx].species].idx.erase(
-				std::remove(
-					this->species_constraints[this->idx2species[prt_idx].species].idx.begin(), 
-					this->species_constraints[this->idx2species[prt_idx].species].idx.end(), 
-					prt_idx
-				), 
-				this->species_constraints[this->idx2species[prt_idx].species].idx.end()); // remove the previously defined species of particle `prt_idx`.
-		}
-		else {
-			/* species were not specified so far. */
-			std::cout << "species of particle " << prt_idx << " is initialized to " << species << "\n";
-			// this->
+	/* Already in this species: nothing to do. Appending unconditionally (as before) would
+	   duplicate prt_idx in the species index list and push idx2species[].index past the end. */
+	if (oldspecies == static_cast<int>(species))
+		return;
 
-
-			// this->species_constraints[this->idx2species[prt_idx].species].idx.erase(
-			// 	std::remove(
-			// 		this->species_constraints[this->idx2species[prt_idx].species].idx.begin(), 
-			// 		this->species_constraints[this->idx2species[prt_idx].species].idx.end(), 
-			// 		prt_idx
-			// 	), 
-			// 	this->species_constraints[this->idx2species[prt_idx].species].idx.end()); // remove the previously defined species of particle `prt_idx`.
-		}
+	if (oldspecies >= 0){
+		/* Remove prt_idx from its previously assigned species. */
+		std::vector<size_t> & oldidx = this->species_constraints[oldspecies].idx;
+		oldidx.erase(std::remove(oldidx.begin(), oldidx.end(), prt_idx), oldidx.end());
+		/* The erase shifts every later particle in that species down by one, so their cached
+		   within-species index is now stale; rebuild the old species' reverse indices. */
+		for (size_t j = 0; j < oldidx.size(); j++)
+			this->idx2species[oldidx[j]].index = j;
 	}
-	this->idx2species[prt_idx].species = species;
+	else {
+		/* species were not specified so far. */
+		std::cout << "species of particle " << prt_idx << " is initialized to " << species << "\n";
+	}
+
+	/* Append prt_idx to the new species and record its within-species index. */
+	this->species_constraints[species].idx.emplace_back(prt_idx);
+	this->idx2species[prt_idx].species = static_cast<int>(species);
 	this->idx2species[prt_idx].index = this->species_constraints[species].idx.size()-1;
-	
+
 	this->SubconfigValid = false;
 }
 
@@ -126,7 +120,9 @@ void MultiStealthyPotential::SetConfiguration(const Configuration &Position)
 		std::cout << "Particle radii are set to be 0.5 by default.\n";	
 		this->rc = 1.0;
 		if (this->radii.size() != Position.NumParticle()){
-			this->radii.resize(Position.NumParticle(), -1.0);
+			//default radius 0.5 (so a pair diameter radii[i]+radii[j]=1.0=rc); storing -1.0 gave
+			//negative pair diameters and thus nonsensical contact energies/forces.
+			this->radii.resize(Position.NumParticle(), 0.5);
 		}
 	}
 	
@@ -194,6 +190,9 @@ void MultiStealthyPotential::UpdateSubconfigs()
 		}
 
 		for (size_t s = 0; s < this->species_constraints.size(); s ++ ){
+			//propagate the thread count to each species potential; otherwise only the wrapper is
+			//multi-threaded and every inner ShiftedCCPotential stays single-threaded.
+			this->species_constraints[s].CCPotential->ParallelNumThread = this->ParallelNumThread;
 			this->species_constraints[s].CCPotential->SetConfiguration(this->subc[s]);
 		}
 	}
@@ -204,6 +203,12 @@ void MultiStealthyPotential::UpdateSubconfigs()
  *  \return Total potential energy. */
 double MultiStealthyPotential::Energy()
 {
+	//every particle must belong to a species; an unassigned particle (species -1) is not in any
+	//species index list and would be silently dropped from the collective-coordinate sum below.
+	for (size_t i = 0; i < this->idx2species.size(); i++)
+		if (this->idx2species[i].species < 0)
+			throw std::runtime_error("MultiStealthyPotential::Energy: particle has no assigned species; assign every particle before evaluating the energy.");
+
 	double CC = 0.0, CP = 0.0;
 	/* compute stealthy potential contribution (CC)*/
 	for (size_t s = 0; s < this->species_constraints.size(); s ++ ){
@@ -234,7 +239,7 @@ double MultiStealthyPotential::Energy()
 
 			double E = 0.0L;
 			pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc, 
-				[&i, &E, this](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, size_t SourceParticle)->void {
+				[&i, &E, this](const GeometryVector & shift, const GeometryVector &, const signed long *, size_t SourceParticle)->void {
 				/*Prevent double-counting */
 				if (i < SourceParticle) { 
 					double r = sqrt(shift.Modulus2()) / (radii[i] + radii[SourceParticle]);
@@ -258,6 +263,10 @@ void MultiStealthyPotential::Force(GeometryVector &force, size_t i)
 {
 	// stealthy potential contribution
 	GeometryVector force_CC(static_cast<int> (this->Dimension));
+	//an unassigned particle keeps species -1; casting that to size_t would index species_constraints
+	//out of bounds. Require every particle to have a species before force evaluation.
+	if (this->idx2species[i].species < 0)
+		throw std::runtime_error("MultiStealthyPotential::Force: particle has no assigned species; assign every particle before evaluating forces.");
 	size_t s = (size_t) this->idx2species[i].species; // species
 	size_t idx_in_s = this->idx2species[i].index;
 	this->species_constraints[s].CCPotential -> Force(force_CC, idx_in_s);
@@ -282,7 +291,7 @@ void MultiStealthyPotential::Force(GeometryVector &force, size_t i)
 	GeometryVector force_CP(static_cast<int> (this->Dimension));
 	if (this->WithRepulsion){
 		pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc,
-			[&i, &force_CP, this](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, size_t SourceParticle)->void {
+			[&i, &force_CP, this](const GeometryVector & shift, const GeometryVector &, const signed long *, size_t SourceParticle)->void {
 			/*Prevent self-interaction */
 			if (i != SourceParticle) {
 				double r = sqrt(shift.Modulus2());
