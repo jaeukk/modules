@@ -465,7 +465,7 @@ void TensorField::Print_shifted_origin(const std::string & prefix, int component
 			size_t x1 = 0;
 			for (size_t x = 0; x < this->num_points[0]; x++) {
 				x1 = (int)floor(this->num_points[0] / 2.0) + x;
-				x1 = (x1 > this->num_points[0]) ? x1 - this->num_points[0] : x1;
+				x1 = (x1 >= this->num_points[0]) ? x1 - this->num_points[0] : x1;
 				output << field[i][x1][part_curr] << "\t";
 			}
 		}

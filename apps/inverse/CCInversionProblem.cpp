@@ -62,7 +62,7 @@ bool FrankInvCCUniqueTest(const Configuration & target, size_t Nc, size_t numCon
 			temp.RemoveParticles();
 			for (size_t j = 0; j < NumParticle; j++)
 				temp.Insert("A", gen);
-			if (strcmp(method, "NLOP+MINOP") == 0) {
+			if (method == nullptr || strcmp(method, "NLOP+MINOP") == 0) {
 				RelaxStructure_NLOPT(temp, pot, 0.0, 0, 0.0);
 				RelaxStructure_MINOP(temp, pot, 0.0, 0, 0.0);
 				//std::cout << "method=NLOP+MINOP\n";
@@ -169,7 +169,7 @@ bool FrankInvCCUniqueTest2(const Configuration & target, size_t Nc, size_t numCo
 			temp.RemoveParticles();
 			for (size_t j = 0; j < NumParticle; j++)
 				temp.Insert("A", gen);
-			if (strcmp(method, "NLOP+MINOP") == 0) {
+			if (method == nullptr || strcmp(method, "NLOP+MINOP") == 0) {
 				RelaxStructure_NLOPT(temp, pot, 0.0, 0, 0.0);
 				RelaxStructure_MINOP(temp, pot, 0.0, 0, 0.0);
 				//std::cout << "method=NLOP+MINOP\n";
@@ -520,19 +520,20 @@ bool FrankInvCCUniqueTest4(const Configuration & target, size_t Nc, size_t numCo
 		//set constraints
 		for (int i = 0; i < d; i++) {
 			for (int j = 0; j <= i; j++) {
-				GeometryVector k;
-				k.Dimension = d;
 				for (int L = 1 + (int)NKPointsSkip; L <= (int)NKPointsSkip + (int)numConstraints; L++) {
+					GeometryVector k;
+					k.Dimension = d;
 					if (i == j) //k_i axes
 						k = (double)L*basis[i];
 					else //k_i + k_j axes
 						k = (double)L*(basis[i] + basis[j]);
-				}
-				std::complex<double> rho;
-				for (size_t i = 0; i<NumParticle; i++)
-					rho += std::exp(std::complex<double>(0, k.Dot(target.GetCartesianCoordinates(i))));
 
-				pot_.constraints.push_back(FrankInvertCCPotential2::KPointConstraint(k, 1.0, rho.real(), rho.imag()));
+					std::complex<double> rho;
+					for (size_t i = 0; i<NumParticle; i++)
+						rho += std::exp(std::complex<double>(0, k.Dot(target.GetCartesianCoordinates(i))));
+
+					pot_.constraints.push_back(FrankInvertCCPotential2::KPointConstraint(k, 1.0, rho.real(), rho.imag()));
+				}
 			}
 		}
 
@@ -730,7 +731,7 @@ Configuration GetTarget(size_t i, int type, int N, std::vector<GeometryVector> &
 				sprintf(systN, "_Poisson");
 		}
 		else if (type == 2) {
-			GeometryVector *A = new GeometryVector[1];
+			GeometryVector A[1];
 			A[0].Dimension = 1;
 			A[0].x[0] = N;
 			c = Configuration(dim, A, 1.0);
@@ -787,7 +788,7 @@ void CCInversionProblem(bool outConfig) {
 	std::istream & ifile = std::cin;
 	std::ostream & ofile = std::cout;
 	char dir0[100] = "results/Reconst/";
-	char dir[100] = {};
+	char dir[256] = {};
 	
 	//---- general parameters
 	DimensionType dim = 1;
@@ -899,7 +900,7 @@ void CCInversionProblem(bool outConfig) {
 	if (NKSkip > 0)
 		std::cout << "Skip the central " << NKSkip << " k points.\n";
 
-	sprintf(dir, "%sdE_%.0e/Nk_skip_%d/", dir0, EnergyTolerance, NKSkip);
+	snprintf(dir, sizeof(dir), "%sdE_%.0e/Nk_skip_%d/", dir0, EnergyTolerance, NKSkip);
 	ofile << dir<<"\n";
 	std::vector<GeometryVector> basis;
 	for (int j = 0; j < dim;j++) {
@@ -1944,8 +1945,8 @@ void CCInversionProblem1(bool outConfig) {
 	std::istream & ifile = std::cin;
 	std::ostream & ofile = std::cout;
 	char dir0[100];// = "results/Reconst/";
-	sprintf(dir0, "%s/results/Reconst/", masterDir.c_str());
-	char dir[100] = {};
+	snprintf(dir0, sizeof(dir0), "%s/results/Reconst/", masterDir.c_str());
+	char dir[256] = {};
 
 	//---- general parameters
 	DimensionType dim = 1;
@@ -2055,7 +2056,7 @@ void CCInversionProblem1(bool outConfig) {
 	if (NKSkip > 0)
 		std::cout << "Skip the central " << NKSkip << " k points.\n";
 
-	sprintf(dir, "%sdE_%.0e/Nk_skip_%d/", dir0, EnergyTolerance, NKSkip);
+	snprintf(dir, sizeof(dir), "%sdE_%.0e/Nk_skip_%d/", dir0, EnergyTolerance, NKSkip);
 	ofile << dir << "\n";
 	std::vector<GeometryVector> basis;
 	for (int j = 0; j < dim; j++) {
@@ -2433,9 +2434,9 @@ void CCInversionProblem1(bool outConfig) {
 												for (int y = 0; y < (int)sols2[t].NumParticle(); y++)
 													outfile << sols2[t].GetCartesianCoordinates(y).x[0] << ",\t";
 
-												outfile << results_temp2[3 * t + 6] << "\t" << results_temp2[3 * t + 7] << "\t" << results_temp2[3 * t + 8] << "\t"; 
+												outfile << results_temp2[3 * t + 6] << "\t" << results_temp2[3 * t + 7] << "\t" << results_temp2[3 * t + 8] << "\t";
 												if (t < 2) {
-													double prob = (results_temp1[4] > 0.5) ? (double)energy1[t].size() / results_temp1[4] : 0;
+													double prob = (results_temp2[4] > 0.5) ? (double)energy2[t].size() / results_temp2[4] : 0;
 													outfile << prob;
 												}
 

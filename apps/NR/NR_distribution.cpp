@@ -32,6 +32,8 @@ bool LocalNumber::CheckSum() {
 
 /** \brief Get an estimated mean of this distribution. */
 double LocalNumber::GetMean() const {
+	if (this->totalCount == 0)
+		return 0.0;	// empty distribution: mean is undefined
 	double mean = 0;// guessed_av = 0.5*(this->min + this->max);
 #pragma omp parallel for reduction(+:mean)
 	for (size_t i = 0; i < this->counts.size(); i++)
@@ -43,6 +45,8 @@ double LocalNumber::GetMean() const {
 /** \brief Get a standard error in the estimated mean. */
 double LocalNumber::GetSE_Mean(double & mean) const {
 	mean = this->GetMean();
+	if (this->totalCount < 2)
+		return 0.0;	// need at least two samples for a standard error
 	double SE = 0.0, mean_i = mean - this->min;
 #pragma omp parallel for reduction(+:SE)
 	for (size_t i = 0; i < this->counts.size(); i++)
@@ -55,6 +59,8 @@ double LocalNumber::GetSE_Mean(double & mean) const {
 
 /** \brief Get an estimated variance. */
 double LocalNumber::GetVariance() const {
+	if (this->totalCount < 2)
+		return 0.0;	// need at least two samples for an unbiased variance
 	double mean = this->GetMean() - this->min;	//Mean of the indices.
 	double variance = 0.0;
 #pragma omp parallel for reduction(+:variance)
@@ -73,12 +79,14 @@ double LocalNumber::GetVariance() const {
  * \param Bootstrap_Size	The number of bootstrap replica.
  * \return Standard error of variance via the Bootstrap algorithm. */
 double LocalNumber::GetSE_Variance(int Bootstrap_Size, int seed) const {
+	if (Bootstrap_Size < 2)
+		return 0.0;	// need at least two bootstrap replicas for a standard error
 	double variance = 0.0, SE = 0.0;
 	UpdateCDF();
 
 #pragma omp parallel for schedule (guided)
 	for (int i = 0; i < Bootstrap_Size; i++) {
-		std::unique_ptr<LocalNumber> sample = this->GetBootstrapSample(i);
+		std::unique_ptr<LocalNumber> sample = this->GetBootstrapSample(seed + i);
 		double temp = sample->GetVariance();
 #pragma omp atomic
 		variance += temp;
@@ -149,7 +157,11 @@ void LocalNumber::UpdateCDF() const {
  * \param width	Bin width in which counts are averaged.	 */
 void LocalNumber::GetHistogram(std::vector<GeometryVector> & result, size_t width) const {
 	result.clear();
-	if (counts.size() > 0) {
+	if (width == 0) {
+		std::cerr << "LocalNumber::GetHistogram()\tbin width must be positive.\n";
+		return;
+	}
+	if (counts.size() > 0 && totalCount > 0) {
 		size_t idx = 0;
 		for (idx = 0; idx < counts.size(); idx += width) {
 			double x = min + idx + 0.5*(width - 1), x_error = 0.5*width, y_error = 0.0L;
@@ -675,7 +687,7 @@ inline void GetN(const Configuration & CurrConfig, std::vector<size_t> &results,
 
 		//Search all points that |x0 - r | <Rmax.
 		CurrConfig.IterateThroughNeighbors(Center_RelativeCoordinates, Rmax,
-			[&results, &dR, &Bin](const GeometryVector &shift, const GeometryVector &L_shift, const signed long *PeriodicShift, size_t prt_index) ->void
+			[&results, &dR, &Bin](const GeometryVector &shift, const GeometryVector &, const signed long *, size_t) ->void
 		{
 			//results[i] = # of points between dR*i and dR*(i+1).
 			size_t index = (size_t)floor(sqrt(shift.Modulus2()) / dR);
@@ -822,6 +834,12 @@ void MC_nv_distribution(const std::function<Configuration(size_t i)> & GetConfig
 	std::vector<GeometryVector> & Result, double Rmax, double dR, const BootstrapSetup & WHAT2DO,
 	const std::vector<GeometryVector> & WindowCenters) {
 
+	if (NumConfigs == 0 || WindowCenters.empty() || Rmax <= 0.0 || dR <= 0.0) {
+		std::cerr << "MC_nv_distribution: invalid input (need NumConfigs>0, non-empty WindowCenters, Rmax>0, dR>0).\n";
+		Result.clear();
+		return;
+	}
+
 	Configuration CurrConfig = GetConfig(0);
 
 	//Centers of sampling windows.
@@ -961,6 +979,12 @@ void MC_nv_distribution(const std::function<Configuration(size_t i)> & GetConfig
 								Users can prescribe the centers of sampling windows through this argumement.  */
 void MC_nv_distribution_PostSampling(const std::function<Configuration(size_t i)> & GetConfig, size_t NumConfigs,
 	std::vector<GeometryVector> & Result, double Rmax, double dR, const BootstrapSetup & WHAT2DO, const std::vector<GeometryVector> & WindowCenters){
+
+	if (NumConfigs == 0 || WindowCenters.empty() || Rmax <= 0.0 || dR <= 0.0) {
+		std::cerr << "MC_nv_distribution_PostSampling: invalid input (need NumConfigs>0, non-empty WindowCenters, Rmax>0, dR>0).\n";
+		Result.clear();
+		return;
+	}
 
 	Configuration CurrConfig = GetConfig(0);
 	int dim = CurrConfig.GetDimension();
@@ -1186,17 +1210,23 @@ void MC_nv_distribution_PostSampling(const std::function<Configuration(size_t i)
 double Compute_L2_norm(const std::vector<GeometryVector> & CDF_test, 
 					const std::vector<GeometryVector> & CDF_ref, double dx) {
 	if(CDF_test.size() <= CDF_ref.size()){
-		double sum = 0.0L, delta = 0.0;
-		
+		double sum = 0.0L;
+		// Evaluate the empirical (test) CDF as a right-continuous step function on
+		// the FULL reference grid: 0 below the test support, and the last passed
+		// test value on reference-only gaps and tails. The previous version only
+		// accumulated squared differences at shared abscissae, dropping the
+		// reference-only points and systematically underestimating the L2 norm.
+		double test_val = 0.0;
 		size_t j=0;
 		for(size_t i=0; i< CDF_ref.size(); i++){
-			
-			if( (j < CDF_test.size()) && 
+
+			if( (j < CDF_test.size()) &&
 				(abs(CDF_test[j].x[0] - CDF_ref[i].x[0]) < 1e-3) ){
-				delta = CDF_test[j].x[1] - CDF_ref[i].x[1];
-				sum += delta * delta;
+				test_val = CDF_test[j].x[1];
 				j++;
 			}
+			double delta = test_val - CDF_ref[i].x[1];
+			sum += delta * delta;
 		}
 		sum = sum*dx;
 		return sum;
@@ -1209,6 +1239,7 @@ double Compute_L2_norm(const std::vector<GeometryVector> & CDF_test,
 
 double Compute_KullbackLeibler_distance(const std::vector<GeometryVector> & PDF_test, 
 	const std::vector<GeometryVector> & PDF_ref, double dx){
+	(void)dx;	// the discrete Kullback-Leibler sum does not use the bin width
 
 	if(PDF_test.size() <= PDF_ref.size()){
 		double KL = 0.0L, temp = 0.0L;

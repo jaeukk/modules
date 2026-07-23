@@ -263,16 +263,18 @@ void FFH_base::Run(double target_tol_field, double target_tol_div, int num_iters
 	bool good_solution = false;
 	this->is_converging = true;
 	double tol_prev = 0.0L;
-	int count = 0, m = 0;
-	while (!good_solution && (m < num_iters) && is_converging) {
+	/* num_iters < 0 is the sentinel for "iterate up to the built-in limit". */
+	int cap = (num_iters < 0) ? static_cast<int>(num_limit) : num_iters;
+	int count = 0, iter = 0;
+	while (!good_solution && (iter < cap) && is_converging) {
 		Iterate();
 		tol_prev = Tol_Field;
 		if (CheckConvergence(target_tol_field)) {
 			good_solution = CheckDivergenceFree(target_tol_div);
 		}
-		
+
 		/* check whether the solution is really converging. */
-		if ((m > 30)) {
+		if ((iter > 30)) {
 			if((tol_prev < Tol_Field)&&(Tol_Field > target_tol_field))
 				count++;
 
@@ -284,15 +286,15 @@ void FFH_base::Run(double target_tol_field, double target_tol_div, int num_iters
 		}
 		if (count > 3)
 			is_converging = false;
-		m ++;
+		iter ++;
 	}
-	if (m == num_iters)
+	if (iter == cap)
 		std::cout << "solutions failed to converge!!\n";
 	else if (!is_converging)
-		std::cout << "solutions don't look like converging: quit at the " << m << "-th stage\n";
+		std::cout << "solutions don't look like converging: quit at the " << iter << "-th stage\n";
 	if (FFH_verbosity > 0) {
 		std::cout << "Error in field = " << Tol_Field << ",\tError in div = " << Tol_div << "\n";
-		std::cout << "Routine ends at the " << m << "-th stage.\n";
+		std::cout << "Routine ends at the " << iter << "-th stage.\n";
 	}
 }
 
@@ -350,7 +352,7 @@ bool FFH_base::CheckDivergenceFree(double target_tolereance)
 		}
 
 		for (size_t i = 0; i < div_free_field.total_comp; i++) {
-			double mod = Modulus2(div_free_field[i][0]);
+			double mod = Modulus2(div_free_field[i][x]);
 #pragma omp atomic
 			mean += mod;
 		}
@@ -820,6 +822,8 @@ void DynamicDielectricProblem::ComputeG_Fourier_test()
 	/* Compute its Fourier transform. */
 	for (size_t i = 0; i < fft_G.size(); i++)
 		fftw_execute(fft_G[i]);
+	for (size_t i = 0; i < fft_G.size(); i++)
+		fftw_destroy_plan(fft_G[i]);
 
 #pragma omp parallel for
 	for (size_t q_idx = 0; q_idx < Propagator_Fourier.num_total_pixels; q_idx++) {
@@ -900,7 +904,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test3()
 	for (int i = 0; i < d; i++)
 		dk[i] = 1.0*pi / sqrt(Geometry.packing.GetBasisVector(i).Modulus2());
 
-	double kk = k1.Modulus2(), dk2 = dk[0]*dk[0], qq;
+	double kk = k1.Modulus2(), dk2 = dk[0]*dk[0];
 	Propagator_Fourier = TensorField(d, 2 * rank_of_fields, Geometry.GetResolutions());
 	/* Note that ks is already shifted by k1. */
 #pragma omp parallel for
@@ -909,7 +913,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test3()
 		for (int i = 0; i < d; i++)
 			q.x[i] = ks[i][q_indx][0];
 
-		qq = q.Modulus2();
+		double qq = q.Modulus2();
 		ConstantTensor val;
 		/*if (abs(qq - kk) < 1e-15) {
 			val = -1.0/this->epsilon0 * Identity(d);
@@ -963,7 +967,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test4(double epsilon)
 	for (int i = 0; i < d; i++)
 		dk[i] = 1.0*pi / sqrt(Geometry.packing.GetBasisVector(i).Modulus2());
 
-	double kk = k1.Modulus2(), qq;
+	double kk = k1.Modulus2();
 	Propagator_Fourier = TensorField(d, 2 * rank_of_fields, Geometry.GetResolutions());
 	/* Note that ks is already shifted by k1. */
 #pragma omp parallel for
@@ -972,7 +976,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test4(double epsilon)
 		for (int i = 0; i < d; i++)
 			q.x[i] = ks[i][q_indx][0];
 
-		qq = q.Modulus2();
+		double qq = q.Modulus2();
 		ConstantTensor val;
 		
 		val = DyadicGreenFunction_Fourier_regularized(q, qq, kk, epsilon);
@@ -991,7 +995,7 @@ void DynamicDielectricProblem::ComputeG_Fourier_test4(double epsilon)
 /* initial solution. */
 void DynamicDielectricProblem::ComputePropagator_weak()
 {
-	double kk = k1.Modulus2(), qq;
+	double kk = k1.Modulus2();
 	Propagator_Fourier = TensorField(d, 2 * rank_of_fields, Geometry.GetResolutions());
 	/* Note that ks is already shifted by k1. */
 #pragma omp parallel for
@@ -1000,7 +1004,7 @@ void DynamicDielectricProblem::ComputePropagator_weak()
 		for (int i = 0; i < d; i++)
 			q.x[i] = ks[i][q_indx][0];
 
-		qq = q.Modulus2();
+		double qq = q.Modulus2();
 		ConstantTensor val;
 		if (abs(qq - kk) < 1e-15) {
 			val = -1.0 / this->epsilon0 * Identity(d);

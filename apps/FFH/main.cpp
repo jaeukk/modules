@@ -42,6 +42,10 @@ int main(int argc, char ** argv) {
 	double epsilon1 = 1.0L, epsilon2 = atof(argv[3]);
 	std::string save_prefix(argv[4]);
 	int num_threads = atoi(argv[5]);
+	if (num_files <= 0 || num_threads <= 0) {
+		std::cout << "Error: <num files> and <num threads> must be positive integers.\n";
+		return 1;
+	}
 	omp_set_num_threads(num_threads);
 
 	std::vector<GeometryVector> epsilon_eff;

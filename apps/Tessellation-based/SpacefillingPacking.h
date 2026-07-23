@@ -47,6 +47,7 @@ public:
 	/** \brief Replace the current packing and reset cell size and packing fraction. (CLAUDE)
 	 *  \param newPacking  New sphere packing to copy in as the current configuration. */
 	inline void ReplaceConfig(SpherePacking & newPacking) {
+		delete this->pSpheres;
 		this->pSpheres = new SpherePacking(newPacking);
 		this->pSpheres->SetCellSize(2.0*this->maxR);
 		this->phi = this->pSpheres->PackingFraction();

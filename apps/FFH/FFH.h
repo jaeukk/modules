@@ -439,9 +439,6 @@ struct Homo_ElasticProblem_static{
 			fftw_destroy_plan(InverseFourierTransform_Response[i]);
 		}
 		fftw_cleanup_threads();
-		Propagator_Fourier.~TensorField();
-		P_Fourier.~TensorField();	Response_Fourier.~TensorField();
-		P_direct.~TensorField();	Response_direct.~TensorField();
 	};
 
 

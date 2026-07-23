@@ -27,7 +27,7 @@ SpacefillingPacking::SpacefillingPacking(const SpherePacking& config, const std:
 	gen.seed(std::time(NULL));
 	spherevolume = HyperSphere_Volume(dimension, 1.0);
 	std::vector<double> new_para;
-	if(param[0]>0.0 && param[1]>1.0){//Determine N and maxR
+	if(param.size() >= 2 && param[0]>0.0 && param[1]>1.0){//Determine N and maxR
 		double V = this->pSpheres->PeriodicVolume();
 		double sum = 0.0;
 		if (strcmp(fnName, "Zeta") == 0) {
@@ -56,7 +56,8 @@ SpacefillingPacking::SpacefillingPacking(const SpherePacking& config, const std:
 		new_para.push_back(V_prt_max);
 		new_para.push_back(param[1]);
 	}
-	this->setScalingFunction(new_para, fnName);
+	if (new_para.size() >= 2)
+		this->setScalingFunction(new_para, fnName);
 	this->voxelSize = 0.01;
 	this->pSpheres->SetCellSize(2.0*this->maxR);
 }

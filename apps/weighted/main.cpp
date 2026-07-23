@@ -89,7 +89,7 @@ public:
 
 		{
 			char name[300] = {};//std::string name;
-			sprintf(name, this->prefix.c_str(), idx);
+			snprintf(name, sizeof(name), this->prefix.c_str(), static_cast<int>(idx));
 			std::fstream IFILE(name, std::fstream::in);
 
 			if (IFILE.good() == false)
@@ -129,11 +129,9 @@ public:
 			{
 				weights.push_back(out.GetCharacteristics(i));
 			}
-			size_t N = weights.size();
-
 			/* shuffle the weights */
 			for (int i = weights.size() - 1; i > 0; --i) {
-				int j = rng.RandomInt()%N; // random index in [0, i]
+				int j = rng.RandomInt()%(i+1); // random index in [0, i]
 				std::swap(weights[i], weights[j]);
 			}
 

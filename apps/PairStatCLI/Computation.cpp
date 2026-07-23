@@ -397,17 +397,26 @@ void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumS
 				MaxY=result[i].x[1];
 		}
 	}
-	double TickX=std::pow(10.0, std::floor(std::log10(MaxX-MinX)-0.1761));
-	if( (MaxX-MinX)/TickX<3 )
-		TickX*=0.5;
-	else if( (MaxX-MinX)/TickX>6 )
-		TickX*=2;
- 
-	double TickY=std::pow(10.0, std::floor(std::log10(MaxY-MinY)-0.1761));
-	if( (MaxY-MinY)/TickY<3 )
-		TickY*=0.5;
-	else if( (MaxY-MinY)/TickY>6 )
-		TickY*=2;
+	// Guard against constant data: a zero range makes log10(0) = -inf and the
+	// resulting tick spacing 0/NaN, which corrupts the Grace file. Fall back to
+	// a unit tick in that degenerate case.
+	double rangeX = MaxX - MinX;
+	double TickX = (rangeX > 0.0) ? std::pow(10.0, std::floor(std::log10(rangeX)-0.1761)) : 1.0;
+	if( rangeX > 0.0 ){
+		if( rangeX/TickX<3 )
+			TickX*=0.5;
+		else if( rangeX/TickX>6 )
+			TickX*=2;
+	}
+
+	double rangeY = MaxY - MinY;
+	double TickY = (rangeY > 0.0) ? std::pow(10.0, std::floor(std::log10(rangeY)-0.1761)) : 1.0;
+	if( rangeY > 0.0 ){
+		if( rangeY/TickY<3 )
+			TickY*=0.5;
+		else if( rangeY/TickY>6 )
+			TickY*=2;
+	}
 
 	PlotFunction_Grace(presult, NumSet, OutFilePrefix, xLabel, yLabel, legends, Title, MinX, MaxX, TickX, MinY, MaxY, TickY);
 }
@@ -515,11 +524,16 @@ void g2Computation::ProcessAdditionalOption(const std::string & option, std::ist
 		double min, inc, max;
 		input >> min >> inc >> max;
 
-		if (this->pHGen != nullptr)
-			delete this->pHGen;
-		this->pHGen = new HistogramGenerator;
-		for (double x = min; x < max; x += inc)
-			this->pHGen->bins.push_back(HistogramGenerator::bin(0, x));
+		if (!(inc > 0.0) || !(min < max)){
+			output << "ManualBins requires a positive increment and min < max; ignored.\n";
+		}
+		else{
+			if (this->pHGen != nullptr)
+				delete this->pHGen;
+			this->pHGen = new HistogramGenerator;
+			for (double x = min; x < max; x += inc)
+				this->pHGen->bins.push_back(HistogramGenerator::bin(0, x));
+		}
 	}
 	else
 		output << "Unrecognized command!\n";
@@ -616,6 +630,10 @@ void MinNearestNeighborDistrubution(std::function<const Configuration(size_t i)>
 	for (size_t i =0; i<NumConfigs; i++){
 		Configuration c = GetConfigsFunction(i);
 		size_t N = c.NumParticle();
+		if (N == 0){
+			distances.at(i) = 0.0;	// empty configuration: no nearest-neighbor distance
+			continue;
+		}
 		double typical_length = pow(c.PeriodicVolume()/(double)N, 1.0/c.GetDimension());
 		double Rmin = pow(c.PeriodicVolume(), 1.0/c.GetDimension());
 		c.SetCellSize(typical_length);
@@ -635,6 +653,12 @@ void MinNearestNeighborDistrubution(std::function<const Configuration(size_t i)>
 	for(auto iter=HGen.bins.begin(); iter!=HGen.bins.end(); iter++)
 		TotalCount+=iter->Count;
 
+	if (TotalCount == 0){
+		if (Verbosity > 2)
+			std::cout << "MinNearestNeighborDistrubution: no samples; nothing to bin.\n";
+		return;
+	}
+
 	bool IgnoreBin = true;
 	for(auto iter=HGen.bins.begin(); iter!=HGen.bins.end(); iter++)
 	{
@@ -646,7 +670,7 @@ void MinNearestNeighborDistrubution(std::function<const Configuration(size_t i)>
 
 		if(iter==HGen.bins.begin())
 		{
-			if(iter->Start==0.0 && (iter[2].Start-iter[1].Start)>iter[1].Start && iter->Count==0)
+			if(HGen.bins.size()>=3 && iter->Start==0.0 && (iter[2].Start-iter[1].Start)>iter[1].Start && iter->Count==0)
 				continue;//there shouldn't be a bin at here
 		}
 		temp.x[2]=(temp.x[0]-iter[0].Start);//\delta r
@@ -670,16 +694,15 @@ void MinNearestNeighborDistrubution(std::function<const Configuration(size_t i)>
 
 void NearestNeighbors::Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig)
 {
-	if (this-> logscale_bin){
+	if (this->logscale_bin){
 		//TODO: Implement log-scaled bins
+		std::cerr << "NearestNeighbors::Compute: log-scaled bins are not implemented yet; using linear bins.\n";
 	}
-	else{
-		// Nearest-neighbor distribution
-		::NearestNeighborDistrubution(GetConfigsFunction, NumConfig, distribution, SampleDistanceSize, resolution);
+	// Nearest-neighbor distribution (linear bins)
+	::NearestNeighborDistrubution(GetConfigsFunction, NumConfig, distribution, SampleDistanceSize, resolution);
 
-		// min nearest-neighbor distribution
-		MinNearestNeighborDistrubution(GetConfigsFunction, NumConfig, min_distribution, resolution, minPairs);
-	}
+	// min nearest-neighbor distribution
+	MinNearestNeighborDistrubution(GetConfigsFunction, NumConfig, min_distribution, resolution, minPairs);
 }
 
 void NearestNeighbors::Write(const std::string OutputPrefix)
@@ -711,7 +734,7 @@ void NearestNeighbors::Write(const std::string OutputPrefix)
 		file << "#List of all min. pair distances\n";
 		file << "#" << minPairs.size() << " configurations \n";
 		char text[300]={};
-		for (int i=0; i<minPairs.size(); i++){
+		for (size_t i=0; i<minPairs.size(); i++){
 			sprintf(text, "%1.10e", minPairs[i]);
 			file << text <<"\n";
 		}
@@ -742,12 +765,11 @@ void NearestNeighbors::ProcessAdditionalOption(const std::string &option, std::i
 	if (option == "ResolutionPreference")
 		//default=1, set>1 to get better x resolution, <1 to get better y resolution
 		input >> resolution;
-	if (option == "LogScale")
+	else if (option == "LogScale")
 		// Bin sizes are determined by a log scale of r when r is small.
 		// An option compatible with "ResolutionPreference".
 		input >> logscale_bin;
-
-	if (option == "PrintAll"){
+	else if (option == "PrintAll"){
 		this->Output_AllMinPairDistances = true;
 		output << "Print all min. pair distances\n";
 	}
@@ -764,11 +786,11 @@ void LocalNumberVariance::Compute(std::function<const Configuration(size_t i)> G
 
 		std::cout<< "\nComputing MC Number Variance (Use particle centers): ";
 		progress_display pd(NumConfig);
-		for (int i = 0; i < NumConfig; i++){
+		for (size_t i = 0; i < NumConfig; i++){
 			Configuration c = GetConfigsFunction(i);
 			std::vector<GeometryVector> centers;
 			centers.reserve(c.NumParticle());
-			for (int j = 0; j < c.NumParticle(); j++){
+			for (size_t j = 0; j < c.NumParticle(); j++){
 				GeometryVector v = c.GetRelativeCoordinates(j);
 				centers.push_back(v);
 				//std::cout << j<<", "<< v.Dimension << "\t" << v;
@@ -781,13 +803,14 @@ void LocalNumberVariance::Compute(std::function<const Configuration(size_t i)> G
 
 			if (i == 0){
 				this->result = std::vector<GeometryVector> (result_temp);
-				for (int j = 0; j < this->result.size(); j++){
+				for (size_t j = 0; j < this->result.size(); j++){
 					this->result[j].x[3] = this->result[j].x[1];
 					this->result[j].x[1] = 0.0;
+					this->result[j].x[2] = 0.0;	// zero the cross-config SSQ baseline (do not carry config-0's x[2])
 				}
 			}
 			else{
-				for (int j = 0; j < this->result.size(); j++){
+				for (size_t j = 0; j < this->result.size(); j++){
 					double val = result_temp[j].x[1] - this->result[j].x[3];
 					this->result[j].x[1] += val;
 					this->result[j].x[2] += val*val;
@@ -795,7 +818,7 @@ void LocalNumberVariance::Compute(std::function<const Configuration(size_t i)> G
 			}
 		}
 		/* Summarize data */
-		for(int i = 0; i < this->result.size(); i++){
+		for(size_t i = 0; i < this->result.size(); i++){
 			this->result[i].x[1] /= (double)NumConfig;
 			/*SE*/
 			if(NumConfig > 1){
@@ -840,6 +863,7 @@ void LocalNumberVariance::Plot(const std::string OutputPrefix, const std::string
 
 void LocalNumberVariance::ProcessAdditionalOption(const std::string &option, std::istream &input, std::ostream &output)
 {
+	(void)input;	// this option set reads no further arguments
 	if (option == "UseParticleCenters"){
 		this->use_prt_centers = true;
 		output << "Use particle centers as sampling centers\n";
@@ -873,6 +897,8 @@ void CoordinationNumberComputation::Plot(const std::string OutputPrefix, const s
 
 void CoordinationNumberComputation::ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output)
 {
+	(void)option;	// this computation accepts no additional options
+	(void)input;
 	output << "Unrecognized command!\n";
 }
 
@@ -905,6 +931,7 @@ void CumulativeCoordinationNumberComputation::Plot(const std::string OutputPrefi
 
 void CumulativeCoordinationNumberComputation::ProcessAdditionalOption(const std::string &option, std::istream &input, std::ostream &output)
 {
+	(void)input;	// options here read no further arguments
 	if (option == "logscale")
 		logscale = true;
 	else{
@@ -924,7 +951,7 @@ void AverageClusterSizeComputation::Compute(std::function<const Configuration(si
 #pragma omp parallel
 	{
 #pragma omp for schedule(guided)
-		for (signed long i = 0; i<NumConfig; i++)
+		for (size_t i = 0; i<NumConfig; i++)
 		{
 			omp_set_lock(&DisplayLock);
 			pd++;
@@ -932,7 +959,6 @@ void AverageClusterSizeComputation::Compute(std::function<const Configuration(si
 
 			Configuration c = GetConfigsFunction(i);
 			RandomGenerator gen((seed + 1)*(i + 1));
-			DimensionType dim = c.GetDimension();
 
 			for (auto iter = result.begin(); iter != result.end(); ++iter)
 			{

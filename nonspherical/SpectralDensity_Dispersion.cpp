@@ -178,7 +178,9 @@ void DirectionalSpectralDensity_Dispersion(std::function<const Dispersion(size_t
 
 				//Obtain nontrivial wavevectors (parity pairs are excluded).
 				{
-					int num = pow(2 * limit + 1, dim);
+					int num = 1;	/* integer (2*limit+1)^dim, avoids pow() double round-off/overflow */
+					for (size_t j = 0; j < dim; j++)
+						num *= (2 * limit + 1);
 					n_naryNumber rel_coord(dim, 2 * limit + 1);
 
 					for (int idx = 0; idx < num; idx++) {
@@ -202,7 +204,7 @@ void DirectionalSpectralDensity_Dispersion(std::function<const Dispersion(size_t
 					}
 				}
 				//data
-				std::vector<SkBin> Bins(ks.size(), SkBin());
+				Bins.assign(ks.size(), SkBin());
 			}
 			else {
 				//Check whether this system has identical basis vectors as the previous ones.

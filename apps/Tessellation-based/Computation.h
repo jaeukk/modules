@@ -387,7 +387,7 @@ public:
 				std::vector<GeometryVector> vertices;
 				for (int j = 0; j < numPrts; j++) {
 					GetVoronoiCell(c, j, vertices);
-					int idx = vertices.size();
+					int idx = (int)vertices.size() - 1;
 					if (idx < idx_max)
 						dist_i[idx]++;
 				}

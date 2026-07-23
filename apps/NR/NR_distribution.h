@@ -78,6 +78,9 @@ public:
 		CDF(source.CDF), CDF_uptodate(source.CDF_uptodate)
 	{}
 
+	/** \brief A copy-assignment operator (member-wise, matching the copy constructor). (CLAUDE) */
+	LocalNumber & operator=(const LocalNumber & source) = default;
+
 	/** \brief A constructor by loading data written by WriteBinary().
 	 *	\param ifile	An input stream positioned at data written by WriteBinary(). */
 	LocalNumber(std::istream & ifile);
@@ -137,8 +140,10 @@ public:
 	 *	\param	rng	A random number generator.
 	 *	\return A random number between this->min to this->max
 	according to the empirical distribution. */
-	size_t GetRandomNumber(RandomGenerator & rng) const {
-		return this->max + GetRandomIndex(rng);
+	int GetRandomNumber(RandomGenerator & rng) const {
+		// Random number = index + min (see GetRandomIndex). min may be negative,
+		// so the result must be signed; size_t cannot represent negative draws.
+		return this->min + static_cast<int>(GetRandomIndex(rng));
 	}
 
 	/** \brief Compute CDF again if CDF_uptodate = false. */
@@ -153,6 +158,7 @@ public:
 	std::unique_ptr<LocalNumber> GetBootstrapSample(int seed = 0, size_t sample_size = 0) {
 		std::unique_ptr<LocalNumber> BootstrapSample = std::make_unique<LocalNumber>(this->min, this->max);
 		RandomGenerator rng(seed);
+		this->UpdateCDF();	// GetRandomIndex samples from this->CDF; make sure it is current
 		if(sample_size <= this->totalCount){
 			size_t SampleSize = sample_size;
 			if(SampleSize == 0)
@@ -179,6 +185,7 @@ public:
 	std::unique_ptr<LocalNumber> GetBootstrapSample(int seed = 0, size_t sample_size = 0) const {
 		std::unique_ptr<LocalNumber> BootstrapSample = std::make_unique<LocalNumber>(this->min, this->max);
 		RandomGenerator rng(seed);
+		this->UpdateCDF();	// GetRandomIndex samples from this->CDF; make sure it is current
 		if(sample_size <= this->totalCount){
 			size_t SampleSize = sample_size;
 			if(SampleSize == 0)
@@ -201,6 +208,8 @@ public:
 	 *	\param f	A Lambda function to compute an average.
 	 *	\return A value of the estimator computed from this LocalNumber object. */
 	inline double ComputeAverageOf(const std::function<double(double)> & f) const {
+		if (totalCount == 0)
+			return 0.0;	// empty distribution: average is undefined
 		double val = 0;
 		for (size_t i = 0; i < counts.size(); i++) {
 			val += f(i) * (double)counts[i] / totalCount;
@@ -329,9 +338,10 @@ struct BootstrapSetup {
 							/** \brief A default constructor*/
 	BootstrapSetup() {
 		BootstrapSize = 50;
-		PrintCDF = false;	PrintPDF = false;	
+		PrintCDF = false;	PrintPDF = false;
 		ComputeMean = true; ComputeVariance = true;
 		ComputeSkewness = false;  ComputeKurtosis = false;
+		ComputeL2norm = false;	ComputeKL = false;
 		prefix = "";	SaveData = false;
 	}
 

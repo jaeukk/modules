@@ -176,8 +176,8 @@ int TilingProblemCLI() {
 			bool analyze = false;	bool overwrite = false;
 			bool discardConfig = false;	int largestIndex = 1;
 			bool mono = false;
-			char systemType[30];
-			double rho = 0.0, phi_init, phi_target = phi_stored;
+			char systemType[30] = {};
+			double rho = 0.0, phi_init = 0.0, phi_target = phi_stored;
 			std::string fileName;
 			for (;;) {
 					

@@ -29,6 +29,41 @@
 //#include <Windows.h>
 #include <algorithm>
 
+/** \brief Validate that a user-supplied filename pattern is a safe printf template
+ *  with exactly one integer conversion. (CLAUDE)
+ *
+ *  The txt2CP path feeds the input prefix to snprintf as the FORMAT string
+ *  (snprintf(name, ..., prefix.c_str(), idx)). An unrestricted format is classic
+ *  format-string undefined behavior: %s dereferences a bogus pointer, %n writes
+ *  through one, and a second/mismatched conversion reads a missing argument. To
+ *  keep the documented contract (a printf-style pattern with one integer field,
+ *  e.g. "config_%04d") while removing that exposure, only a single conversion of
+ *  the form %[0-9]*d is allowed (optional 0-flag / field width). "%%" is accepted
+ *  as a literal-percent escape.
+ *  \param pattern  The candidate printf pattern.
+ *  \return  True iff the pattern has exactly one %[0-9]*d conversion and no other
+ *           conversion specification. */
+static bool IsSafeIndexPattern(const std::string & pattern)
+{
+	int num_conversions = 0;
+	for (size_t i = 0; i < pattern.size(); ++i){
+		if (pattern[i] != '%')
+			continue;
+		++i;
+		if (i >= pattern.size())
+			return false;			// trailing '%' with no conversion
+		if (pattern[i] == '%')
+			continue;				// "%%" is a literal percent, not a conversion
+		// Optional 0-flag / field-width digits, then a mandatory 'd'.
+		while (i < pattern.size() && pattern[i] >= '0' && pattern[i] <= '9')
+			++i;
+		if (i >= pattern.size() || pattern[i] != 'd')
+			return false;			// anything but a plain integer conversion is rejected
+		++num_conversions;
+	}
+	return num_conversions == 1;
+}
+
 /** \brief Entry point dispatching ConfigurationPack <-> txt conversion utilities by option code.
  *  \param argc  Argument count; argv[1] selects the mode and the remaining entries are mode-specific parameters.
  *  \param argv  Argument vector: argv[1] is the option (0=CheckCP statistics, 1=CP2txt, 2=txt2CP), followed by the parameters required for that option.
@@ -116,13 +151,18 @@ int main(int argc, char ** argv) {
 			int start_idx = std::atoi(argv[3]), num_configs = std::atoi(argv[4]),
 				i = 0;
 
+			if (start_idx < 0 || num_configs < 0){
+				ofile << "start index and number of configs must be non-negative\n";
+				break;
+			}
+
 			ofile << "prefix of a target ConfigPack file = "<< cp_name<<"\n";
 			ofile << "start index = "<< start_idx<<"\n";
 			ofile << "configuration number = "<< num_configs<<"\n";
 
 			for(i=0; (i<num_configs) && (i+start_idx < num_tot_configs); i++){
 				Configuration c = cp.GetConfig(i+start_idx);
-				snprintf(name, sizeof(name), "%s__%04d", cp_name.c_str(), i);
+				snprintf(name, sizeof(name), "%s__%04d", cp_name.c_str(), start_idx + i);
 				WriteConfiguration(c, name);
 			}
 
@@ -149,7 +189,17 @@ int main(int argc, char ** argv) {
 		if(argc == num_param+2){
 
 			int start_index = std::atoi(argv[3]), num_configs = std::atoi(argv[4]);
+			if (start_index < 0 || num_configs < 0){
+				ofile << "start index and number of configs must be non-negative\n";
+				break;
+			}
 			std::string prefix(argv[2]);
+			if (!IsSafeIndexPattern(prefix)){
+				ofile << "Input prefix \"" << prefix << "\" is not a valid filename pattern; "
+					<< "it must contain exactly one integer conversion like config_%04d "
+					<< "(no %s / %n / extra conversions).\n";
+				break;
+			}
 			snprintf(name, sizeof(name), "%s", argv[5]);
 
 			ofile << "prefix = "<<  prefix <<"\n";
@@ -163,7 +213,13 @@ int main(int argc, char ** argv) {
 			for (i=0; i<num_configs; i++){
 					int idx = start_index + i;
 					Configuration c;
-					snprintf(name, sizeof(name), prefix.c_str(), idx);
+					// prefix was validated by IsSafeIndexPattern(): exactly one
+					// %[0-9]*d conversion, so this snprintf is well-defined.
+					int written = snprintf(name, sizeof(name), prefix.c_str(), idx);
+					if (written < 0 || written >= (int)sizeof(name)){
+						ofile << "Generated filename for index " << idx << " was truncated; aborting.\n";
+						break;
+					}
 					ReadConfiguration (c, name);
 					if(c.GetDimension()>0){
 						save.AddConfig(c);

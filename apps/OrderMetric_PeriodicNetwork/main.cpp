@@ -36,12 +36,12 @@ void PrintAlongLine(Shape & shape, const GeometryVector & axes, std::string name
 
 bool compare(GeometryVector a, GeometryVector b) {
 	assert(a.Dimension == b.Dimension);
-	return a.x[a.Dimension] < b.x[b.Dimension];
+	return a.x[a.Dimension - 1] < b.x[b.Dimension - 1];
 }
 
 
 double Sinc(double x) {
-	if (x < 1e-10)
+	if (fabs(x) < 1e-10)
 		return 1.0;
 	else
 		return sin(x) / x;

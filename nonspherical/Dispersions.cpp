@@ -117,9 +117,8 @@ void ReadDispersion(Dispersion & conf, const std::string & InputName){
 		}
 
 		DimensionType d = 0;
-		GeometryVector * basis;
 		ifile >> d;
-		basis = new GeometryVector[d];
+		std::vector<GeometryVector> basis(d);
 
 		// set dimension
 		for (int i = 0; i < d; i++) {
@@ -129,16 +128,14 @@ void ReadDispersion(Dispersion & conf, const std::string & InputName){
 			basis[i].SetDimension(d);
 		}
 
-		conf = Dispersion(d, basis, 1.0);
+		conf = Dispersion(d, basis.data(), 1.0);
 		for(int i=0; i<num_particles; i++)
 		{
-			char dump[255] = {};
-
 			ifile >> dump;
-			if(strcmp(dump, "[Polygon]")==0){
+			if(dump == "[Polygon]"){
 				conf.Insert(std::shared_ptr<Shape> ( new Polygon(ifile)), GeometryVector(0,0));
 			}
-			else if (strcmp(dump, "[Polyhedron]")==0){
+			else if (dump == "[Polyhedron]"){
 				conf.Insert(std::shared_ptr<Shape> ( new Polyhedron(ifile)), GeometryVector(0,0,0));
 			}
 			else{
@@ -221,7 +218,7 @@ void Dispersion::FindNearestNeighbors (const GeometryVector & RelativeCoordinate
 
 		//origins.push_back(		this->CartesianCoord2RelativeCoord(x0 + this->ParticleCartesians[prt_idx]));
 		//ns.push_back(n);
-		if( i == 0 || smallest_distance > list_i[0].x[0]){
+		if( !list_i.empty() && (i == 0 || smallest_distance > list_i[0].x[0])){
 			smallest_distance = list_i[0].x[0];
 			x0_Relative = x0 + shifts[i];// now in the Cartesian coordinates.
 			n2host = n;

@@ -71,10 +71,7 @@ void Test_simulation(double x, double y, size_t num_steps){
 
 	param.PerformSimulation2D_test(test, num_steps, one, rng);
 
-	char temp[300];
 	std::cout<<"R2 total, R2_host, R2_prt, R2_s, tau_s\n";
-//	sprintf(temp, "%1.7e, %1.7e, %1.7e, %1.7e, %1.7e, %1.7e\n", one.GetR2Total(), one.R2_host, one.R2_particle, one.R2_s, one.tau_s, one.GetEffectiveConductivity());
-	std::cout << temp;
 	std::cout << one.R2_host / one.R2_particle <<"\n";
 //	if (i==0){
 //		sprintf(temp, "data = np.array([[%1.7e, %1.7e, %1.7e, %1.7e, %1.7e, %1.7e,]", one.GetR2Total(), one.R2_host, one.R2_particle, one.R2_s, one.tau_s, one.GetEffectiveConductivity());

@@ -9,6 +9,8 @@
  * This is a simplified version of the PairStatisticsCLI code written by Ge.
  */
 
+#include <memory>
+
 #include "Computation.h"
 //#include "ContactStatistics.h"
 
@@ -296,9 +298,8 @@ int PairStatisticsCLI();
  * \param argv  Array of command-line argument strings.
  * \return      Process exit status (always 0).
  */
-int main(int argc, char ** argv){
-	int signal;
-	signal = PairStatisticsCLI();
+int main(int, char **){
+	PairStatisticsCLI();
 
 	return 0;
 }
@@ -345,15 +346,14 @@ int PairStatisticsCLI(){
 		"FirstPassageTimeComputation"
 	};
 
-	std::vector<Computation *> vpComputations;
+	std::vector<std::unique_ptr<Computation>> vpComputations;
 	for(;;)
 	{
 		ifile>>tempstring;
 		/* Basic parameters */
 		if(strcmp(tempstring, "Exit")==0)
 		{
-			for(auto iter=vpComputations.begin(); iter!=vpComputations.end(); iter++)
-				delete *iter;
+			// unique_ptr elements free their computations automatically.
 			return 0;
 		}
 		else if(strcmp(tempstring, "Available")==0){
@@ -410,23 +410,23 @@ int PairStatisticsCLI(){
 		/* define computations */
 		else if(strcmp(tempstring, "g2Computation")==0)
 		{
-			vpComputations.push_back( new g2Computation(ifile, ofile) );
+			vpComputations.push_back( std::make_unique<g2Computation>(ifile, ofile) );
 		}
 		else if(strcmp(tempstring, "Directionalg2Computation")==0)
 		{
-			vpComputations.push_back( new Directionalg2Computation(ifile, ofile) );
+			vpComputations.push_back( std::make_unique<Directionalg2Computation>(ifile, ofile) );
 		}
 		else if (strcmp(tempstring, "SkComputation") == 0)
 		{
-			vpComputations.push_back(new SkComputation(ifile, ofile));
+			vpComputations.push_back(std::make_unique<SkComputation>(ifile, ofile));
 		}
 		else if (strcmp(tempstring, "NearestNeighborStatistics") == 0)
 		{
-			vpComputations.push_back(new NearestNeighbors(ifile, ofile));
+			vpComputations.push_back(std::make_unique<NearestNeighbors>(ifile, ofile));
 		}
 		else if (strcmp(tempstring, "CoordinationNumber") == 0)
 		{
-			vpComputations.push_back(new CoordinationNumberComputation(ifile, ofile));
+			vpComputations.push_back(std::make_unique<CoordinationNumberComputation>(ifile, ofile));
 		}
 
 
@@ -456,8 +456,14 @@ int PairStatisticsCLI(){
 				//automatic sets NumConfig since Configuration Pack contains this information
 				else{
 					c.sequential_sampling = true;
-					NumConfig=c.p.NumConfig()-StartIdx;
-					std::cout<<"The config pack contains "<<NumConfig<<" configurations, set NumConfig to this value.\n";
+					if (StartIdx >= static_cast<size_t>(c.p.NumConfig())){
+						std::cout<<"Start index exceeds the number of configurations in the pack; set NumConfig to 0.\n";
+						NumConfig = 0;
+					}
+					else{
+						NumConfig=c.p.NumConfig()-StartIdx;
+						std::cout<<"The config pack contains "<<NumConfig<<" configurations, set NumConfig to this value.\n";
+					}
 				}
 				GetConfigsFunction = c;
 
@@ -467,8 +473,14 @@ int PairStatisticsCLI(){
 				ReadConfigPack_withInitialNumber c(ifile, ofile, Rescale);
 				GetConfigsFunction = c;
 				//automatic sets NumConfig since Configuration Pack contains this information
-				NumConfig = c.p.NumConfig() - c.InitialNumber;
-				std::cout << "The config pack contains " << c.p.NumConfig() << " configurations, set NumConfig to " << NumConfig << "\n";
+				if (c.InitialNumber >= static_cast<size_t>(c.p.NumConfig())){
+					std::cout << "Initial number exceeds the number of configurations in the pack; set NumConfig to 0.\n";
+					NumConfig = 0;
+				}
+				else{
+					NumConfig = c.p.NumConfig() - c.InitialNumber;
+					std::cout << "The config pack contains " << c.p.NumConfig() << " configurations, set NumConfig to " << NumConfig << "\n";
+				}
 			}
 			else if (strcmp(tempstring, "SingleConfiguration") == 0)
 			{
@@ -493,7 +505,7 @@ int PairStatisticsCLI(){
 			else 
 			{
 				
-				for (int index = 0; index < NumConfig; index++) {
+				for (size_t index = 0; index < NumConfig; index++) {
 					std::string file = OutputPrefix + std::string("__") + std::to_string(index);
 					//sprintf(file, "%s__%d", OutputPrefix, index);
 					WriteConfiguration(GetConfigsFunction(index), file);
@@ -533,7 +545,7 @@ int PairStatisticsCLI(){
 		}
 		else if (strcmp(tempstring, "LocalNumberVariance") == 0)
 		{
-			vpComputations.push_back( new LocalNumberVariance(ifile, ofile) );
+			vpComputations.push_back( std::make_unique<LocalNumberVariance>(ifile, ofile) );
 		}
 /* 		else if (strcmp(tempstring, "NearestNeighborComputation") == 0)
 		{//for historical reasons

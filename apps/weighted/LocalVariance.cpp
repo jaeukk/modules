@@ -181,8 +181,14 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 		/* Mean of N_f(R) */
 		mean_NR[i].x[0] /= (double)NumConfigs;
 		mean_NR[i].x[1] /= (double)NumConfigs;
-		mean_NR[i].x[2] = (mean_NR[i].x[2]/(double)NumConfigs - mean_NR[i].x[0]*mean_NR[i].x[0]) / ((double)NumConfigs -1.0);
-		mean_NR[i].x[3] = (mean_NR[i].x[3]/(double)NumConfigs - mean_NR[i].x[1]*mean_NR[i].x[1]) / ((double)NumConfigs -1.0);
+		if (NumConfigs > 1){
+			mean_NR[i].x[2] = (mean_NR[i].x[2]/(double)NumConfigs - mean_NR[i].x[0]*mean_NR[i].x[0]) / ((double)NumConfigs -1.0);
+			mean_NR[i].x[3] = (mean_NR[i].x[3]/(double)NumConfigs - mean_NR[i].x[1]*mean_NR[i].x[1]) / ((double)NumConfigs -1.0);
+		}
+		else{
+			mean_NR[i].x[2] = 0.0;
+			mean_NR[i].x[3] = 0.0;
+		}
 		for (int j = 2; j < 4; j++){
 			if (mean_NR[i].x[j] < 0.0){
 				mean_NR[i].x[j] = 0.0; // avoid negative variance
@@ -267,8 +273,14 @@ void MC_LV_Ensemble(const std::function<MarkedPointPattern(size_t i)> &GetConfig
 		/* Mean of N_f(R) */
 		mean_NR[i].x[0] /= (double)NumConfigs;
 		mean_NR[i].x[1] /= (double)NumConfigs;
-		mean_NR[i].x[2] = (mean_NR[i].x[2]/(double)NumConfigs - mean_NR[i].x[0]*mean_NR[i].x[0]) / ((double)NumConfigs -1.0);
-		mean_NR[i].x[3] = (mean_NR[i].x[3]/(double)NumConfigs - mean_NR[i].x[1]*mean_NR[i].x[1]) / ((double)NumConfigs -1.0);
+		if (NumConfigs > 1){
+			mean_NR[i].x[2] = (mean_NR[i].x[2]/(double)NumConfigs - mean_NR[i].x[0]*mean_NR[i].x[0]) / ((double)NumConfigs -1.0);
+			mean_NR[i].x[3] = (mean_NR[i].x[3]/(double)NumConfigs - mean_NR[i].x[1]*mean_NR[i].x[1]) / ((double)NumConfigs -1.0);
+		}
+		else{
+			mean_NR[i].x[2] = 0.0;
+			mean_NR[i].x[3] = 0.0;
+		}
 		for (int j = 2; j < 4; j++){
 			if (mean_NR[i].x[j] < 0.0){
 				mean_NR[i].x[j] = 0.0; // avoid negative variance

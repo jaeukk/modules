@@ -37,6 +37,28 @@ strict-bar warnings come from core/ headers (`SpherePacking.h`, `ClusterMerger.h
   setup+summary blocks; `LinealPath`/`ChordLength` classes in ComputationPacking.h
   duplicate their ctor/Write. Suggested: factor a common driver when next touched.
 
+## 2026-07-23 final audit (fix round F3)
+
+Fixed bug-band findings (main.cpp):
+- X4-01: filename-as-snprintf-format + shared member buffer. `ReadTextFiles::operator()`
+  now uses a local buffer and casts the index to `int` (matches `%d`; a `size_t`
+  arg was UB). The `tempstring` member was removed (also kills the reentrancy race).
+- X4-02: `vpComputations` is now `vector<unique_ptr<ComputationPacking>>`; the EOF
+  path (`return 2`) no longer leaks. `make_unique` at each push; Exit no longer
+  hand-deletes.
+- X4-04: `c.p.NumConfig()-StartIdx` underflow guarded (`StartIdx >= NumConfig()`
+  short-circuits to `NumConfig=0`).
+- X4-06: `LocalVarianceComputation` and `HoleProbability` branches were silent
+  no-ops; they now emit a "not implemented" message so nothing is silently skipped.
+- X4-07: both loaders validate before rescaling (`ReadTextFiles`: positive phi and
+  dimension; `ReadConfigPack`: non-empty configuration) to avoid /0 and NaN.
+
+Documented design/style backlog (not fixed, Option A):
+- X4-03 (style): `ReadConfigPack::rng` member is never used — remove when next
+  touched.
+- X4-05 (style): `LinealPath`/`ChordLength` classes in ComputationPacking.h
+  duplicate ctor/parse/Write; factor a common driver when next touched.
+
 ## Out-of-directory warnings / pre-existing errors
 
 Strict compiles surface -Wunused-parameter warnings from core/ headers

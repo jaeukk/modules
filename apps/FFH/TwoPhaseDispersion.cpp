@@ -259,8 +259,7 @@ void TwoPhaseDispersion::Read(const std::string & prefix) {
 		ifile >> dump;		
 
 		if(strcmp(dump.c_str(), "#basis")==0){
-			GeometryVector * basis;
-			basis = new GeometryVector[d];
+			std::vector<GeometryVector> basis(d);
 			for (int i = 0; i < d; i++) {
 				for (int j = 0; j < d; j++) {
 					ifile >> basis[i].x[j];
@@ -268,7 +267,7 @@ void TwoPhaseDispersion::Read(const std::string & prefix) {
 				basis[i].SetDimension(d);
 			}
 
-			this->packing = SpherePacking(d, basis, 1.0);
+			this->packing = SpherePacking(d, basis.data(), 1.0);
 		}		
 
 		this->SetResolutions(num_pixels);

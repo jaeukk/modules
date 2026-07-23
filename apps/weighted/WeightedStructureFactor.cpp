@@ -59,23 +59,22 @@ void IsotropicStructureFactor_weighted(std::function<const PeriodicCellList<std:
 	double V = 0.0;
 	GeometryVector prevBasis [ ::MaxDimension];
 	std::vector<GeometryVector> ks;
+	if (option > 2){
+		std::cout << "Computing spectral density: Wrong option!!\n";
+		return ;
+	}
+	/* Size the bin buffer regardless of Verbosity (options 0/1 write into it below). */
+	if (option == 0 || option == 1)
+		vSkBin.resize(NumBin, SkBin());
+
 	if(Verbosity>1){
 		std::cout<<"Computing spectral density";
-		if (option == 0){
+		if (option == 0)
 			std::cout << ": averaged over reciprocal lattice points\n";
-			vSkBin.resize(NumBin, SkBin());
-		}
-		else if (option == 1){
+		else if (option == 1)
 			std::cout << ": averaged over volume in the reciprocal space\n";
-			vSkBin.resize(NumBin, SkBin());
-		}
-		else if (option == 2){
+		else
 			std::cout << ": structure factor at Bragg peaks\n";
-		}
-		else{
-			std::cout << ": Wrong option!!\n";
-			return ;
-		}
 	}
 
 	progress_display pd(NumConfigs);

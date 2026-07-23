@@ -122,6 +122,11 @@ int main(int argc, char ** argv) {
 		ifile >> NumConfigs;
 
 		ConfigurationPack configs(name);
+		if (configs.NumConfig() <= 0 || startIndex >= static_cast<size_t>(configs.NumConfig())) {
+			ofile << "No configurations available at start index " << startIndex
+				<< " (pack contains " << configs.NumConfig() << ").\n";
+			return 1;
+		}
 		if (static_cast<size_t>(configs.NumConfig()) < NumConfigs + startIndex) {
 			NumConfigs = configs.NumConfig() - startIndex;
 			ofile << "The number of available configurations is " << configs.NumConfig() << " in total.\n"

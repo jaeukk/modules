@@ -287,7 +287,9 @@ void FirstPassageTimeParameters::JumpOneStep_2D(const Dispersion & config, Traje
 			double fraction_particle = (double)x_particle.size() / (double) num_samples;
 			double fraction_host = (double)x_host.size() / (double) num_samples;
 
-			p_host = fraction_host * this->sigma_host / (fraction_particle * this->sigma_particle + fraction_host * this->sigma_host);
+			double denom = fraction_particle * this->sigma_particle + fraction_host * this->sigma_host;
+			/* Insulating corner: all samples in a single zero-conductivity phase -> avoid 0/0. */
+			p_host = (denom > 0.0) ? (fraction_host * this->sigma_host / denom) : 0.0;
 
 			/* Choose the position of the test particle. */
 			double prob = rng.RandomDouble();
@@ -304,7 +306,7 @@ void FirstPassageTimeParameters::JumpOneStep_2D(const Dispersion & config, Traje
 
 
 			/* Compute the mean hitting time */
-			tau_s =  R*R/4.0 / (fraction_particle * this->sigma_particle + fraction_host * this->sigma_host);
+			tau_s = (denom > 0.0) ? (R*R/4.0 / denom) : 0.0;
 			// tau_s *= (1.0 - 0.5*(this->alpha + 1.0) * (r/R)*(r/R) + 0.5*(this->alpha - 1.0) * (r/R)*(r/R)* (r/R)*(r/R));
 
 			#ifdef SAFETY_CHECK
@@ -525,7 +527,9 @@ void FirstPassageTimeParameters::JumpOneStep_2D(const SpherePacking & config, Tr
 			double fraction_particle = (double)x_particle.size() / (double) num_samples;
 			double fraction_host = (double)x_host.size() / (double) num_samples;
 
-			p_host = fraction_host * this->sigma_host / (fraction_particle * this->sigma_particle + fraction_host * this->sigma_host);
+			double denom = fraction_particle * this->sigma_particle + fraction_host * this->sigma_host;
+			/* Insulating corner: all samples in a single zero-conductivity phase -> avoid 0/0. */
+			p_host = (denom > 0.0) ? (fraction_host * this->sigma_host / denom) : 0.0;
 
 			/* Choose the position of the test particle. */
 			double prob = rng.RandomDouble();
@@ -542,7 +546,7 @@ void FirstPassageTimeParameters::JumpOneStep_2D(const SpherePacking & config, Tr
 
 
 			/* Compute the mean hitting time */
-			tau_s =  R*R/4.0 / (fraction_particle * this->sigma_particle + fraction_host * this->sigma_host);
+			tau_s = (denom > 0.0) ? (R*R/4.0 / denom) : 0.0;
 			// tau_s *= (1.0 - 0.5*(this->alpha + 1.0) * (r/R)*(r/R) + 0.5*(this->alpha - 1.0) * (r/R)*(r/R)* (r/R)*(r/R));
 
 			#ifdef SAFETY_CHECK
@@ -766,10 +770,17 @@ void FirstPassageTimeParameters::PerformSimulation2D_parallel(std::function<cons
 			temp = (data_config[j].x[1] - mean_X2);
 			ste_X2 += temp*temp;
 		}
-		ste_tau /= (double)this->num_test_prts;
-		ste_tau = sqrt(ste_tau/((double)this->num_test_prts - 1.0));
-		ste_X2 /= (double)this->num_test_prts;
-		ste_X2 = sqrt(ste_X2/((double)this->num_test_prts - 1.0));
+		if (this->num_test_prts > 1) {
+			ste_tau /= (double)this->num_test_prts;
+			ste_tau = sqrt(ste_tau/((double)this->num_test_prts - 1.0));
+			ste_X2 /= (double)this->num_test_prts;
+			ste_X2 = sqrt(ste_X2/((double)this->num_test_prts - 1.0));
+		}
+		else {
+			/* A single walker gives no estimable standard error. */
+			ste_tau = 0.0;
+			ste_X2 = 0.0;
+		}
 
 		results[i].x[0] = mean_tau;
 		results[i].x[1] = mean_X2;
@@ -855,10 +866,17 @@ void FirstPassageTimeParameters::PerformSimulation2D_TimeEvolution(const Dispers
 			temp = (data_config[j].x[1] - mean_X2);
 			ste_X2 += temp*temp;
 		}
-		ste_tau /= (double)this->num_test_prts;
-		ste_tau = sqrt(ste_tau/((double)this->num_test_prts - 1.0));
-		ste_X2 /= (double)this->num_test_prts;
-		ste_X2 = sqrt(ste_X2/((double)this->num_test_prts - 1.0));
+		if (this->num_test_prts > 1) {
+			ste_tau /= (double)this->num_test_prts;
+			ste_tau = sqrt(ste_tau/((double)this->num_test_prts - 1.0));
+			ste_X2 /= (double)this->num_test_prts;
+			ste_X2 = sqrt(ste_X2/((double)this->num_test_prts - 1.0));
+		}
+		else {
+			/* A single walker gives no estimable standard error. */
+			ste_tau = 0.0;
+			ste_X2 = 0.0;
+		}
 
 		results[i].x[0] = mean_tau;
 		results[i].x[1] = mean_X2;
@@ -1036,10 +1054,17 @@ void FirstPassageTimeParameters::PerformSimulation2D_parallel(std::function<cons
 			temp = (data_config[j].x[1] - mean_X2);
 			ste_X2 += temp*temp;
 		}
-		ste_tau /= (double)this->num_test_prts;
-		ste_tau = sqrt(ste_tau/((double)this->num_test_prts - 1.0));
-		ste_X2 /= (double)this->num_test_prts;
-		ste_X2 = sqrt(ste_X2/((double)this->num_test_prts - 1.0));
+		if (this->num_test_prts > 1) {
+			ste_tau /= (double)this->num_test_prts;
+			ste_tau = sqrt(ste_tau/((double)this->num_test_prts - 1.0));
+			ste_X2 /= (double)this->num_test_prts;
+			ste_X2 = sqrt(ste_X2/((double)this->num_test_prts - 1.0));
+		}
+		else {
+			/* A single walker gives no estimable standard error. */
+			ste_tau = 0.0;
+			ste_X2 = 0.0;
+		}
 
 		results[i].x[0] = mean_tau;
 		results[i].x[1] = mean_X2;
@@ -1124,10 +1149,17 @@ void FirstPassageTimeParameters::PerformSimulation2D_TimeEvolution(const SphereP
 			temp = (data_config[j].x[1] - mean_X2);
 			ste_X2 += temp*temp;
 		}
-		ste_tau /= (double)this->num_test_prts;
-		ste_tau = sqrt(ste_tau/((double)this->num_test_prts - 1.0));
-		ste_X2 /= (double)this->num_test_prts;
-		ste_X2 = sqrt(ste_X2/((double)this->num_test_prts - 1.0));
+		if (this->num_test_prts > 1) {
+			ste_tau /= (double)this->num_test_prts;
+			ste_tau = sqrt(ste_tau/((double)this->num_test_prts - 1.0));
+			ste_X2 /= (double)this->num_test_prts;
+			ste_X2 = sqrt(ste_X2/((double)this->num_test_prts - 1.0));
+		}
+		else {
+			/* A single walker gives no estimable standard error. */
+			ste_tau = 0.0;
+			ste_X2 = 0.0;
+		}
 
 		results[i].x[0] = mean_tau;
 		results[i].x[1] = mean_X2;

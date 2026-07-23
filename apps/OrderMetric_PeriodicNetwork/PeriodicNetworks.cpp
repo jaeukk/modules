@@ -832,17 +832,21 @@ void PeriodicNetworkParameters::ComputeBV_Direct(const SpherePacking & network, 
 
 	int idx = 0;
 	double sum = 0.0L, error = 0.0L;
+	double first_val = 0.0L;	/* cache the original (scaled) LVFV[0].x[1] for the trapezoid left endpoint */
 	for (size_t i = 0; i < LVFV.size(); i++) {
 		double factor = d * pow(LVFV[i].x[0], d + 1.0);
 		LVFV[i].x[1] *= factor;
 		LVFV[i].x[2] *= factor;
 		LVFV[i].x[3] = 0.0L;
+		if (i == 0)
+			first_val = LVFV[0].x[1];
 		sum += LVFV[i].x[1];
-		error += LVFV[i].x[2] * LVFV[i].x[2] / (LVFV[i].x[1] * LVFV[i].x[1]);
+		if (LVFV[i].x[1] != 0.0L)
+			error += LVFV[i].x[2] * LVFV[i].x[2] / (LVFV[i].x[1] * LVFV[i].x[1]);
 
-		LVFV[i].x[1] = (sum - 0.5*(LVFV[0].x[1] + LVFV[i].x[1])) / (i + 1.0);
+		LVFV[i].x[1] = (sum - 0.5*(first_val + LVFV[i].x[1])) / (i + 1.0);
 		LVFV[i].x[2] = sqrt(error / (i + 1.0))*LVFV[i].x[1];
-		if (result[idx].x[0] <= LVFV[i].x[0] && LVFV[i].x[0] < result[idx].x[0] + dR) {
+		if ((size_t)idx < result.size() && result[idx].x[0] <= LVFV[i].x[0] && LVFV[i].x[0] < result[idx].x[0] + dR) {
 			result[idx].x[1] = LVFV[i].x[1];
 			result[idx].x[2] = LVFV[i].x[2];
 			idx++;
@@ -901,6 +905,8 @@ void PeriodicNetworkParameters::ComputeVV_Fourier(const Dispersion & network, do
 	};
 	std::sort(Xs.begin(), Xs.end(), CompareFunc);
 
+	if (Ks.empty() || Xs.empty())
+		return;
 	chik.reserve(int(Ks.size() / HyperSphere_SurfaceArea(d, Ks[Ks.size() - 1].x[0])));
 	int j = 0;
 	chik.emplace_back(Xs[0]);
@@ -992,6 +998,8 @@ void PeriodicNetworkParameters::ComputeVV_Fourier(const SpherePacking & network,
 	};
 	std::sort(Xs.begin(), Xs.end(), CompareFunc);
 
+	if (Ks.empty() || Xs.empty())
+		return;
 	chik.reserve(int(Ks.size() / HyperSphere_SurfaceArea(d, Ks[Ks.size() - 1].x[0])));
 	int j = 0;
 	chik.emplace_back(Xs[0]);
@@ -1273,9 +1281,10 @@ void ComputeBV_CLI() {
 					std::vector<GeometryVector> result, LV;
 					Param.ComputeBV_Direct(config, phi, result, LV);
 					WriteFunction(LV, (fileprefix + "_runningav_"+std::to_string(phi)).c_str());
-					save << phi << "\t";
+					save << phi;
 					for (size_t i = 0; i < result.size(); i++)
-						save << result[i].x[1];
+						save << "\t" << result[i].x[1];
+					save << "\n";
 				}
 				ofile << "done\n";
 			}

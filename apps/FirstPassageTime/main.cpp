@@ -86,12 +86,15 @@ int main(int argc, char ** argv) {
 		return 1;
 	}
 	if(strcmp(argv[1],"0")==0){
+		if (argc < 6) { ofile << "Usage: mode 0 requires 4 arguments\n"; return 1; }
 		Checkerboard(std::stof(argv[2]),std::stof(argv[3]),std::stof(argv[4]),std::stof(argv[5]));
 	}
 	else if(strcmp(argv[1],"1")==0){
+		if (argc < 7) { ofile << "Usage: mode 1 requires 5 arguments\n"; return 1; }
 		HoneycombNetwork(std::stof(argv[2]),std::stof(argv[3]),std::stof(argv[4]),std::stof(argv[5]), std::stof(argv[6]));
 	}
 	else if(strcmp(argv[1],"2")==0){
+		if (argc < 6) { ofile << "Usage: mode 2 requires <load> <start> <num> <save> [log]\n"; return 1; }
 		for (int i=0; i<argc; i++)
 			ofile << argv[i] <<std::endl;
 
@@ -171,6 +174,7 @@ int main(int argc, char ** argv) {
 		WriteFunction(result, savename, header);
 	}
 	else if(strcmp(argv[1],"3")==0){
+		if (argc < 4) { ofile << "Usage: mode 3 requires <x> <y>\n"; return 1; }
 		int num = 500;
 		double x = atof(argv[2]);
 		double y = atof(argv[3]);
@@ -227,6 +231,7 @@ int main(int argc, char ** argv) {
 		std::cout<<"p_1 = "<< count2host / count_total_trials <<"\n";
 	}
 	else if(strcmp(argv[1],"4")==0){
+		if (argc < 8) { ofile << "Usage: mode 4 requires <geom> <phi2> <sigma_host> <sigma_particle> <time_max> <time_interval> [log]\n"; return 1; }
 		for (int i=0; i<argc; i++)
 			ofile << argv[i] <<std::endl;
 

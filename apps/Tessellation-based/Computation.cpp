@@ -136,7 +136,7 @@ void MultiscaleComputation::GetIndexList(std::function<const SpherePacking(size_
 		do {//repeat until idx_stage[i] == indices[i].size() - 1 for all i
 			conti = false;
 			bool radiiAreSame = true;
-			double * dev = new double[numConfigs];
+			std::vector<double> dev(numConfigs);
 			double r0 = R[0][idx_stage[0]];	dev[0] = 0.0;
 			for (size_t i = 1; i < numConfigs; i++) {
 				dev[i] = R[i][idx_stage[i]];	//particle radius of config i
@@ -184,7 +184,7 @@ void SpectralDensity_Multiscale::Compute(std::function<const SpherePacking(size_
 		this->GetIndexList(GetConfigs, numConfigs);
 
 	for (size_t i = 1; i <= this->indices[0].size(); i++) {
-		if (i==1 || i % this->interval == 0 || i == (size_t)*(this->indices[0].end()))
+		if (i==1 || i % this->interval == 0 || i == (size_t)this->indices[0].back())
 			outputIndex.push_back(i-1);
 	}
 
@@ -383,7 +383,7 @@ void VolumeFractionVariance_Multiscale::Compute(std::function<const SpherePackin
 		this->GetIndexList(GetConfigs, numConfigs);
 
 	for (size_t i = 1; i <= this->indices[0].size(); i++) {
-		if (i % this->interval == 0 || i == (size_t)*(this->indices[0].end()))
+		if (i % this->interval == 0 || i == (size_t)this->indices[0].back())
 			outputIndex.push_back(i);
 	}
 
@@ -396,7 +396,7 @@ void VolumeFractionVariance_Multiscale::Compute(std::function<const SpherePackin
 			SpherePacking c = GetConfigs(j);
 			int num = c.NumParticle() - 1;
 			for (int k = num; k > idx_prt[j]; k--) {
-				c.DeleteParticle(j);
+				c.DeleteParticle(k);
 			}
 			return c;
 		};
