@@ -10,5 +10,11 @@ DetailedLog.txt
 *CLAUDE.md
 # Multi-agent orchestration runtime files (task contracts, leases, worker outputs)
 _multiagent/
-# misc
+# misc — excluded scratch / alternate mains kept on disk but untracked
 apps/CCOptimization/DebugSimple.cpp
+apps/FFH/FFH_padded.h
+apps/FFH/FFH_padded.cpp
+apps/FFH/FFH_test.cpp
+apps/FFH/sample1.cpp
+apps/FFH/sample2.cpp
+apps/FFH/Dump.hpp
