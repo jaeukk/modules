@@ -16,7 +16,7 @@ void MergeSort(std::vector<double> &stack) {
 				int j2 = pre_bin; //index for sublist2
 				int j1_max = pre_bin;
 				int j2_max = (bin>size) ? size : bin;
-				while (tempList.size()<size && j1 < size) {
+				while (tempList.size()<(size_t)size && j1 < size) {
 					double temp;
 
 					if (j1 < j1_max && j2<j2_max) {
@@ -71,8 +71,11 @@ void MergeSort(std::vector<double> &stack) {
 
 
 //My dirty version of merge sort (non-recursive)
-void MergeSort(std::vector<GeometryVector> & stack, int std_col) { 
-	if (std_col+1 > stack[0].Dimension) {
+void MergeSort(std::vector<GeometryVector> & stack, int std_col) {
+	if (stack.empty()) {//don't dereference stack[0] on an empty vector
+		return;
+	}
+	if (std_col < 0 || std_col+1 > stack[0].Dimension) {
 		std::cout << "Discrepancy::MergeSort - wrong standard column \n";	return;
 	}
 
@@ -89,7 +92,7 @@ void MergeSort(std::vector<GeometryVector> & stack, int std_col) {
 			int j2 = pre_bin; //index for sublist2
 			int j1_max = pre_bin;
 			int j2_max = (bin>size) ? size : bin;
-			while (tempList.size()<size && j1 < size) {
+			while (tempList.size()<(size_t)size && j1 < size) {
 				GeometryVector temp;
 
 				if (j1 < j1_max && j2<j2_max) {
@@ -196,6 +199,8 @@ void MergeSort(std::vector<GeometryVector> & stack, int std_col) {
 //	}
 //}
 double vanDerCorputSequence(int n, int basis) {
+	if (basis < 2)//radix must be >= 2; otherwise temp%basis / temp/basis divide by zero
+		return 0.0;
 	double n_basis = 0;
 	double digit = 1.0;
 	int temp = n;
@@ -213,9 +218,13 @@ GeometryVector vanDerCorputSequence(int n, const std::vector<int> &basis) {
 		std::cout << "Discrepancy::vanDerCorputSequence : wrong input\n";
 		return result;
 	}
+	else if (basis[0] <= 0) {
+		std::cout << "Discrepancy::vanDerCorputSequence : basis[0] must be positive\n";
+		return result;
+	}
 	else {
 		result.x[0] = (double)n / basis[0];
-		for (int i = 1; i < basis.size(); i++) {
+		for (size_t i = 1; i < basis.size(); i++) {
 			result.x[i] = vanDerCorputSequence(n, basis[i]);
 		}
 
@@ -228,6 +237,10 @@ GeometryVector vanDerCorputSequence(int n, const std::vector<int> &basis) {
 
 std::vector<GeometryVector> vanDerCorputPts(int n, const std::vector<int> &basis) {
 	std::vector<GeometryVector> result;
+	if (n < 0) {//negative n would reserve a huge size_t and the loop would produce nothing
+		std::cout << "Discrepancy::vanDerCorputPts : n must be nonnegative\n";
+		return result;
+	}
 	result.reserve(n);
 
 	for (int i = 1; i < n+1; i++) {

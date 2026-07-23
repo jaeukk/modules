@@ -27,6 +27,7 @@ void PlotCircle2D(mglGraph & graph, double x, double y, double r, const char * M
 	yc.a[NumLineSegments]=y;
 	graph.Plot(xc, yc, MGLOptions);
 }
+
 /** \brief Draw a filled disk on a MathGL graph. (CLAUDE)
  *  \param graph            Target MathGL graph.
  *  \param x                X coordinate of the disk center.
@@ -120,8 +121,8 @@ void PlotFunction_MathGL(const std::vector<GeometryVector> & result, const std::
 
 void Plot(std::string prefix, const Configuration & List, const std::string & remark, double ParticleSizeRescale)
 {
-	const Configuration * list= & List;
 #ifdef USE_MATHGL
+	const Configuration * list= & List;
 
 	if(list->GetDimension()==1)
 	{
@@ -352,7 +353,6 @@ void Plot(std::string prefix, const Configuration & List, const std::string & re
 #include <StructureFactor.h>
 void PlotDirectionalStructureFactor2D(const std::vector<Configuration> & vc, long limit, std::string prefix, bool LogScale, double MinSOverride, double MaxSOverride, double TileSize)
 {
-	const double NonLogScale_const = 20;
 	if (vc.empty())
 	{
 		std::cerr << "Error in PlotDirectionalStructureFactor2D: no configurations, exiting.\n";
@@ -360,6 +360,7 @@ void PlotDirectionalStructureFactor2D(const std::vector<Configuration> & vc, lon
 	}
 
 #ifdef USE_MATHGL
+	const double NonLogScale_const = 20;
 	GeometryVector v[2]={vc[0].GetReciprocalBasisVector(0), vc[0].GetReciprocalBasisVector(1)};
 	double max=0;
 	double maxS=0;
@@ -537,7 +538,7 @@ void PlotDirectionalStructureFactor2D(const Configuration & c, long limit, std::
 	PlotDirectionalStructureFactor2D(std::vector<Configuration>(1, c), limit, prefix, LogScale, MinSOverride, MaxSOverride, TileSize);
 }
 
-//#if defined(LATTICESUMSOLVER_INCLUDED)
+#if defined(LATTICESUMSOLVER_INCLUDED)
 void Plots(const ParameterSet & Param, const std::vector<LatticeSumSolver *> * Solvers, const char * Prefix, size_t Enphasis)
 {
 	::IsotropicPairPotential * pPot = Param.GetPotential();
@@ -568,13 +569,14 @@ void Plots(IsotropicPairPotential * pPot, const std::vector<LatticeSumSolver *> 
 	ofile.open(filename.c_str(), std::fstream::out);
 #ifdef USE_MATHGL
 	std::vector<double> potentialx, potentialy;
+	double LowestNumber=0;
 #endif
 	double LowestPotential=::MaxEnergy;
 	double HighestPotential = 0;
 	bool startTrackHighest = false;
-	double LowestNumber=0;
 	double ShowMinDist=0.5;
 	if(Solvers!=nullptr)
+	{
 		if(Solvers->size()!=0)
 		{
 			double tempDist=1;
@@ -585,6 +587,7 @@ void Plots(IsotropicPairPotential * pPot, const std::vector<LatticeSumSolver *> 
 			}
 			ShowMinDist=Solvers->at(0)->Terms[1].distance;
 		}
+	}
 		for(double i=0.001; i<pPot->Rcut; i+=0.001)
 		{
 			double result=pPot->IsotropicPairEnergy(i);
@@ -650,7 +653,7 @@ void Plots(IsotropicPairPotential * pPot, const std::vector<LatticeSumSolver *> 
 		}
 #endif
 
-		if(Solvers!=nullptr)
+		if(Solvers!=nullptr && Solvers->size()!=0)   // an empty (but non-null) vector must not reach (*Solvers)[0] below
 		{
 			filename.assign(Prefix);
 			filename+="_LatticeSum.txt";
@@ -660,13 +663,12 @@ void Plots(IsotropicPairPotential * pPot, const std::vector<LatticeSumSolver *> 
 			double LowestSum=::MaxEnergy;
 			auto temp=(*Solvers)[0]->GetStructure();
 			double HighestSum=3*std::abs(pPot->Energy(temp));
+			(void)HighestSum; //used only in the USE_MATHGL branch below
 			//calculation
 			for(auto iter=Solvers->begin(); iter!=Solvers->end(); iter++)
 			{
 				tags.push_back((*iter)->Tag());
 				results.push_back(std::vector<double>());
-
-				bool startTrackHighest=false;
 
 				for(double Volume=0.3; Volume<10; Volume /=0.998)
 				{
@@ -740,12 +742,12 @@ void Plots(IsotropicPairPotential * pPot, const std::vector<LatticeSumSolver *> 
 		}
 
 }
-//#endif
+#endif
 
 void PlotPath(std::string prefix, const Configuration & List, const std::string & remark, const std::vector<size_t> & path)
 {
-	const Configuration * list= & List;
 #ifdef USE_MATHGL
+	const Configuration * list= & List;
 	GeometryVector basis0=list->GetBasisVector(0);
 	GeometryVector basis1=list->GetBasisVector(1);
 
@@ -832,9 +834,11 @@ void PlotPath(std::string prefix, const Configuration & List, const std::string 
 		}
 
 		//plot path
-		for(auto iter=path.begin()+1; iter<path.end(); iter++)
+		for(auto iter=(path.size()>=2 ? path.begin()+1 : path.end()); iter<path.end(); iter++)   // begin()+1 is UB on an empty path
 		{
 			mglData x(2), y(2);
+			if(*iter>=list->NumParticle() || *(iter-1)>=list->NumParticle())   // skip out-of-range particle indices
+				continue;
 			GeometryVector v1=list->GetCartesianCoordinates(*(iter-1));
 			x[0]=v1.x[0];
 			y[0]=v1.x[1];
@@ -883,8 +887,13 @@ void PlotPath(std::string prefix, const Configuration & List, const std::string 
 //given a configuration and a "deformation" (i.e. a displacement on each particle), plot it
 void PlotDisplacement(std::string prefix, const Configuration & List, const std::string & remark, const std::vector<double> & displacement)
 {
-	const Configuration * list= & List;
 #ifdef USE_MATHGL
+	const Configuration * list= & List;
+	if(list->NumParticle()==0 || displacement.size()!=2*list->NumParticle())   // need exactly two (x,y) components per particle
+	{
+		std::cerr<<"Error in PlotDisplacement : displacement must have exactly 2*NumParticle() entries; skipping.\n";
+		return;
+	}
 	GeometryVector basis0=list->GetBasisVector(0);
 	GeometryVector basis1=list->GetBasisVector(1);
 
@@ -984,7 +993,7 @@ void PlotDisplacement(std::string prefix, const Configuration & List, const std:
 				LargestLength2=v.Modulus2();
 		}
 		//double coeff = TypicalLength/std::sqrt(LargestLength2)*0.8;
-		double coeff = TypicalLength/std::sqrt(LargestLength2)*3.0;
+		double coeff = (LargestLength2>0.0) ? TypicalLength/std::sqrt(LargestLength2)*3.0 : 0.0;   // all-zero field: no rescale, avoid div by zero
 		//plot path
 		gr.SetArrowSize(0.3);
 		for(int i=0; i<list->NumParticle(); i++)
@@ -1070,9 +1079,9 @@ void PlotDisplacement(std::string prefix, const Configuration & List, const std:
 
 void PlotPacking2D(std::string prefix, const SpherePacking & List, const char * sphereColor, const std::string & remark)
 {
+#ifdef USE_MATHGL
 	const SpherePacking * list= & List;
 	const char * color[] = {"k-", sphereColor};
-#ifdef USE_MATHGL
 
 	if(list->GetDimension()==2)
 	{
@@ -1549,6 +1558,11 @@ void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumS
 }
 void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumSet, const std::string & OutFilePrefix, const std::string & xLabel, const std::string & yLabel, const std::vector<std::string> & legends, const std::string & Title)
 {
+	if(presult==nullptr || NumSet==0)   // presult[0] is dereferenced below; reject empty/null input first
+	{
+		std::cerr<<"Error in PlotFunction_Grace: no data sets ! Exiting function \n";
+		return;
+	}
 	const std::vector<GeometryVector> & result = presult[0];
 	const size_t NumData=result.size();
 	if(NumData==0)
@@ -1575,6 +1589,16 @@ void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumS
 			if(MaxY<result[i].x[1])
 				MaxY=result[i].x[1];
 		}
+	}
+	if(MaxX<=MinX)   // constant x: widen so log10(MaxX-MinX) and the tick divisions stay finite
+	{
+		double d = (std::abs(MaxX)>0.0) ? std::abs(MaxX) : 1.0;
+		MinX-=d; MaxX+=d;
+	}
+	if(MaxY<=MinY)   // constant y: widen likewise
+	{
+		double d = (std::abs(MaxY)>0.0) ? std::abs(MaxY) : 1.0;
+		MinY-=d; MaxY+=d;
 	}
 	double TickX=std::pow(10.0, std::floor(std::log10(MaxX-MinX)-0.1761));
 	if( (MaxX-MinX)/TickX<3 )

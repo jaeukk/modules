@@ -18,9 +18,12 @@ double LowestFrequencySquared;//use it to broadcast calculation results to other
  *  \param Prefix           Filename prefix for the output figure files.
  *  \param Biggest          Upper bound of the omega^2 plotting range.
  *  \param Smallest         Lower bound of the omega^2 plotting range. */
-void PlotPhononFrequencies_GenerateFigure(const std::vector<double> & results, size_t NumCurves, size_t NumX, size_t NumKPointsPerLine, std::vector<char *> & Labels, char * Prefix, double Biggest, double Smallest)
+void PlotPhononFrequencies_GenerateFigure(const std::vector<double> & results, size_t NumCurves, size_t NumX, size_t NumKPointsPerLine, std::vector<const char *> & Labels, char * Prefix, double Biggest, double Smallest)
 {
 	#ifndef USE_MATHGL
+	//parameters are only used by the MathGL-enabled body below
+	(void)results; (void)NumCurves; (void)NumX; (void)NumKPointsPerLine;
+	(void)Labels; (void)Prefix; (void)Biggest; (void)Smallest;
 	std::cerr<<"Error in PlotPhononFrequencies: MathGL is not enabled \n";
 #else
 	mglData data(&results[0], results.size()/NumCurves, NumCurves);
@@ -82,7 +85,7 @@ void PlotPhononFrequencies_GenerateFigure(const std::vector<double> & results, s
 
 #endif
 }
-void PlotPhononFrequencies(const std::vector<GeometryVector> & kEndPoints, const Configuration & crystal, PairPotential & pot, char * Prefix, std::vector<char *> & Labels, double Mass, size_t NumKPointsPerLine)
+void PlotPhononFrequencies(const std::vector<GeometryVector> & kEndPoints, const Configuration & crystal, PairPotential & pot, char * Prefix, std::vector<const char *> & Labels, double Mass, size_t NumKPointsPerLine)
 {
 	assert(Labels.size()==kEndPoints.size());
 	if(kEndPoints.size()==0 || kEndPoints.size()==1)
@@ -90,9 +93,14 @@ void PlotPhononFrequencies(const std::vector<GeometryVector> & kEndPoints, const
 		std::cerr<<"Error in PlotPhononFrequencies: not enough k end points\n";
 		return;
 	}
+	if(NumKPointsPerLine==0)   // otherwise the sampling loop is skipped and NumX=results.size()/NumCurves divides by 0
+	{
+		std::cerr<<"Error in PlotPhononFrequencies: NumKPointsPerLine must be positive\n";
+		return;
+	}
 
 	std::vector<double> results;
-	size_t NumCurves;
+	size_t NumCurves=0;
 	double Biggest=0;
 	double Smallest=0;
 	for(auto iter=kEndPoints.begin(); iter!=kEndPoints.end()-1; iter++)
@@ -103,6 +111,11 @@ void PlotPhononFrequencies(const std::vector<GeometryVector> & kEndPoints, const
 			double i=static_cast<double>(j)/NumKPointsPerLine;
 			GeometryVector k=(*iter)*(1.0-i)+(*(iter+1))*i;
 			PhononFrequency(k, crystal, pot, partresult, Mass);
+			if(partresult.empty())   // invalid crystal/mass: back()/front() below would be UB and NumCurves would stay 0
+			{
+				std::cerr<<"Error in PlotPhononFrequencies: PhononFrequency returned no data; aborting plot\n";
+				return;
+			}
 			NumCurves=partresult.size();
 			for(auto iter2=partresult.begin(); iter2!=partresult.end(); iter2++)
 				results.push_back(*iter2);
@@ -145,7 +158,7 @@ void PlotPhononFrequencies_3DHexagonal(const Configuration & crystal, PairPotent
 {
 	assert(crystal.GetDimension()==3);
 	std::vector<GeometryVector> ks;
-	std::vector<char *> ls;
+	std::vector<const char *> ls;
 	GeometryVector gamma(0.0, 0.0, 0.0);
 	GeometryVector M((crystal.GetReciprocalBasisVector(0))*0.5);
 	GeometryVector K((crystal.GetReciprocalBasisVector(0)+crystal.GetReciprocalBasisVector(1))*(1.0/3));
@@ -178,7 +191,7 @@ void PlotPhononFrequencies_3DCubic(const Configuration & crystal, PairPotential 
 {
 	assert(crystal.GetDimension()==3);
 	std::vector<GeometryVector> ks;
-	std::vector<char *> ls;
+	std::vector<const char *> ls;
 	GeometryVector gamma(0.0, 0.0, 0.0);
 	GeometryVector X((crystal.GetReciprocalBasisVector(1))*0.5);
 	GeometryVector M((crystal.GetReciprocalBasisVector(0)+crystal.GetReciprocalBasisVector(1))*0.5);
@@ -207,7 +220,7 @@ void PlotPhononFrequencies_3DTetragonal(const Configuration & crystal, PairPoten
 {
 	assert(crystal.GetDimension()==3);
 	std::vector<GeometryVector> ks;
-	std::vector<char *> ls;
+	std::vector<const char *> ls;
 	GeometryVector gamma(0.0, 0.0, 0.0);
 	GeometryVector X((crystal.GetReciprocalBasisVector(1))*0.5);
 	GeometryVector Z((crystal.GetReciprocalBasisVector(2))*0.5);
@@ -246,7 +259,7 @@ void PlotPhononFrequencies_3DFCC(const Configuration & crystal, PairPotential & 
 {
 	assert(crystal.GetDimension()==3);
 	std::vector<GeometryVector> ks;
-	std::vector<char *> ls;
+	std::vector<const char *> ls;
 	GeometryVector gamma(0.0, 0.0, 0.0);
 	GeometryVector X((crystal.GetReciprocalBasisVector(0)+crystal.GetReciprocalBasisVector(2))*0.5);
 	GeometryVector W((2.0*crystal.GetReciprocalBasisVector(0)+crystal.GetReciprocalBasisVector(1)+3.0*crystal.GetReciprocalBasisVector(2))*0.25);
@@ -285,7 +298,7 @@ void PlotPhononFrequencies_2DHexagonal(const Configuration & crystal, PairPotent
 {
 	assert(crystal.GetDimension()==2);
 	std::vector<GeometryVector> ks;
-	std::vector<char *> ls;
+	std::vector<const char *> ls;
 	GeometryVector gamma(0.0, 0.0);
 	GeometryVector M((crystal.GetReciprocalBasisVector(0))*0.5);
 	GeometryVector K((crystal.GetReciprocalBasisVector(0)+crystal.GetReciprocalBasisVector(1))*(1.0/3));
@@ -303,7 +316,7 @@ void PlotPhononFrequencies_2DCubic(const Configuration & crystal, PairPotential 
 {
 	assert(crystal.GetDimension()==2);
 	std::vector<GeometryVector> ks;
-	std::vector<char *> ls;
+	std::vector<const char *> ls;
 	GeometryVector gamma(0.0, 0.0);
 	GeometryVector X((crystal.GetReciprocalBasisVector(1))*0.5);
 	GeometryVector M((crystal.GetReciprocalBasisVector(0)+crystal.GetReciprocalBasisVector(1))*0.5);
@@ -323,7 +336,7 @@ void PlotPhononFrequencies_2DRectangle(const Configuration & crystal, PairPotent
 {
 	assert(crystal.GetDimension()==2);
 	std::vector<GeometryVector> ks;
-	std::vector<char *> ls;
+	std::vector<const char *> ls;
 	GeometryVector gamma(0.0, 0.0);
 	GeometryVector X((crystal.GetReciprocalBasisVector(0))*0.5);
 	GeometryVector Y((crystal.GetReciprocalBasisVector(1))*0.5);

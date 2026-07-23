@@ -11,6 +11,7 @@
  *  \param Prefix    Output file name prefix.
  *  \param Enphasis  Index of the solver curve to emphasize. */
 void Plots(IsotropicPairPotential * pPot, const std::vector<LatticeSumSolver *> * Solvers, const char * Prefix, size_t Enphasis = 0);
+
 /** \brief Plot the pair potential and lattice sums for a parameter set, writing its parameters too. (CLAUDE)
  *  \param Param     Parameter set describing the potential.
  *  \param Solvers   Candidate-structure lattice-sum solvers to evaluate and plot.
@@ -38,6 +39,7 @@ void Plot(std::string prefix, const Configuration & c, const std::string & remar
  *  \param MaxSOverride  Upper clamp for S(k); 0 means no clamp.
  *  \param TileSize      Tile size used for the rendered colour map. */
 void PlotDirectionalStructureFactor2D(const std::vector<Configuration> & vc, long limit, std::string prefix, bool LogScale, double MinSOverride, double MaxSOverride, double TileSize);
+
 /** \brief Plot the directional (2D) structure factor of a single configuration. (CLAUDE)
  *  \param c             Configuration to analyze.
  *  \param limit         Number of reciprocal lattice steps to scan in each direction.
@@ -47,6 +49,7 @@ void PlotDirectionalStructureFactor2D(const std::vector<Configuration> & vc, lon
  *  \param MaxSOverride  Upper clamp for S(k); 0 means no clamp.
  *  \param TileSize      Tile size used for the rendered colour map. */
 void PlotDirectionalStructureFactor2D(const Configuration & c, long limit, std::string prefix, bool LogScale=true, double MinSOverride=0.0, double MaxSOverride=0.0, double TileSize=1.0);
+
 /** \brief Plot the directional (2D) structure factor of a configuration (prefix-first overload). (CLAUDE)
  *  \param prefix        Output file name prefix.
  *  \param c             Configuration to analyze.
@@ -74,6 +77,7 @@ void PlotPath(std::string prefix, const Configuration & List, const std::string 
  *  \param remark        Optional caption drawn on the figure.
  *  \param displacement  Flat (x, y) displacement components, two per particle. */
 void PlotDisplacement(std::string prefix, const Configuration & List, const std::string & remark, const std::vector<double> & displacement);
+
 /** \brief Plot a 2D periodic cell list as a sphere packing of uniform radius. (CLAUDE)
  *  \tparam add     Per-particle characteristics type of the cell list.
  *  \param prefix   Output file name prefix.
@@ -82,6 +86,7 @@ void PlotDisplacement(std::string prefix, const Configuration & List, const std:
  *  \param r        Radius assigned to every particle. */
 template<typename add>
 void PlotPacking2D(std::string prefix, const PeriodicCellList<add> & List, const std::string & remark, double r);
+
 /** \brief Plot a 2D sphere packing with per-particle radii. (CLAUDE)
  *  \param prefix       Output file name prefix.
  *  \param List         Sphere packing to plot.
@@ -112,6 +117,7 @@ void PlotFunction_MathGL(const std::vector<GeometryVector> & result, const std::
  *  \param MaxY           Maximum Y of the plot world.
  *  \param TickY          Major tick spacing on Y. */
 void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumSet, const std::string & OutFilePrefix, const std::string & xLabel, const std::string & yLabel, const std::vector<std::string> & legends, const std::string & Title, double MinX, double MaxX, double TickX, double MinY, double MaxY, double TickY);
+
 /** \brief Write one or more data series to a Grace (.agr) project file with auto-computed axis ranges. (CLAUDE)
  *  \param presult        Array of NumSet data series.
  *  \param NumSet         Number of series in presult.
@@ -121,6 +127,7 @@ void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumS
  *  \param legends        Legend text per series.
  *  \param Title          Plot title. */
 void PlotFunction_Grace(const std::vector<GeometryVector> * presult, size_t NumSet, const std::string & OutFilePrefix, const std::string & xLabel, const std::string & yLabel, const std::vector<std::string> & legends, const std::string & Title);
+
 /** \brief Write a single data series to a Grace (.agr) project file. (CLAUDE)
  *  \param result         Data series to write.
  *  \param OutFilePrefix  Output file name prefix (".agr" is appended).
@@ -133,6 +140,7 @@ void PlotFunction_Grace(const std::vector<GeometryVector> & result, const std::s
  *  \param result        Destination vector of series, filled from the file.
  *  \param InFilePrefix  Input file name prefix (".agr" is appended). */
 void ReadGraceData(std::vector<std::vector<GeometryVector> > & result, const std::string & InFilePrefix);
+
 /** \brief Read data series from an open Grace (.agr) input stream. (CLAUDE)
  *  \param result  Destination vector of series, filled from the stream.
  *  \param ifile   Input stream positioned at the start of the Grace file. */

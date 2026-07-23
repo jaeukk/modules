@@ -167,6 +167,7 @@ class GLFrame
 			vOrigin[1] += vCross[1] * fDelta;
 			vOrigin[2] += vCross[2] * fDelta;
 			}
+
 		///////////////////////////////////////////////////////////////////////
 		// Just assemble the 
 

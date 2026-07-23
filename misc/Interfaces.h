@@ -1,7 +1,9 @@
 #ifndef INTERFACES_INCLUDED
 #define INTERFACES_INCLUDED
 #include <iostream>
+#include <iomanip>
 #include <string>
+#include <cstring>
 #include <PeriodicCellList.h>
 #include <Plots.h>
 #include <DisplaySpheres.h>
@@ -9,21 +11,26 @@
 /** \brief Run the inverse statistical-mechanics command-line interface. (CLAUDE)
  *  \return  Exit status code. */
 int InvStatMechCLI();
+
 /** \brief Run the pair-statistics command-line interface. (CLAUDE)
  *  \return  Exit status code. */
 int PairStatisticsCLI();
+
 /** \brief Run the collective-coordinate command-line interface. (CLAUDE)
  *  \return  Exit status code. */
 int CollectiveCoordinateCLI();
+
 /** \brief Run the tiling-problem command-line interface. (CLAUDE)
  *  \return  Exit status code. */
 int TilingProblemCLI();
+
 /** \brief Run the first collective-coordinate inversion problem. (CLAUDE)
  *  \param  TODO(CLAUDE): unclear - review */
 void CCInversionProblem1(bool );
 
 //defined in debug.cpp
 //int Debug();
+
 /** \brief Run the simple debug routine. (CLAUDE)
  *  \return  Exit status code. */
 int DebugSimple();
@@ -55,6 +62,7 @@ template<typename T> class InputParameters {
 		//return strcmp(this->keyword, KEYWORD) == 0; 
 		return KEYWORD.compare(this->keyword) == 0;
 		}
+
 	/** \brief Input variables
 	 *  \param ifile  Input stream to read the parameter value from.
 	 *  \param ofile  Output stream for echoing prompts/responses. */
@@ -74,7 +82,8 @@ inline int cli()
 	double BondLength = 0.0, Radius = 0.0;
 	for(;;)
 	{
-		ifile>>tempstring;
+		if(!(ifile >> std::setw(1000) >> tempstring))//setw bounds the read to the buffer; a failed read (EOF) stops the loop instead of re-dispatching the previous command forever
+			return 0;
 		if(strcmp(tempstring, "Exit")==0)
 		{
 			return 0;

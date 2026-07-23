@@ -96,6 +96,14 @@ public:
 	/** \brief Construct a jammer and set all parameters to their defaults. (CLAUDE) */
 	TJJammer();
 
+	/** \brief Release all owned heap resources (RNG, matrices, coordinate arrays, neighbor lists). (CLAUDE) */
+	~TJJammer();
+
+	/** \brief Copy construction is deleted: TJJammer owns raw heap resources with no deep-copy support. (CLAUDE) */
+	TJJammer(const TJJammer &) = delete;
+	/** \brief Copy assignment is deleted: TJJammer owns raw heap resources with no deep-copy support. (CLAUDE) */
+	TJJammer & operator=(const TJJammer &) = delete;
+
 protected:
 	// Timer variables:
 	class TimerClass 
@@ -105,8 +113,10 @@ protected:
 
 		/** \brief Record the current time as the timer start. (CLAUDE) */
 		void Start();
+
 		/** \brief Record the current time and store the elapsed interval. (CLAUDE) */
 		void End();
+
 		/** \brief Print the elapsed time to standard output. (CLAUDE) */
 		void Display();
 	private:
@@ -119,12 +129,16 @@ protected:
 		NeighborNode *next;
 		int index;
 
-		/** \brief Recursively delete the rest of the linked neighbor list. (CLAUDE) */
-		~NeighborNode() 
+		/** \brief Iteratively delete the rest of the linked neighbor list (avoids deep recursion / stack overflow on long lists). (CLAUDE) */
+		~NeighborNode()
 		{
-			if (next != 0) 
+			NeighborNode *p = next;
+			while (p != 0)
 			{
-				delete next;
+				NeighborNode *following = p->next;
+				p->next = 0;
+				delete p;
+				p = following;
 			}
 		}
 	};
@@ -151,20 +165,29 @@ protected:
 	 *  \param inputVec  Displacement in lattice (local) coordinates.
 	 *  \return          Length of Lambda*inputVec in global Cartesian coordinates. */
 	double getGlobalLength(double *inputVec) ;
+
 	/** \brief Volume of the fundamental cell (|det Lambda|). (CLAUDE)
 	 *  \return  Absolute value of the lattice determinant. */
 	double getVol();
+
 	/** \brief Rescale the lattice to remove any sphere overlaps, optionally jittering positions. (CLAUDE)
 	 *  \param randOver  If true, leave a small gap and apply random stochastic moves after resizing.
 	 *  \return          1 if a resize was performed, 0 otherwise. */
 	int resizeIfOverlap(bool randOver) ;
+
 	/** \brief Total volume occupied by all spheres. (CLAUDE)
 	 *  \return  Sum of the d-dimensional volumes of every sphere. */
 	double getSphereVol();
+
 	/** \brief Scale lattice and coordinates by rescaleIC to "rewind" a packing. (CLAUDE) */
 	void RescalePacking();
+
 	/** \brief Free and reset both near-neighbor lists. (CLAUDE) */
 	void DeleteOldNNL();
+
+	/** \brief Release the per-packing heap state (matrices, coordinate arrays, neighbor lists) and null the pointers; idempotent. (CLAUDE) */
+	void FreeState();
+
 	/** \brief Rebuild the influence-sphere and overlap near-neighbor lists. (CLAUDE)
 	 *  \return  Total number of neighbor contacts (counted once per pair). */
 	int calcNNLs() ;
@@ -175,35 +198,44 @@ protected:
 	double InternalNNLextraDist;
 	/** \brief Uniformly grow all radii until the first contact is made. (CLAUDE) */
 	void MaximizeRadii();
+
 	/** \brief Adapt the MC trial-move displacement limit toward a target acceptance rate. (CLAUDE)
 	 *  \param accRate  Measured acceptance rate of the last MC sweep. */
 	void MC_AdjustDispLimit(double accRate);
+
 	/** \brief Attempt a single random Monte Carlo move of one sphere, rejecting overlaps. (CLAUDE)
 	 *  \param i  Index of the sphere to move.
 	 *  \return   Magnitude of the accepted displacement, or 0 if the move was rejected. */
 	double MC_Move(int i);
+
 	/** \brief Perform a sweep of Monte Carlo moves and adapt the displacement limit. (CLAUDE)
 	 *  \param numTries  Number of trial moves to attempt.
 	 *  \return          Largest accepted displacement during the sweep. */
 	double MC_Sweep(int numTries);
+
 	/** \brief Initialize the Monte Carlo displacement limit. (CLAUDE) */
 	void MC_Init();
+
 	/** \brief Write the current packing to a .dat file in Alek's format. (CLAUDE)
 	 *  \param thisOutputFilename  Output path without extension (".dat" is appended).
 	 *  \param addIterNum          If true, append the LP iteration number to the filename.
 	 *  \return                    1 on success, 0 if the file could not be created. */
 	int printPacking(std::string thisOutputFilename, bool addIterNum);
+
 	/** \brief Decide whether the SLP iterations should stop. (CLAUDE)
 	 *  \param lastLastVol  Lattice volume two iterations ago (for the latticeVol criterion).
 	 *  \param latVol       Current lattice volume.
 	 *  \param phi          Current packing fraction.
 	 *  \return             true if a termination criterion is met, false otherwise. */
 	bool CheckTermination(double lastLastVol, double latVol, double phi);
+
 	/** \brief Append the timer's elapsed time to TIMEFILE.txt. (CLAUDE)
 	 *  \param timer  Timer whose elapsed time is written. */
 	void PrintTime(TimerClass timer);
+
 	/** \brief Delete the temporary auto-save directory and its contents. (CLAUDE) */
 	void ClearSaveData();
+
 	/** \brief Save the current packing and an iteration log to the temporary folder. (CLAUDE) */
 	void SaveProgress();
 	SpherePacking result;
@@ -213,6 +245,7 @@ public:
 	/** \brief Load an initial sphere packing into the jammer's internal state. (CLAUDE)
 	 *  \param p  Sphere packing to use as the initial configuration. */
 	void SetPacking(const SpherePacking & p);
+
 	/** \brief Return the jammed packing produced by the iterations. (CLAUDE)
 	 *  \return  The resulting sphere packing. */
 	SpherePacking GetPacking(void);
@@ -308,12 +341,14 @@ public:
 	{
 		std::cerr<<"Error in TJJammer : TJ is not enabled!\n";
 	}
+
 	/** \brief Stub: TJ is disabled; reports an error. (CLAUDE)
 	 *  \param p  Ignored sphere packing. */
-	void SetPacking(const SpherePacking & p)
+	void SetPacking(const SpherePacking &)
 	{
 		std::cerr<<"Error in TJJammer : TJ is not enabled!\n";
 	}
+
 	/** \brief Stub: TJ is disabled; reports an error and returns an empty packing. (CLAUDE)
 	 *  \return  An empty SpherePacking. */
 	SpherePacking GetPacking(void)
@@ -326,7 +361,7 @@ public:
  *  \param dim       Ignored spatial dimension.
  *  \param contacts  Ignored contact vectors.
  *  \return          Always false. */
-inline bool IsRattler_LP(DimensionType dim, const std::vector<GeometryVector> & contacts)
+inline bool IsRattler_LP(DimensionType, const std::vector<GeometryVector> &)
 {
 	std::cerr << "Error in IsRattler_LP : TJ is not enabled!\n"; 
 		return false;

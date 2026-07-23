@@ -49,7 +49,15 @@ public:
 	LPClass(TJJammer & src)
 	{
 		this->pTJJammer=&src;
+		// Null the owned pointers so Cleanup() is safe even if LPRoutine throws before they are allocated.
+		tempVec1=nullptr; tempVec2=nullptr;
+		ia=nullptr; ja=nullptr; ar=nullptr; ineq=nullptr; bounds=nullptr;
+		maxMoveVals=nullptr; oldLambdasNewLocals=nullptr; InternalDeltaLocalCoords=nullptr;
+		updateLambdas=nullptr; updateTemp=nullptr;
+		lp=nullptr;
+		gEnv=nullptr; gModel=nullptr; gVar=nullptr; gConstr=nullptr; gExpr=nullptr;
 	}
+
 	/** \brief The solve function from Version0.0 (for comparison of results).
 	 *  \param maxSize  Maximum number of constraints to allocate for. */
 	int  SolveLP_V00(int maxSize); //The solve function from Version0.0 (for comparison of results)
@@ -124,14 +132,18 @@ private:
 	//Importing the problem into a solver:
 	/** \brief Import the generated constraints into the configured LP solver. (CLAUDE) */
 	void Import();
+
 	/** \brief Build the GLPK problem object, variables, and constraint bounds. (CLAUDE) */
 	void Import_GLPK();
 	//void Import_HOPDM();
 	//void Import_BPMPD();
+
 	/** \brief Build the Gurobi environment, model, variables, and constraints. (CLAUDE) */
 	void   Import_Gurobi();
+
 	/** \brief Configure Gurobi tolerances, method, threads, and presolve settings. (CLAUDE) */
 	void   SetupEnvironment_Gurobi();
+
 	/** \brief Functions for adding variables to gVar (strain component variable). (CLAUDE)
 	 *  \param i         First strain-matrix index.
 	 *  \param l         Second strain-matrix index.
@@ -144,8 +156,10 @@ private:
 	 *  \param varIndex            Slot in the gVar array to store the new variable. */
 	void   AddDelta_Gurobi(int InternalDeltaIndex,
 		int varIndex);
+
 	/** \brief Add all nonoverlap (and strain-trace) constraints to the Gurobi model. (CLAUDE) */
 	void   AddConstrs_Gurobi();
+
 	/** \brief Build and add a single linear constraint to the Gurobi model. (CLAUDE)
 	 *  \param constrIndex  Index of the constraint being added.
 	 *  \param numTerms     Number of coefficient terms in this constraint.
@@ -157,10 +171,12 @@ private:
 	//Solving using the LP software:
 	/** \brief Solve the LP using the configured solver. (CLAUDE) */
 	void Solve();
+
 	/** \brief Load and solve the problem with the GLPK simplex method. (CLAUDE) */
 	void Solve_GLPK();
 	//int Solve_HOPDM();
 	//int Solve_BPMPD();
+
 	/** \brief Optimize the Gurobi model, handling infeasible/unbounded/precision cases. (CLAUDE) */
 	void Solve_Gurobi();
 
@@ -168,18 +184,23 @@ private:
 	/** \brief Update the packing with the results of the LP solve.
 	 *  \param lpIters  Current LP iteration index. */
 	void Export(int lpIters);
+
 	/** \brief Read the optimal strain matrix (I + epsilon) from the GLPK solution. (CLAUDE) */
 	void ExportStrain_GLPK();
 	//void ExportStrain_HOPDM();
 	//void ExportStrain_BPMPD();
+
 	/** \brief Read the optimal strain matrix (I + epsilon) from the Gurobi solution. (CLAUDE) */
 	void ExportStrain_Gurobi();
+
 	/** \brief Apply the solved strain to the lattice matrix lambdas. (CLAUDE) */
 	void ApplyStrain();
+
 	/** \brief Apply the solved sphere displacements, updating coordinates and lattice. (CLAUDE)
 	 *  Also keeps track of which particle moved farthest (relative to the total packing
 	 *  displacement) if termCriterion is "maxDisp". */
 	void ExportMovements();
+
 	/** \brief if the SLP termination criterion is maxDisp, this is called.
 	 *  \param globalTotDisp  Accumulator for the packing's net (center-of-mass) displacement.
 	 *  \param globalDisp     Per-sphere displacement vectors in global coordinates. */
@@ -219,6 +240,7 @@ double TJJammer::getGlobalLength(double *inputVec)
   // returns
   return dist;
 }
+
 /** \brief Compute the inverse of a square matrix via GSL LU decomposition. (CLAUDE)
  *  \param matrixToInvert  Square matrix to invert (must be non-singular).
  *  \return                Newly allocated matrix holding the inverse. */
@@ -370,6 +392,7 @@ int TJJammer::resizeIfOverlap(bool randOver)
       //gsl_matrix *inverseLambdas = gsl_matrix_calloc(dim,dim);
 
       // get the inverse of lambdas
+      if (inverseLambdas != nullptr) gsl_matrix_free(inverseLambdas);   // getInverse allocates a new matrix; free the old one first
       inverseLambdas = getInverse(lambdas);
 
       // get the random movement
@@ -912,10 +935,16 @@ void LPClass::LPRoutine(int lpIters,
 		       int maxSize)
 {
   Initialize();
-  Generate(maxSize);
-  Import();
-  Solve(); //Sets solverStatus
-  Export(lpIters);
+  try {
+    Generate(maxSize);
+    Import();
+    Solve(); //Sets solverStatus
+    Export(lpIters);
+  }
+  catch (...) {
+    Cleanup();   // release the workspace allocated in Initialize/Generate/Import before propagating the exception
+    throw;
+  }
   Cleanup();
 
   return;
@@ -2318,7 +2347,8 @@ void LPClass::UpdateLPFile(int    lpIters, double strainTrace, double freeSphere
 				outFile.open(filename.c_str() , ios::out);
 				if (!outFile.is_open()) {
 					cerr << "    Failed to open " << filename << endl;
-					throw;
+					std::string emsg = "LPClass::Export: failed to open output file " + filename;
+					throw TJJammer::error(emsg.c_str());   // bare 'throw;' outside a catch would call std::terminate
 				}
 				outFile << "#Iteration\t";
 				outFile << "#phi\t";
@@ -2358,7 +2388,8 @@ void LPClass::Cleanup()
   // free memory
   if (strcmp(pTJJammer->solver.c_str(),"GLPK") == 0) {
     cout << "  Deallocate GLPK Object" << endl;
-    glp_delete_prob(lp);
+    if (lp != nullptr)   // may be null if LPRoutine threw before the problem object was built
+      glp_delete_prob(lp);
     //glp_free_env();
   }
   else if (strcmp(pTJJammer->solver.c_str(),"Gurobi") == 0) {
@@ -2437,6 +2468,8 @@ TJJammer::TJJammer()
 	rescaleIC=1.0;
 	printLPEvery=0;
 	solver="Gurobi";
+	lambdas=nullptr;
+	inverseLambdas=nullptr;
 	localCoords=nullptr;
 	globalCoords=nullptr;
 	radii=nullptr;
@@ -2460,8 +2493,34 @@ SpherePacking TJJammer::GetPacking()
 {
 	return result;
 }
+
+TJJammer::~TJJammer()
+{
+	this->FreeState();
+	if (RNG != nullptr) { gsl_rng_free(RNG); RNG = nullptr; }
+}
+
+void TJJammer::FreeState()
+{
+	if (lambdas != nullptr) { gsl_matrix_free(lambdas); lambdas = nullptr; }
+	if (inverseLambdas != nullptr) { gsl_matrix_free(inverseLambdas); inverseLambdas = nullptr; }
+	delete [] localCoords;  localCoords = nullptr;
+	delete [] globalCoords; globalCoords = nullptr;
+	delete [] radii;        radii = nullptr;
+	delete [] distTempL;    distTempL = nullptr;
+	delete [] distTempG;    distTempG = nullptr;
+	if (neighborListDelta != nullptr && neighborListOverlap != nullptr) {
+		DeleteOldNNL();
+		delete [] neighborListDelta;   neighborListDelta = nullptr;
+		delete [] neighborListOverlap; neighborListOverlap = nullptr;
+	}
+}
+
 void TJJammer::SetPacking(const SpherePacking & p)
 {
+	// Release any state from a previous SetPacking/TJIterations (uses the OLD N for the neighbor lists) so repeated loads don't leak.
+	this->FreeState();
+	this->biggestRad = 0.0;   // reset derived state so a smaller packing does not inherit a stale motion scale
 	this->dim=p.GetDimension();
 	this->N=p.NumParticle();
 	// initialize the variable coordinates - necessary regardless of whether an initial config (readInitFile = true) is provided
@@ -2538,6 +2597,9 @@ double TJJammer::MC_Sweep(int numTries)
 //keep track of the success rate
 {
   cout << "MC_Sweep()\n";
+  if (numTries <= 0)   // a fractional sweep can truncate to 0 trials; avoid the 0/0 acceptance-rate division below
+    return 0.0;
+  if (inverseLambdas != nullptr) gsl_matrix_free(inverseLambdas);   // getInverse allocates a new matrix; free the old one first
   inverseLambdas = getInverse(lambdas);
   int numSuccess = 0;
   double mc_maxDisp = 0.0;
@@ -2691,6 +2753,7 @@ void TJJammer::RescalePacking()
 {
   //Rescale lattice matrix:
   gsl_matrix_scale(lambdas,rescaleIC);
+  if (inverseLambdas != nullptr) gsl_matrix_free(inverseLambdas);   // getInverse allocates a new matrix; free the old one first
   inverseLambdas = getInverse(lambdas); //Re-compute
   //Rescale coordinates:
   int k=0;
@@ -3114,6 +3177,7 @@ void TJJammer::TJIterations()
   //If we wanted to maximize the initial density, rescale the radii here so that the first contact is made:
   if (maxInitRad) {
     MaximizeRadii();
+    sphereVol = getSphereVol();   // radii changed; refresh the occupied volume used for phi/termination/validity checks
   }
 
 
@@ -3260,21 +3324,9 @@ void TJJammer::TJIterations()
   {
 	  result=SpherePacking();
   }
-  // free memory
-  gsl_rng_free(RNG);
-  gsl_matrix_free(lambdas);
-  gsl_matrix_free(inverseLambdas);
-  delete [] localCoords;
-  delete [] globalCoords;
-  delete [] radii;
-  delete [] distTempL;
-  delete [] distTempG;
-
-  if (useNNL) {
-    DeleteOldNNL();
-    delete [] neighborListDelta;
-    delete [] neighborListOverlap;
-  }
+  // free memory (idempotent: FreeState nulls the pointers so the destructor won't double-free; RNG is released here as before)
+  this->FreeState();
+  if (RNG != nullptr) { gsl_rng_free(RNG); RNG = nullptr; }
 
   return;
 }

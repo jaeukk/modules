@@ -633,12 +633,12 @@ bool m3dInvertMatrix44(M3DMatrix44d dst, const M3DMatrix44d src)
 ///////////////////////////////////////////////////////////////////////////////////////
 // Get Window coordinates, discard Z...
 /** \brief Project a 3D point to 2D window coordinates, discarding Z. (CLAUDE)
+ *  \param vPointOut    Destination 2D window coordinates.
  *  \param mModelView   Model-view matrix.
  *  \param mProjection  Projection matrix.
  *  \param iViewPort    Viewport as (x, y, width, height).
- *  \param vPointIn     Source 3D point in object space.
- *  \param vPointOut    Destination 2D window coordinates. */
-void m3dProjectXY(const M3DMatrix44f mModelView, const M3DMatrix44f mProjection, const int iViewPort[4], const M3DVector3f vPointIn, M3DVector2f vPointOut)
+ *  \param vPointIn     Source 3D point in object space. */
+void m3dProjectXY(M3DVector2f vPointOut, const M3DMatrix44f mModelView, const M3DMatrix44f mProjection, const int iViewPort[4], const M3DVector3f vPointIn)
 	{
     M3DVector4f vBack, vForth;
 
@@ -666,12 +666,12 @@ void m3dProjectXY(const M3DMatrix44f mModelView, const M3DMatrix44f mProjection,
 ///////////////////////////////////////////////////////////////////////////////////////
 // Get window coordinates, we also want Z....
 /** \brief Project a 3D point to 3D window coordinates, keeping Z. (CLAUDE)
+ *  \param vPointOut    Destination 3D window coordinates.
  *  \param mModelView   Model-view matrix.
  *  \param mProjection  Projection matrix.
  *  \param iViewPort    Viewport as (x, y, width, height).
- *  \param vPointIn     Source 3D point in object space.
- *  \param vPointOut    Destination 3D window coordinates. */
-void m3dProjectXYZ(const M3DMatrix44f mModelView, const M3DMatrix44f mProjection, const int iViewPort[4], const M3DVector3f vPointIn, M3DVector3f vPointOut)
+ *  \param vPointIn     Source 3D point in object space. */
+void m3dProjectXYZ(M3DVector3f vPointOut, const M3DMatrix44f mModelView, const M3DMatrix44f mProjection, const int iViewPort[4], const M3DVector3f vPointIn)
 	{
     M3DVector4f vBack, vForth;
 

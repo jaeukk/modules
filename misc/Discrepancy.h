@@ -10,6 +10,7 @@
 /** \brief Sort the values in stack in ascending order. (CLAUDE)
  *  \param stack  Data to sort in place. */
 void MergeSort(std::vector<double> &stack);
+
 /** \brief Sort data in stack in the ascending order according to std_col-th component.
  *  \param stack    Vectors to sort in place.
  *  \param std_col  Component index used as the sort key. */
@@ -33,7 +34,7 @@ template<typename T> void Merge_Sort(PeriodicCellList<T> & stack, int std_col) {
 		//Make an index
 		GeometryVector index_vec(stack.GetDimension());
 		const int indexing_dimension = (0 == std_col) ? 1 : 0;
-		for (int i = 0; i < stack.NumParticle(); i++) {
+		for (size_t i = 0; i < stack.NumParticle(); i++) {
 			tempConfig.push_back(stack.GetRelativeCoordinates(i) + index_vec); //<= the relative coordinates indicate the original ordering
 			tempCharacteristics.push_back(stack.GetCharacteristics(i));
 			index_vec.x[indexing_dimension]++;
@@ -42,7 +43,7 @@ template<typename T> void Merge_Sort(PeriodicCellList<T> & stack, int std_col) {
 		MergeSort(tempConfig, std_col);
 		stack.RemoveParticles();
 		int t = 0;
-		for (int i = 0; i < tempConfig.size(); i++) {
+		for (size_t i = 0; i < tempConfig.size(); i++) {
 			t = (int)floor(tempConfig[i].x[indexing_dimension]);	//here t indicates the index of the particle
 			tempConfig[i].x[indexing_dimension] -= (double)t;
 			stack.Insert(tempCharacteristics[t], tempConfig[i]);
@@ -54,7 +55,7 @@ template<typename T> void Merge_Sort(PeriodicCellList<T> & stack, int std_col) {
 		//Make an index
 		GeometryVector index_vec(2);
 		const int indexing_dimension = 1;
-		for (int i = 0; i < stack.NumParticle(); i++) {
+		for (size_t i = 0; i < stack.NumParticle(); i++) {
 			tempConfig.push_back(GeometryVector(stack.GetRelativeCoordinates(i).x[0],0) + index_vec); //<= the relative coordinates indicate the original ordering
 			tempCharacteristics.push_back(stack.GetCharacteristics(i));
 			index_vec.x[indexing_dimension]++;
@@ -63,7 +64,7 @@ template<typename T> void Merge_Sort(PeriodicCellList<T> & stack, int std_col) {
 		MergeSort(tempConfig, std_col);
 		stack.RemoveParticles();
 		int t = 0;
-		for (int i = 0; i < tempConfig.size(); i++) {
+		for (size_t i = 0; i < tempConfig.size(); i++) {
 			t = (int)round(tempConfig[i].x[indexing_dimension]);	//here t indicates the index of the particle
 			stack.Insert(tempCharacteristics[t], GeometryVector(tempConfig[i].x[0]));
 		}
@@ -122,7 +123,8 @@ std::vector<GeometryVector> Crop(const PeriodicCellList<T> &config, const std::f
 		return  t;
 	}
 	else {//Check the dimension of vectors of R
-		int i = 0;	bool coincident = true;
+		//R must supply at least one row per spatial dimension: the lambda and output transform below index R[0..Dimension-1].
+		size_t i = 0;	bool coincident = (R.size() >= static_cast<size_t>(config.GetDimension()));
 		while (i < R.size() && coincident) {
 			if (i == 0) { coincident = (config.GetDimension() == R[0].Dimension);}
 			else {	coincident = (R[i].Dimension == R[i - 1].Dimension);}

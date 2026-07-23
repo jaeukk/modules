@@ -15,6 +15,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <limits>
 
 static std::vector<GLFrame> spheres;
 static GLFrame    frameCamera;
@@ -179,10 +180,13 @@ void SavePovRay(void)
 		m1[14]=Lines[i].z2;
 		m1[15]=0.0;
 		m3dMatrixMultiply44(m0, m2, m1);
-		ofile<<"<"<<(-1)*(m0[12])<<","<<m0[13]<<","<<m0[14]<<">,"<<Spheres[0].radius*0.2<<" pigment { color rgb <";
+		// Cylinder radius: relative to sphere size when spheres exist, otherwise derived from the line width (line-only scenes have no Spheres[0]).
+		double cylRadius = Spheres.empty() ? Lines[i].width*0.01 : Spheres[0].radius*0.2;
+		ofile<<"<"<<(-1)*(m0[12])<<","<<m0[13]<<","<<m0[14]<<">,"<<cylRadius<<" pigment { color rgb <";
 		ofile<<Lines[i].red<<","<<Lines[i].green<<","<<Lines[i].blue<<"> } } \n";
 	}
 }
+
 ///////////////////////////////////////////////////////////////////////
 // Draw spheres
 
@@ -200,6 +204,7 @@ double GetDepth(size_t i)
 	m3dMatrixMultiply44(m0, m2, m1);
 	return m0[14];
 }
+
 /** \brief Draw all spheres (depth-sorted) and lines of the current scene. (CLAUDE) */
 void DrawInhabitants()
 {
@@ -291,6 +296,7 @@ void ChangeToOrtho()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();    
 }
+
 /** \brief Switch the projection to perspective mode. (CLAUDE) */
 void ChangeToPerspective()
 {
@@ -339,6 +345,7 @@ void SpecialKeys(int key, int x, int y)
 	// Refresh the Window
 	glutPostRedisplay();
 }
+
 /** \brief GLUT keyboard callback: handle precision, projection, movie, quit, and save keys. (CLAUDE)
  *  \param key  ASCII code of the pressed key.
  *  \param x    Mouse X position when the key was pressed.
@@ -376,10 +383,13 @@ void KeyStroke(unsigned char key, int x, int y)
 	if(key == 'a')
 	{
 		FrameRate/=1.5;
+		if(FrameRate < 1)   // never let the frame period truncate to 0 (idle callback divides by it)
+			FrameRate = 1;
 	}
 	if(key == 's')
 	{
-		FrameRate*=1.5;
+		if(FrameRate < std::numeric_limits<long>::max()/2)   // guard against long overflow
+			FrameRate*=1.5;
 	}
 	if(key == 'd')
 	{
@@ -424,6 +434,7 @@ void IdleFunction(void)
 		}
 	}
 }
+
 ///////////////////////////////////////////////////////////
 /** \brief GLUT reshape callback: update viewport and projection for a new window size. (CLAUDE)
  *  \param w  New window width in pixels.
@@ -481,14 +492,20 @@ void Motion(int x, int y)
  *  \param Extra2DStuff  Callback receiving (window width, height) to draw extra 2D overlay content. */
 void DisplaySpheres_MultipleFrames(std::function<void(std::vector<sphere> & VSpheres, std::vector<line> & VLines, long FrameNumber)> GetFrameFunc, long NumFrames, std::function<void(size_t, size_t)> Extra2DStuff)
 {
+	if(NumFrames <= 0)
+	{
+		std::cerr << "Error in DisplaySpheres_MultipleFrames : nonpositive frame count (" << NumFrames << "); nothing to display.\n";
+		return;
+	}
 	::MaxFrame=NumFrames;
 	pGetFrameFunc = & GetFrameFunc;
 	pExtra2DStuffFunc = & Extra2DStuff;
 
 
 	int fake_argc=1;
-	char * fake_argv="DisplaySpheres";
-	glutInit(&fake_argc, &fake_argv);
+	char fake_arg[]="DisplaySpheres";
+	char * fake_argv[]={ fake_arg };
+	glutInit(&fake_argc, fake_argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowSize(WindowWidth, WindowHeight);
 	window_handle=glutCreateWindow("");
@@ -582,6 +599,7 @@ Configuration To3D(const Configuration & a)
 		return GetUnitCubicBox(3);
 	}
 }
+
 /** \brief Convert a configuration into renderable spheres (particles), bonds, and box edges. (CLAUDE)
  *  \param list           Source 3D configuration.
  *  \param spheres        Destination vector receiving the particle spheres.
@@ -601,7 +619,8 @@ void ConfigurationtoSpheres(const Configuration & list, std::vector<sphere> & sp
 	a[6] = a[2] + list.GetBasisVector(2);
 	a[7] = a[4] + list.GetBasisVector(2);
 	GeometryVector DisplayShift = a[7] * 0.5;
-	double one_over_scale = 1.0 / std::sqrt(DisplayShift.Modulus2());
+	double displaySpan = std::sqrt(DisplayShift.Modulus2());
+	double one_over_scale = (displaySpan > 0.0) ? 1.0 / displaySpan : 1.0;   // degenerate/empty cell: fall back to unit scale instead of dividing by zero
 	for (int i = 0; i<8; i++)
 	{
 		a[i].MinusFrom(DisplayShift);
@@ -702,11 +721,14 @@ void ConfigurationtoSpheres(const Configuration & list, std::vector<sphere> & sp
 	}
 
 }
+
 /** \brief Estimate a typical inter-particle spacing for a configuration. (CLAUDE)
  *  \param list  Configuration to measure.
  *  \return      A typical length scale (nearest-neighbor distance, bounded by density). */
 double findTypicalLength(const Configuration & list)
 {
+	if (list.NumParticle() == 0)   // empty configuration: no spacing to estimate, avoid division by zero
+		return 1.0;
 	double typicalLength = std::pow(list.PeriodicVolume() / list.NumParticle(), 1.0 / list.GetDimension());
 	double MinLength = 3 * typicalLength;//distance between nearest particles
 	for (size_t i = 0; i < list.NumParticle(); i++)
@@ -764,6 +786,11 @@ void Display3DConfigurationMovie(ConfigurationPack & pk, double BondLength, doub
 void Display3DStructureFactor(const Configuration& a, double KCutOff, double KSphereRadius)
 {
 	assert(a.GetDimension() == 3);
+	if (!(KCutOff > 0.0))   // KCutOff scales reciprocal positions and bounds the neighbor search; must be positive
+	{
+		std::cerr << "Error in Display3DStructureFactor : nonpositive KCutOff; nothing to display.\n";
+		return;
+	}
 	double Smin = 1000000, Smax = -1;
 	auto SetColorFunc = [&](double Sk, sphere & s) ->void
 	{
@@ -802,7 +829,8 @@ void Display3DStructureFactor(const Configuration& a, double KCutOff, double KSp
 		s.x = shift.x[0] / KCutOff;
 		s.y = shift.x[1] / KCutOff;
 		s.z = shift.x[2] / KCutOff;
-		double sk = std::log10(StructureFactor(a, shift));
+		double sf = StructureFactor(a, shift);
+		double sk = std::log10(sf > 1e-16 ? sf : 1e-16);   // floor before log10 so S(k)=0 does not yield -inf
 		if (sk<Smin)
 			Smin = sk;
 		if (sk>Smax)
@@ -815,6 +843,8 @@ void Display3DStructureFactor(const Configuration& a, double KCutOff, double KSp
 		return;
 	Smax = std::ceil(Smax);
 	Smin = std::floor(Smin);
+	if (Smax <= Smin)   // constant field: widen so the (Smax-Smin) color normalization never divides by zero
+		Smax = Smin + 1.0;
 	if (KSphereRadius == 0.0)
 	{
 		//determine the correct radius of spheres
@@ -854,30 +884,30 @@ void Display3DStructureFactor(const Configuration& a, double KCutOff, double KSp
 #else
 
 //These functions are disabled if OpenGL is disabled
-void DisplayText(const std::string & text, double x, double y)
+void DisplayText(const std::string &, double, double)
 {
 	return;
 }
-void DisplaySpheres(const std::vector<sphere> & VSpheres, const std::vector<line> & VLines, std::function<void(size_t, size_t)> Extra2DStuff)
+void DisplaySpheres(const std::vector<sphere> &, const std::vector<line> &, std::function<void(size_t, size_t)>)
 {
 	return;
 }
-void DisplaySpheres_Movie(std::function<void(std::vector<sphere> & VSpheres, std::vector<line> & VLines, long FrameNumber)> GetFrameFunc, long NbrFrames)
+void DisplaySpheres_Movie(std::function<void(std::vector<sphere> & VSpheres, std::vector<line> & VLines, long FrameNumber)> , long)
 {
 	return;
 }
 
-void Display3DStructureFactor(const Configuration& a, double KCutOff, double KSphereRadius)
+void Display3DStructureFactor(const Configuration&, double, double)
 {
 	std::cerr << "Error in Display3DStructureFactor : OpenGL not enabled!\n";
 }
 
-void Display3DConfigurationMovie(ConfigurationPack & pk, double BondLength, double Radius) 
+void Display3DConfigurationMovie(ConfigurationPack &, double, double) 
 {
 	std::cerr << "Error in Display3DConfigurationMovie : OpenGL not enabled!\n";
 }
 
-void DisplayConfiguration(const Configuration & a, double BondLength, double Radius) 
+void DisplayConfiguration(const Configuration &, double, double) 
 {
 	std::cerr << "Error in DisplayConfiguration : OpenGL not enabled!\n";
 }

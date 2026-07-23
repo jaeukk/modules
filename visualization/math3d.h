@@ -77,10 +77,15 @@ typedef double M3DMatrix44d[16];	// A 4 x 4 matrix, column major (doubles) - Ope
 inline unsigned int m3dIsPOW2(unsigned int iValue)
     {
     unsigned int nPow2 = 1;
-    
+
     while(iValue > nPow2)
-        nPow2 = (nPow2 << 1);
-    
+        {
+        unsigned int next = (nPow2 << 1);
+        if(next <= nPow2)   // left shift overflowed (wrapped to 0): no representable power of two >= iValue
+            return 0;
+        nPow2 = next;
+        }
+
     return nPow2;
     }
 
@@ -347,8 +352,14 @@ inline double m3dDotProduct(const M3DVector3d u, const M3DVector3d v)
  *  \return   Angle between u and v in radians. */
 inline float m3dGetAngleBetweenVectors(const M3DVector3f u, const M3DVector3f v)
     {
-    float dTemp = m3dDotProduct(u, v);
-    return float(acos(double(dTemp)));
+    double lu = sqrt(double(m3dDotProduct(u, u)));
+    double lv = sqrt(double(m3dDotProduct(v, v)));
+    if(lu == 0.0 || lv == 0.0)   // undefined angle for a zero-length vector
+        return 0.0f;
+    double c = double(m3dDotProduct(u, v)) / (lu * lv);
+    if(c > 1.0) c = 1.0;         // clamp against round-off so acos never yields NaN
+    else if(c < -1.0) c = -1.0;
+    return float(acos(c));
     }
 
 /** \brief Angle (in radians) between two 3D vectors.
@@ -357,8 +368,14 @@ inline float m3dGetAngleBetweenVectors(const M3DVector3f u, const M3DVector3f v)
  *  \return   Angle between u and v in radians. */
 inline double m3dGetAngleBetweenVectors(const M3DVector3d u, const M3DVector3d v)
     {
-    double dTemp = m3dDotProduct(u, v);
-    return acos(dTemp);
+    double lu = sqrt(m3dDotProduct(u, u));
+    double lv = sqrt(m3dDotProduct(v, v));
+    if(lu == 0.0 || lv == 0.0)   // undefined angle for a zero-length vector
+        return 0.0;
+    double c = m3dDotProduct(u, v) / (lu * lv);
+    if(c > 1.0) c = 1.0;         // clamp against round-off so acos never yields NaN
+    else if(c < -1.0) c = -1.0;
+    return acos(c);
     }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -414,6 +431,7 @@ inline void m3dNormalizeVector(M3DVector3d u)
  *  \param v  Second point.
  *  \return   The squared distance between u and v. */
 float m3dGetDistanceSquared(const M3DVector3f u, const M3DVector3f v);
+
 /** \brief Squared distance between two 3D points.
  *  \param u  First point.
  *  \param v  Second point.
@@ -495,12 +513,15 @@ inline void m3dCopyMatrix44(M3DMatrix44d dst, const M3DMatrix44d src)
 /** \brief Load a 3x3 matrix with the identity matrix.
  *  \param m  3x3 matrix to overwrite with the identity. */
 void m3dLoadIdentity33(M3DMatrix33f m);
+
 /** \brief Load a 3x3 matrix with the identity matrix.
  *  \param m  3x3 matrix to overwrite with the identity. */
 void m3dLoadIdentity33(M3DMatrix33d m);
+
 /** \brief Load a 4x4 matrix with the identity matrix.
  *  \param m  4x4 matrix to overwrite with the identity. */
 void m3dLoadIdentity44(M3DMatrix44f m);
+
 /** \brief Load a 4x4 matrix with the identity matrix.
  *  \param m  4x4 matrix to overwrite with the identity. */
 void m3dLoadIdentity44(M3DMatrix44d m);
@@ -692,16 +713,19 @@ inline void m3dInjectRotation(M3DMatrix44d dst, const M3DMatrix33d src)
  *  \param a        Left 4x4 matrix.
  *  \param b        Right 4x4 matrix. */
 void m3dMatrixMultiply44(M3DMatrix44f product, const M3DMatrix44f a, const M3DMatrix44f b);
+
 /** \brief Multiply two 4x4 matrices: product = a * b. (CLAUDE)
  *  \param product  Destination 4x4 matrix receiving the product.
  *  \param a        Left 4x4 matrix.
  *  \param b        Right 4x4 matrix. */
 void m3dMatrixMultiply44(M3DMatrix44d product, const M3DMatrix44d a, const M3DMatrix44d b);
+
 /** \brief Multiply two 3x3 matrices: product = a * b. (CLAUDE)
  *  \param product  Destination 3x3 matrix receiving the product.
  *  \param a        Left 3x3 matrix.
  *  \param b        Right 3x3 matrix. */
 void m3dMatrixMultiply33(M3DMatrix33f product, const M3DMatrix33f a, const M3DMatrix33f b);
+
 /** \brief Multiply two 3x3 matrices: product = a * b. (CLAUDE)
  *  \param product  Destination 3x3 matrix receiving the product.
  *  \param a        Left 3x3 matrix.
@@ -830,6 +854,7 @@ inline void m3dScaleMatrix44(M3DMatrix44d m, double scale)
  *  \param y      Y component of the rotation axis.
  *  \param z      Z component of the rotation axis. */
 void m3dRotationMatrix33(M3DMatrix33f m, float angle, float x, float y, float z);
+
 /** \brief Build a 3x3 rotation matrix for a rotation by angle (radians) about axis (x, y, z). (CLAUDE)
  *  \param m      Destination 3x3 matrix.
  *  \param angle  Rotation angle in radians.
@@ -837,6 +862,7 @@ void m3dRotationMatrix33(M3DMatrix33f m, float angle, float x, float y, float z)
  *  \param y      Y component of the rotation axis.
  *  \param z      Z component of the rotation axis. */
 void m3dRotationMatrix33(M3DMatrix33d m, double angle, double x, double y, double z);
+
 /** \brief Build a 4x4 rotation matrix for a rotation by angle (radians) about axis (x, y, z). (CLAUDE)
  *  \param m      Destination 4x4 matrix.
  *  \param angle  Rotation angle in radians.
@@ -844,6 +870,7 @@ void m3dRotationMatrix33(M3DMatrix33d m, double angle, double x, double y, doubl
  *  \param y      Y component of the rotation axis.
  *  \param z      Z component of the rotation axis. */
 void m3dRotationMatrix44(M3DMatrix44f m, float angle, float x, float y, float z);
+
 /** \brief Build a 4x4 rotation matrix for a rotation by angle (radians) about axis (x, y, z). (CLAUDE)
  *  \param m      Destination 4x4 matrix.
  *  \param angle  Rotation angle in radians.
@@ -917,6 +944,7 @@ inline void m3dScaleMatrix44(M3DMatrix44d m, double x, double y, double z)
         }                                \
     }                                    \
 }
+
 /** \brief Transpose a 4x4 matrix: dst = transpose(src). (CLAUDE)
  *  \param dst  Destination 4x4 matrix receiving the transpose.
  *  \param src  Source 4x4 matrix. */
@@ -932,6 +960,7 @@ inline void m3dTransposeMatrix44(M3DMatrix44d dst, const M3DMatrix44d src)
  *  \param src  Source 4x4 matrix.
  *  \return     True on success, false if src is singular. */
 bool m3dInvertMatrix44(M3DMatrix44f dst, const M3DMatrix44f src);
+
 /** \brief Invert a 4x4 matrix: dst = inverse(src). (CLAUDE)
  *  \param dst  Destination 4x4 matrix receiving the inverse.
  *  \param src  Source 4x4 matrix.
@@ -952,6 +981,7 @@ bool m3dInvertMatrix44(M3DMatrix44d dst, const M3DMatrix44d src);
  *  \param point3  Third triangle vertex. */
 void m3dFindNormal(M3DVector3f result, const M3DVector3f point1, const M3DVector3f point2,
 							const M3DVector3f point3);
+
 /** \brief Find the normal vector of a triangle defined by three points (counter-clockwise winding).
  *  \param result  Destination 3D vector receiving the normal.
  *  \param point1  First triangle vertex.
@@ -985,6 +1015,7 @@ inline double m3dGetDistanceToPlane(const M3DVector3d point, const M3DVector4d p
  *  \param p2       Second point on the plane.
  *  \param p3       Third point on the plane. */
 void m3dGetPlaneEquation(M3DVector4f planeEq, const M3DVector3f p1, const M3DVector3f p2, const M3DVector3f p3);
+
 /** \brief Compute the plane equation coefficients (A, B, C, D) from three points.
  *  \param planeEq  Destination 4D vector receiving the plane coefficients (A, B, C, D).
  *  \param p1       First point on the plane.
@@ -1000,6 +1031,7 @@ void m3dGetPlaneEquation(M3DVector4d planeEq, const M3DVector3d p1, const M3DVec
  *  \param sphereRadius  Radius of the sphere.
  *  \return              Distance to the intersection; < 0 if no intersection, 0 if tangent. */
 double m3dRaySphereTest(const M3DVector3d point, const M3DVector3d ray, const M3DVector3d sphereCenter, double sphereRadius);
+
 /** \brief Test whether a ray intersects a sphere and return the distance to the hit.
  *  \param point         Origin point of the ray.
  *  \param ray           Direction of the ray.
@@ -1019,6 +1051,7 @@ float m3dRaySphereTest(const M3DVector3f point, const M3DVector3f ray, const M3D
  *  \param iViewPort    Viewport as (x, y, width, height).
  *  \param vPointIn     Source 3D point in object space. */
 void m3dProjectXY( M3DVector2f vPointOut, const M3DMatrix44f mModelView, const M3DMatrix44f mProjection, const int iViewPort[4], const M3DVector3f vPointIn);
+
 /** \brief Project a 3D point to 3D window coordinates (keeping Z), like gluProject. (CLAUDE)
  *  \param vPointOut    Destination 3D window coordinates.
  *  \param mModelView   Model-view matrix.
@@ -1039,6 +1072,7 @@ void m3dProjectXYZ(M3DVector3f vPointOut, const M3DMatrix44f mModelView, const M
  *  \param vP3   Control point after the segment.
  *  \param t     Interpolation parameter in [0, 1]. */
 void m3dCatmullRom(M3DVector3f vOut, M3DVector3f vP0, M3DVector3f vP1, M3DVector3f vP2, M3DVector3f vP3, float t);
+
 /** \brief Catmull-Rom spline interpolation between vP1 and vP2 in 3D. (CLAUDE)
  *  \param vOut  Destination 3D vector receiving the interpolated point.
  *  \param vP0   Control point before the segment.
@@ -1088,6 +1122,7 @@ void m3dCalculateTangentBasis(const M3DVector3f pvTriangle[3], const M3DVector2f
  *  \param x      Input value.
  *  \return       Smoothly interpolated value in [0, 1]. */
 double m3dSmoothStep(double edge1, double edge2, double x);
+
 /** \brief Smooth Hermite interpolation of x from 0 to 1 between edge1 and edge2.
  *  \param edge1  Lower edge of the interpolation interval.
  *  \param edge2  Upper edge of the interpolation interval.
@@ -1102,6 +1137,7 @@ float m3dSmoothStep(float edge1, float edge2, float x);
  *  \param planeEq   Plane equation (A, B, C, D) of the shadow-receiving plane.
  *  \param vLightPos Position of the light source. */
 void m3dMakePlanarShadowMatrix(M3DMatrix44d proj, const M3DVector4d planeEq, const M3DVector3d vLightPos);
+
 /** \brief Build a 4x4 projection matrix that flattens geometry onto a plane to cast a shadow.
  *  \param proj      Destination 4x4 shadow projection matrix.
  *  \param planeEq   Plane equation (A, B, C, D) of the shadow-receiving plane.
