@@ -182,9 +182,9 @@ void ConfigurationPack::AddConfig(const Configuration & c)
  *  \return  The i-th configuration in the pack. */
 Configuration ConfigurationPack::GetConfig(long long i)
 {
-	if (i >= this->NConfig)
+	if (i < 0 || i >= this->NConfig)
 	{
-		std::cerr << "Error in ConfigurationPack::GetConfig : Index is larger than number of configuration!\n";
+		std::cerr << "Error in ConfigurationPack::GetConfig : Index is out of range!\n";
 		exit(1);
 	}
 	std::fstream indexFile(IndexName.c_str(), std::fstream::in | std::fstream::binary);
@@ -227,7 +227,7 @@ void DigitizeConfiguration(const Configuration & c, double radius, size_t MeshSi
 		newbas[i] = c.GetBasisVector(i)*(1.0 / MeshSide);
 	Configuration * pt = new Configuration(dim, newbas, ::MaxDistance, false);
 	pt->Insert("A", GeometryVector(dim));
-	pt->IterateThroughNeighbors(GeometryVector(dim), radius, [&](const GeometryVector & s, const GeometryVector & l, const signed long * p, size_t source) ->void
+	pt->IterateThroughNeighbors(GeometryVector(dim), radius, [&](const GeometryVector &, const GeometryVector &, const signed long * p, size_t) ->void
 	{
 		VicinityMesh temp;
 		for (int i = 0; i<dim; i++)
@@ -326,7 +326,7 @@ double MinConnectDiameter(const Configuration & c, size_t a, size_t b)
 	toSearch_Set::nth_index<0>::type & iview = toAdd.get<0>();
 	toSearch_Set::nth_index<1>::type & dview = toAdd.get<1>();
 
-	auto IterateFunction = [&](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom)->void
+	auto IterateFunction = [&](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t SourceAtom)->void
 	{
 		if (cluster.find(SourceAtom) == cluster.end())
 		{
@@ -466,7 +466,7 @@ size_t ClusterSize(const Configuration & c, size_t InitParticle, double radius, 
 	};
 	std::list<toSearchStruct> toSearch;
 	GeometryVector alreadyLatticeShift = GeometryVector(c.GetDimension());
-	auto IterateFunction = [&](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom)->void
+	auto IterateFunction = [&](const GeometryVector &, const GeometryVector & LatticeShift, const signed long *, const size_t SourceAtom)->void
 	{
 		auto iter = Found.find(SourceAtom);
 		GeometryVector l = alreadyLatticeShift + LatticeShift;
@@ -540,7 +540,7 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 
 		if (use_iteratethrough)
 		{
-			reciprocal.IterateThroughNeighbors(GeometryVector(dim), CircularKMax, [&ks, &dim, &KMin2](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom)->void{
+			reciprocal.IterateThroughNeighbors(GeometryVector(dim), CircularKMax, [&ks, &dim, &KMin2](const GeometryVector & shift, const GeometryVector &, const signed long * PeriodicShift, const size_t)->void{
 			bool Trivial = true;
 			for (DimensionType d = 0; d<dim; d++)
 			{
@@ -604,23 +604,33 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 						ks.emplace_back(k);
 				}
 
-				/* Change PeriodicShift */
+				/* Change PeriodicShift (odometer). Carry only up to the second-to-last
+				 * digit: the most significant digit needs no carry and writing
+				 * PeriodicShift[dim] would be out of bounds. */
 				PeriodicShift[0] ++;
-				for (DimensionType d = 0; d<dim; d++)
-				{	
+				for (DimensionType d = 0; d+1<dim; d++)
+				{
 					if (PeriodicShift[d] > limits[d]){
 						PeriodicShift[d] = - limits[d];
-						PeriodicShift[d+1] ++ ; 
-						/* Note that PeriodicShift[dim-1] cannot exceed limits[dim-1] */ 
+						PeriodicShift[d+1] ++ ;
+						/* Note that PeriodicShift[dim-1] cannot exceed limits[dim-1] */
 					}
-				} 
+				}
 			}	
 		}
-		std::sort(ks.begin(), ks.end(), [](const GeometryVector & left, const GeometryVector & right) ->bool {return (left.Modulus2()<right.Modulus2()) && (left.x[0]<right.x[0]); });
+		std::sort(ks.begin(), ks.end(), [](const GeometryVector & left, const GeometryVector & right) ->bool {
+			//strict weak ordering: by |k|^2, tie-broken by x[0] (the old && form
+			//was not a valid ordering and made std::sort undefined behavior).
+			double lm = left.Modulus2(), rm = right.Modulus2();
+			if (lm != rm) return lm < rm;
+			return left.x[0] < right.x[0]; });
 		//ks contains K points in that circle
 
 		if (LinearKMax == CircularKMax)
 			return ks;
+
+		if (ks.empty())//no reciprocal points selected: avoid 1/ks.size() below
+			return results;
 
 		std::vector<GeometryVector> tempBase;
 		for (DimensionType i = 0; i<dim; i++)
@@ -640,7 +650,7 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 				dir.x[i] = iter->x[i] / Length / 2.0;
 
 			bool NeighborFound = false;
-			KDirection.IterateThroughNeighbors(dir, 1e-10, [&NeighborFound](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom)->void{NeighborFound = true; });
+			KDirection.IterateThroughNeighbors(dir, 1e-10, [&NeighborFound](const GeometryVector &, const GeometryVector &, const signed long *, const size_t)->void{NeighborFound = true; });
 			if (NeighborFound == false)
 			{
 				preKs.push_back(*iter);
@@ -689,9 +699,12 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 				if (k.x[0] > CircularKMax)
 					break;
 				if (k.x[0] > CircularKMin){
-					if (SampleProbability >= 1.0 || gen.RandomDouble()<SampleProbability)
+					//count only the seeds actually kept, so results[j] below
+					//(j < num_inside_circular) never indexes past results.size().
+					if (SampleProbability >= 1.0 || gen.RandomDouble()<SampleProbability){
 						results.push_back(k);
-					num_inside_circular ++;
+						num_inside_circular ++;
+					}
 				}
 			}
 			

@@ -19,6 +19,8 @@
 //      CCOptimization). GetKs already lives in core, so only Mtilde here. -------
 double Mtilde(double k, double R, DimensionType d)
 {
+	if (k == 0.0)//k->0 limit: Mtilde equals the sphere volume (avoids 0/0)
+		return HyperSphere_Volume(d, R);
 	if (d == 1)
 		return 2 * std::sin(k*R) / k;
 	else if (d == 2)
@@ -98,23 +100,23 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 	GeometryVector prevBasis [ ::MaxDimension];
 	std::vector<GeometryVector> ks;
 	std::vector<double> k_amp;
+	//Allocate bins and validate the option OUTSIDE the logging guard: at Verbosity<=1,
+	//options 0/1 must still resize vSkBin, or the parallel loop below indexes an empty
+	//vector.  (option 2 sizes vSkBin to ks.size() on the first configuration.)
+	if (option == 0 || option == 1)
+		vSkBin.resize(NumBin, SkBin());
+	else if (option != 2){
+		std::cerr << "Error in IsotropicStructureFactor : Wrong option!\n";
+		return;
+	}
 	if(Verbosity>1){
 		std::cout<<"Computing S(k)";
-		if (option == 0){
+		if (option == 0)
 			std::cout << ": averaged over reciprocal lattice points\n";
-			vSkBin.resize(NumBin, SkBin());
-		}
-		else if (option == 1){
+		else if (option == 1)
 			std::cout << ": averaged over volume in the reciprocal space\n";
-			vSkBin.resize(NumBin, SkBin());
-		}
-		else if (option == 2){
+		else
 			std::cout << ": structure factor at Bragg peaks\n";
-		}
-		else{
-			std::cout << ": Wrong option!!\n";
-			return ;
-		}
 	}
 	progress_display pd(NumConfigs);
 	for(size_t j=0; j<NumConfigs; j++)
@@ -225,7 +227,8 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 			if (option == 0 || (k > CircularKMax)){
 				/* average over number of wavevectors */
 				temp.x[1] = iter->SumS / iter->Sum1;
-				temp.x[3] = std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1)); // I modified it
+				double sVar = iter->SumS2 / iter->Sum1 - temp.x[1] * temp.x[1];
+				temp.x[3] = std::sqrt((sVar > 0 ? sVar : 0) / iter->Sum1);//clamp roundoff-negative variance
 
 				Results.push_back(temp);
 			}
@@ -234,7 +237,11 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 				double vd = 0.5*(HyperSphere_Volume(d, k+0.5*KPrecision) - HyperSphere_Volume(d, k-0.5*KPrecision)); //HyperSphere_SurfaceArea(d, k)*KPrecision/2.0;
 				temp.x[1] = iter->SumS * Omega / vd;
 				temp.x[2] = 0.5*KPrecision; //Omega / vd;
-				temp.x[3] = std::sqrt((iter->SumS2  - temp.x[1] * temp.x[1]) / (iter->Sum1) ) * Omega / vd * iter->Sum1;
+				//compute the raw S(k) variance first, then scale by Omega/vd (the old
+				//form mixed a raw SumS2 with the already-scaled squared mean).
+				double rawMean = iter->SumS / iter->Sum1;
+				double rawVar = iter->SumS2 / iter->Sum1 - rawMean * rawMean;
+				temp.x[3] = (Omega / vd) * std::sqrt((rawVar > 0 ? rawVar : 0) / iter->Sum1);
 
 				Results.push_back(temp);
 			}

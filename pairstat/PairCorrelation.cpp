@@ -16,8 +16,7 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 	DimensionType dim;
 
 	size_t NumConfigsSampled=0;
-	size_t TotalAtomCount=0;
-	double AverageDensity=0;
+	double PairNormalization=0.0;//sum_i N_i*rho_i = sum_i N_i^2/V_i (per-config pair exposure)
 	size_t StartParticle=0;
 	size_t NumParticle=1;
 	for(size_t j=0; j<NumConfigs; j++)
@@ -29,14 +28,14 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 			dim=Config.GetDimension();
 		//pre-allocate
 		Config.IterateThroughNeighbors(GeometryVector(Config.GetDimension()), MaxDistance, 
-			[](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+			[](const GeometryVector &, const GeometryVector &, const signed long *, const size_t) ->void
 		{
 		});
 		for(size_t i=0; i<NumParticle; i++)
 		{
 			//Configuration::particle * a=Config.GetParticle(i);
 			Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(i), MaxDistance, 
-				[&distances, &i](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+				[&distances, &i](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *, const size_t SourceAtom) ->void
 			{
 				if(SourceAtom>i || (SourceAtom==i && LatticeShift.Modulus2()!=0) )
 					distances.push_back(std::sqrt(shift.Modulus2()));
@@ -51,8 +50,7 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 			break;
 
 		NumConfigsSampled++;
-		TotalAtomCount+=Config.NumParticle();
-		AverageDensity+=Config.NumParticle()/Config.PeriodicVolume();
+		PairNormalization+=static_cast<double>(Config.NumParticle())*Config.NumParticle()/Config.PeriodicVolume();
 		pd++;
 	}
 
@@ -95,7 +93,7 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 			for(size_t i=StartParticle; i<NumParticle; i++)
 			{
 				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(i), MaxDistance, 
-					[&HGen, &i](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+					[&HGen, &i](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *, const size_t SourceAtom) ->void
 				{
 					if(SourceAtom>i || (SourceAtom==i && LatticeShift.Modulus2()!=0) )
 					{
@@ -106,12 +104,9 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 			}
 		}
 		StartParticle=0;
-		TotalAtomCount+=Config.NumParticle();
-		AverageDensity+=Config.NumParticle()/Config.PeriodicVolume();
+		PairNormalization+=static_cast<double>(Config.NumParticle())*Config.NumParticle()/Config.PeriodicVolume();
 		pd++;
 	}
-	AverageDensity/=NumConfigs;
-
 	for(auto iter=HGen.bins.begin(); iter!=HGen.bins.end(); iter++)
 	{
 		double BinEnd;
@@ -124,7 +119,7 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 		
 		GeometryVector temp(4);
 		temp.x[0]=(BinEnd+iter->Start)/2;
-		temp.x[1]=(double)iter->Count/( (HyperSphere_Volume(dim, BinEnd)-HyperSphere_Volume(dim, iter[0].Start))*0.5*AverageDensity*TotalAtomCount );//g_2(r)
+		temp.x[1]=(double)iter->Count/( (HyperSphere_Volume(dim, BinEnd)-HyperSphere_Volume(dim, iter[0].Start))*0.5*PairNormalization );//g_2(r)
 		temp.x[2]=(temp.x[0]-iter[0].Start);//\delta r
 		if(iter->Count!=0)
 			temp.x[3]=temp.x[1]/std::sqrt(static_cast<double>(iter->Count));//\delta g_2(r)
@@ -159,8 +154,7 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 
 	DimensionType dim = 0;
 
-	size_t TotalAtomCount = 0;
-	double AverageDensity = 0;
+	double PairNormalization = 0.0;//sum_i N_i*rho_i = sum_i N_i^2/V_i (per-config pair exposure)
 	//prepare for the iteration
 	Result.clear();
 
@@ -179,7 +173,7 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 		size_t NumParticle = Config.NumParticle();
 		//pre-allocate
 		Config.IterateThroughNeighbors(GeometryVector(Config.GetDimension()), MaxDistance,
-			[](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+			[](const GeometryVector &, const GeometryVector &, const signed long *, const size_t) ->void
 		{
 		});
 
@@ -191,7 +185,7 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 			{
 				//Configuration::particle * a=Config.GetParticle(i);
 				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(i), MaxDistance,
-					[&HGen, &i](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+					[&HGen, &i](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *, const size_t SourceAtom) ->void
 				{
 					if (SourceAtom>i || (SourceAtom == i && LatticeShift.Modulus2() != 0))
 					{
@@ -205,11 +199,9 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 				});
 			}
 		}
-		TotalAtomCount += Config.NumParticle();
-		AverageDensity += Config.NumParticle() / Config.PeriodicVolume();
+		PairNormalization += static_cast<double>(Config.NumParticle())*Config.NumParticle() / Config.PeriodicVolume();
 		pd++;
 	}
-	AverageDensity /= NumConfigs;
 
 	for (auto iter = HGen.bins.begin(); iter != HGen.bins.end(); iter++)
 	{
@@ -223,7 +215,7 @@ void IsotropicTwoPairCorrelation(std::function<const Configuration(size_t i)> Ge
 
 		GeometryVector temp(4);
 		temp.x[0] = (BinEnd + iter->Start) / 2;
-		temp.x[1] = iter->Count / ((HyperSphere_Volume(dim, BinEnd) - HyperSphere_Volume(dim, iter[0].Start))*0.5*AverageDensity*TotalAtomCount);//g_2(r)
+		temp.x[1] = iter->Count / ((HyperSphere_Volume(dim, BinEnd) - HyperSphere_Volume(dim, iter[0].Start))*0.5*PairNormalization);//g_2(r)
 		temp.x[2] = (temp.x[0] - iter[0].Start);//\delta r
 		if (iter->Count != 0)
 			temp.x[3] = temp.x[1] / std::sqrt(static_cast<double>(iter->Count));//\delta g_2(r)
@@ -247,6 +239,11 @@ void TwoPairCorrelation_2DAnisotropic(std::function<const Configuration(size_t i
 {
 	if(!(MaxDistance>0))
 		return;
+	if(NumDirectionalBins==0)
+	{
+		std::cerr<<"TwoPairCorrelation_2DAnisotropic: NumDirectionalBins must be positive.\n";
+		return;
+	}
 	//get the pair distances list
 	if(Verbosity>2)
 		std::cout<<"Generate g_2, sampling pair distances...";
@@ -256,8 +253,7 @@ void TwoPairCorrelation_2DAnisotropic(std::function<const Configuration(size_t i
 	DimensionType dim;
 
 	size_t NumConfigsSampled=0;
-	size_t TotalAtomCount=0;
-	double AverageDensity=0;
+	double PairNormalization=0.0;//sum_i N_i*rho_i = sum_i N_i^2/V_i (per-config pair exposure)
 	for(size_t j=0; j<NumConfigs; j++)
 	{
 		if(Verbosity>3 || (Verbosity>2&&j%100==0) )
@@ -277,22 +273,21 @@ void TwoPairCorrelation_2DAnisotropic(std::function<const Configuration(size_t i
 		size_t NumParticle=Config.NumParticle();
 		//pre-allocate
 		Config.IterateThroughNeighbors(GeometryVector(Config.GetDimension()), MaxDistance, 
-			[](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+			[](const GeometryVector &, const GeometryVector &, const signed long *, const size_t) ->void
 		{
 		});
 		for(size_t i=0; i<NumParticle; i++)
 		{
 			//Configuration::particle * a=Config.GetParticle(i);
 			Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(i), MaxDistance, 
-				[&distances, &i](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+				[&distances, &i](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *, const size_t SourceAtom) ->void
 			{
 				if(SourceAtom>i || (SourceAtom==i && LatticeShift.Modulus2()!=0) )
 					distances.push_back(std::sqrt(shift.Modulus2()));
 			});
 		}
 		NumConfigsSampled++;
-		TotalAtomCount+=Config.NumParticle();
-		AverageDensity+=Config.NumParticle()/Config.PeriodicVolume();
+		PairNormalization+=static_cast<double>(Config.NumParticle())*Config.NumParticle()/Config.PeriodicVolume();
 
 		if(distances.size()>SampleDistanceSize)
 			break;
@@ -330,8 +325,7 @@ void TwoPairCorrelation_2DAnisotropic(std::function<const Configuration(size_t i
 	//Re-do the bin counts
 	if(Verbosity>2)
 		std::cout<<"counting pair distances...";
-	TotalAtomCount=0;
-	AverageDensity=0.0;
+	PairNormalization=0.0;
 	for(size_t j=0; j<NumConfigs; j++)
 	{
 		if(Verbosity>3 || (Verbosity>2&&j%100==0) )
@@ -340,7 +334,7 @@ void TwoPairCorrelation_2DAnisotropic(std::function<const Configuration(size_t i
 		size_t NumParticle=Config.NumParticle();
 		//pre-allocate
 		Config.IterateThroughNeighbors(GeometryVector(Config.GetDimension()), MaxDistance, 
-			[](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+			[](const GeometryVector &, const GeometryVector &, const signed long *, const size_t) ->void
 		{
 		});
 
@@ -352,13 +346,17 @@ void TwoPairCorrelation_2DAnisotropic(std::function<const Configuration(size_t i
 			{
 				//Configuration::particle * a=Config.GetParticle(i);
 				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(i), MaxDistance, 
-					[&DirectionalHGen, &i, &NumDirectionalBins](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+					[&DirectionalHGen, &i, &NumDirectionalBins](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *, const size_t SourceAtom) ->void
 				{
 					if(SourceAtom>i || (SourceAtom==i && LatticeShift.Modulus2()!=0) )
 					{
 						double dist=std::sqrt(shift.Modulus2());
+						if(!(dist>0.0))
+							return;//skip coincident pairs: the direction is undefined and
+							        //atan(0/0)=NaN would make the wrap loop below infinite
 
-						//angle/pi, within range [0, 1]
+						//angle/pi, within range [0, 1].  atan (not atan2) intentionally
+						//folds the pair direction modulo pi (a headless director).
 						double angle= 0.5 - std::atan(shift.x[0]/shift.x[1])/::pi;
 
 						//debug temp
@@ -369,15 +367,15 @@ void TwoPairCorrelation_2DAnisotropic(std::function<const Configuration(size_t i
 							angle-=1;
 
 						size_t AngleBin=std::floor(angle*NumDirectionalBins);
+						if(AngleBin>=NumDirectionalBins)
+							AngleBin=NumDirectionalBins-1;
 						DirectionalHGen[AngleBin].Report(dist);
 					}
 				});
 			}
 		}
-		TotalAtomCount+=Config.NumParticle();
-		AverageDensity+=Config.NumParticle()/Config.PeriodicVolume();
+		PairNormalization+=static_cast<double>(Config.NumParticle())*Config.NumParticle()/Config.PeriodicVolume();
 	}
-	AverageDensity/=NumConfigs;
 
 	Result.resize(NumDirectionalBins, std::vector<GeometryVector>() );
 	if(pError!=nullptr)
@@ -397,7 +395,7 @@ void TwoPairCorrelation_2DAnisotropic(std::function<const Configuration(size_t i
 			GeometryVector temp(4);
 			temp.x[0]=(BinEnd+iter->Start)/2;//r
 			temp.x[1]=( (double)(i)/NumDirectionalBins + 0.5 )* ::pi;//theta
-			temp.x[2]=iter->Count/( (HyperSphere_Volume(dim, BinEnd)-HyperSphere_Volume(dim, iter->Start))*0.5*AverageDensity*TotalAtomCount )*NumDirectionalBins;//g_2(r)
+			temp.x[2]=iter->Count/( (HyperSphere_Volume(dim, BinEnd)-HyperSphere_Volume(dim, iter->Start))*0.5*PairNormalization )*NumDirectionalBins;//g_2(r)
 			Result[i].push_back(temp);
 
 			//debug temp
@@ -449,7 +447,7 @@ void NearestNeighborDistrubution(std::function<const Configuration(size_t i)> Ge
 			while(neighbors.size()<2)
 			{
 				neighbors.clear();
-				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(particle), l, [&neighbors](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) ->void
+				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(particle), l, [&neighbors](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t) ->void
 				{
 					neighbors.push_back(shift);
 				});
@@ -500,7 +498,7 @@ void NearestNeighborDistrubution(std::function<const Configuration(size_t i)> Ge
 			while(neighbors.size()<2)
 			{
 				neighbors.clear();
-				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(particle), l, [&neighbors](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) ->void
+				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(particle), l, [&neighbors](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t) ->void
 				{
 					neighbors.push_back(shift);
 				});
@@ -589,7 +587,7 @@ void HvDistrubution(std::function<const Configuration(size_t i)> GetConfigsFunct
 			while(neighbors.size()<2)
 			{
 				neighbors.clear();
-				Config.IterateThroughNeighbors(temp, l, [&neighbors](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) ->void
+				Config.IterateThroughNeighbors(temp, l, [&neighbors](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t) ->void
 				{
 					neighbors.push_back(shift);
 				});
@@ -625,25 +623,31 @@ void HvDistrubution(std::function<const Configuration(size_t i)> GetConfigsFunct
 			//	std::cout<<j<<"/"<<NumConfigs<<"configurations processed\n";
 			Configuration Config = GetConfigsFunction(j);
 			const size_t NumParticle=Config.NumParticle();
+			const int d=(int)Config.GetDimension();
 			//Configuration::particle * p0=Config.GetParticle(0);
 
-			for(size_t j=0; j<NumParticle; j++)
+			double TypicalLength=std::pow(Config.PeriodicVolume()/NumParticle, 1.0/Config.GetDimension())*1.5;
+			for(size_t k=0; k<NumParticle*OverSampling; k++)
 			{
 				std::vector<GeometryVector> neighbors;
-				double TypicalLength=std::pow(Config.PeriodicVolume()/NumParticle, 1.0/Config.GetDimension())*1.5;
-			double l=TypicalLength;
-			while(neighbors.size()<2)
-			{
-				neighbors.clear();
-				Config.IterateThroughNeighbors(Config.GetRelativeCoordinates(j), l, [&neighbors](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) ->void
+				double l=TypicalLength;
+				GeometryVector temp(d);
+				for(int i=0; i<d; i++)
+					temp.x[i]=gen.RandomDouble();
+				while(neighbors.size()<2)
 				{
-					neighbors.push_back(shift);
-				});
-				l*=2;
-			}
+					neighbors.clear();
+					Config.IterateThroughNeighbors(temp, l, [&neighbors](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t) ->void
+					{
+						neighbors.push_back(shift);
+					});
+					l*=2;
+				}
 
-			std::partial_sort(neighbors.begin(), neighbors.begin()+2, neighbors.end(), [](const GeometryVector & left, const GeometryVector & right)->bool{return left.Modulus2()<right.Modulus2();});
-			HGen.Report(std::sqrt(neighbors[1].Modulus2()));
+				//void nearest-neighbor distance: distance from a random void point to the
+				//nearest particle center (mirror the sampling phase; report neighbors[0]).
+				std::partial_sort(neighbors.begin(), neighbors.begin()+1, neighbors.end(), [](const GeometryVector & left, const GeometryVector & right)->bool{return left.Modulus2()<right.Modulus2();});
+				HGen.Report(std::sqrt(neighbors[0].Modulus2()));
 		}
 		TotalAtomCount+=Config.NumParticle();
 		AverageDensity+=Config.NumParticle()/Config.PeriodicVolume();
@@ -693,7 +697,7 @@ double MinDistance(const Configuration & a, size_t * pi, size_t * pj)
 	for(size_t i=0; i<a.NumParticle(); i++)
 	{
 		GeometryVector loc=a.GetRelativeCoordinates(i);
-		a.IterateThroughNeighbors(loc, result, [&](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void
+		a.IterateThroughNeighbors(loc, result, [&](const GeometryVector &shift, const GeometryVector &, const signed long *, const size_t SourceAtom) ->void
 		{
 			if(i==SourceAtom)
 				return;
@@ -723,7 +727,7 @@ double MeanNearestNeighborDistance(const Configuration & a)
 		while(neighbors.size()<2)
 		{
 			neighbors.clear();
-			a.IterateThroughNeighbors(a.GetRelativeCoordinates(j), l, [&neighbors](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) ->void
+			a.IterateThroughNeighbors(a.GetRelativeCoordinates(j), l, [&neighbors](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t) ->void
 			{
 				neighbors.push_back(shift);
 			});

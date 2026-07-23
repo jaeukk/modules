@@ -39,14 +39,14 @@ void Output(std::ostream & out, const Configuration & List)
 	//////////////////////////////////////
 	GeometryVector origin(list->GetDimension());
 	size_t count=0;
-	list->IterateThroughNeighbors(origin, Rc, [&count](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) ->void {count++;} );
+	list->IterateThroughNeighbors(origin, Rc, [&count](const GeometryVector &, const GeometryVector &, const signed long *, const size_t) ->void {count++;} );
 	out<<count<<'\n';
 	//the second line is a comment
 	out<<'\n';
 	//.xyz part, used by visualization sofwares
-	list->IterateThroughNeighbors(origin, Rc, [&out, &list](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom) ->void 
+	list->IterateThroughNeighbors(origin, Rc, [&out, &list](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t SourceAtom) ->void
 	{
-		out<<list->GetCharacteristics(SourceAtom).name<<" \t"; 
+		out<<list->GetCharacteristics(SourceAtom).name<<" \t";
 		shift.OutputCoordinate(out, list->GetDimension());
 		out<<'\n';
 	} );
@@ -346,25 +346,26 @@ Configuration ReadCoordinate(std::istream & file, double SideLength)
 	size_t NumP=0;
 	std::string temp;
 
-	//determine dimension
+	//determine dimension from the first data line (count successfully-extracted tokens;
+	//the old -1.0 sentinel over-counted by one under C++11+ failed-extraction rules)
 	std::getline(file, temp);
-	std::stringstream str;
-	str<<temp;
-	for(;;)
 	{
-		double dtemp=-1.0;
-		str>>dtemp;
-		if(dtemp!=-1.0)
+		std::stringstream str(temp);
+		double dtemp;
+		while(str>>dtemp)
 			dim++;
-		else
-			break;
 	}
 
-	//determine NumP
-	while(file.eof()==false)
+	//determine NumP: count every non-empty line (robust to a missing trailing newline,
+	//which previously dropped the last record)
+	file.clear();
+	file.seekg(0, std::ios::beg);
+	while(std::getline(file, temp))
 	{
-		std::getline(file, temp);
-		NumP++;
+		std::stringstream str(temp);
+		double dtemp;
+		if(str>>dtemp)
+			NumP++;
 	}
 	file.clear();
 	file.seekg(0, std::ios::beg);
@@ -407,25 +408,26 @@ Configuration ReadCartesianCoordinate(std::istream & file, double SideLength)
 	size_t NumP=0;
 	std::string temp;
 
-	//determine dimension
+	//determine dimension from the first data line (count successfully-extracted tokens;
+	//the old -1.0 sentinel over-counted by one under C++11+ failed-extraction rules)
 	std::getline(file, temp);
-	std::stringstream str;
-	str<<temp;
-	for(;;)
 	{
-		double dtemp=-1.0;
-		str>>dtemp;
-		if(dtemp!=-1.0)
+		std::stringstream str(temp);
+		double dtemp;
+		while(str>>dtemp)
 			dim++;
-		else
-			break;
 	}
 
-	//determine NumP
-	while(file.eof()==false)
+	//determine NumP: count every non-empty line (robust to a missing trailing newline,
+	//which previously dropped the last record)
+	file.clear();
+	file.seekg(0, std::ios::beg);
+	while(std::getline(file, temp))
 	{
-		std::getline(file, temp);
-		NumP++;
+		std::stringstream str(temp);
+		double dtemp;
+		if(str>>dtemp)
+			NumP++;
 	}
 	file.clear();
 	file.seekg(0, std::ios::beg);
@@ -542,12 +544,18 @@ Configuration ReadStealthOutput(std::istream & file, double SideLength)
 		}
 	}
 
-	std::getline(file, temp);
-	//determine NumP
-	while(file.eof()==false)
+	//determine NumP: count non-empty particle lines after the two header lines
+	//(robust to a missing trailing newline, which previously dropped the last record)
+	file.clear();
+	file.seekg(0, std::ios::beg);
+	std::getline(file, temp);//header line 1 (dimension)
+	std::getline(file, temp);//header line 2 (box side lengths)
+	while(std::getline(file, temp))
 	{
-		std::getline(file, temp);
-		NumP++;
+		std::stringstream sstr(temp);
+		double dtemp;
+		if(sstr>>dtemp)
+			NumP++;
 	}
 	file.clear();
 	file.seekg(0, std::ios::beg);
@@ -814,10 +822,9 @@ void ReadConfiguration(Configuration & conf, const std::string & InputName) {
 
 	
 	DimensionType d = 0;
-	GeometryVector * basis;
 	// set dimension
 	ifile >> d;
-	basis = new GeometryVector[d];
+	std::vector<GeometryVector> basis(d);//RAII: replaces a leaked new[] array
 
 	// set basis vectors
 	for (int i = 0; i < d; i++) {
@@ -828,7 +835,7 @@ void ReadConfiguration(Configuration & conf, const std::string & InputName) {
 		basis[i].SetDimension(d);
 	}
 	//initialize conf
-	conf = Configuration(d, basis, 1.0);
+	conf = Configuration(d, basis.data(), 1.0);
 	while (ifile.eof() == false)
 	{
 		char dump[255] = {};		
@@ -866,10 +873,9 @@ void ReadConfiguration(SpherePacking & conf, const std::string & InputName) {
 	}
 	
 	DimensionType d = 0;
-	GeometryVector * basis;
 	// set dimension
 	ifile >> d;
-	basis = new GeometryVector[d];
+	std::vector<GeometryVector> basis(d);//RAII: replaces a leaked new[] array
 
 	// set basis vectors
 	for (int i = 0; i < d; i++) {
@@ -880,7 +886,7 @@ void ReadConfiguration(SpherePacking & conf, const std::string & InputName) {
 		basis[i].SetDimension(d);
 	}
 	//initialize conf
-	conf = SpherePacking(d, basis, 1);
+	conf = SpherePacking(d, basis.data(), 1);
 	while (ifile.eof() == false)
 	{
 		char dump[255] = {};

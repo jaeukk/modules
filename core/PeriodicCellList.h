@@ -310,6 +310,7 @@ public:
 	PeriodicCellList(DimensionType Dimension, GeometryVector * BasisVectors, double CellSize, bool UseSortedList = false)
 	{
 		//this->VicinityLatticesRc2=0;
+		assert(Dimension <= ::MaxDimension);//fixed-size CellRank/BasisVector arrays
 		this->Dimension = Dimension;
 		Index CellCount = 1;//need to calculate overall number of cells
 		for (DimensionType i = 0; i<this->Dimension; i++)
@@ -977,16 +978,14 @@ public:
 	{
 		prt_index_list.resize(0);
 		DimensionType d = this->Dimension;
+		//cell-scaled reciprocal basis in LOCAL vectors; do NOT write it back into the
+		//cached (2*pi-scaled) ReciprocalBasisVector, which would corrupt the cache for
+		//every later GetReciprocalBasisVector() caller.
 		std::vector<GeometryVector> reciprocalBasis;
-		for (int i = 0; i < d; i++) {
-			if (this->ReciprocalBasisVectorValid[i]) {//reciprocal vectors are already computed
-				reciprocalBasis.push_back(this->ReciprocalBasisVector[i]);
-			}
-			else {//reciprocal vectors are yet to computed
-				this->GetReciprocalBasisVector(i);
-				this->ReciprocalBasisVector[i] = ((double)this->CellRank[i] / (2.0*::pi)) * ReciprocalBasisVector[i];
-				reciprocalBasis.push_back(this->ReciprocalBasisVector[i]);
-			}
+		reciprocalBasis.reserve(d);
+		for (DimensionType i = 0; i < d; i++) {
+			GeometryVector recip = this->GetReciprocalBasisVector(i);
+			reciprocalBasis.push_back(((double)this->CellRank[i] / (2.0*::pi)) * recip);
 		}
 		
 		//the cell within which the given point is located
@@ -1005,35 +1004,28 @@ public:
 		}
 
 		if (this->NumParticle() > 0) {
-			signed long *Indices = new signed long[d];
-			for (DimensionType i = 0; i < d; i++) {
+			std::vector<signed long> Indices(d), Indices_temp(d);
+			for (DimensionType i = 0; i < d; i++)
 				Indices[i] = (long)Cell[i].x[0];
-			}
 
 			do {
-				signed long *Indices_temp = new signed long[d];
-				//Apply the periodic boundary condition
-				for (int i = 0; i < d; i++) {
-					if (Indices[i] >= CellRank[i]) {
-						Indices_temp[i] = Indices[i] - CellRank[i];
-					}
-					else if (Indices[i] < 0) {
-						Indices_temp[i] = Indices[i] + CellRank[i];
-					}
-					else {
-						Indices_temp[i] = Indices[i];
-					}
+				//Apply the periodic boundary condition (general modulo: wraps any
+				//offset, not just one box width).
+				for (DimensionType i = 0; i < d; i++) {
+					signed long r = Indices[i] % CellRank[i];
+					if (r < 0)
+						r += CellRank[i];
+					Indices_temp[i] = r;
 				}
 
 				//convert index in the form of a vector into a long index
-				signed long long_index = this->ConvertIndex(Indices_temp);
-				for (int i = 0; i < this->Cells[long_index].size(); i++) {
+				signed long long_index = this->ConvertIndex(Indices_temp.data());
+				for (size_t i = 0; i < this->Cells[long_index].size(); i++)
 					prt_index_list.push_back(this->Cells[long_index].at(i));
-				}
 
 				//to the next cell
 				Indices[0]++;
-				for (int i = 0; i < d - 1; i++) {
+				for (DimensionType i = 0; i + 1 < d; i++) {
 					if (Indices[i] == (long)Cell[i].x[1]) {
 						Indices[i] = (long)Cell[i].x[0];
 						Indices[i + 1] ++;
@@ -1221,6 +1213,25 @@ public:
 	{
 		ifile.read((char *)(&this->Dimension), sizeof(this->Dimension));
 		ifile.read((char *)(&ApproximateCellSize), sizeof(ApproximateCellSize));
+		if (!ifile || this->Dimension > ::MaxDimension || !(ApproximateCellSize > 0.0))
+		{
+			//malformed / truncated stream: build an empty list instead of reading out
+			//of bounds or allocating from a corrupt particle count.
+			std::cerr << "Error in PeriodicCellList(std::istream&): invalid header (dimension="
+				<< (size_t)this->Dimension << ", cellSize=" << ApproximateCellSize << ").\n";
+			this->Dimension = 0;
+			for (DimensionType i = 0; i < ::MaxDimension; i++) {
+				this->CellRank[i] = 0;
+				this->BasisVector[i] = GeometryVector();
+				this->ReciprocalBasisVectorValid[i] = false;
+			}
+			this->MaxRadius = 0.0;
+			this->Cells.assign(1, std::vector<size_t >());
+			this->SortedVicinityList = UseSortedList;
+			this->ClearVicinityLatticeList();
+			this->vol = 0.0;
+			return;
+		}
 		Index CellCount = 1;//need to calculate overall number of cells
 		for (DimensionType i = 0; i<this->Dimension; i++)
 		{
@@ -1253,6 +1264,8 @@ public:
 
 		int nbrp;
 		ifile.read((char *)(&nbrp), sizeof(nbrp));
+		if (nbrp < 0)//corrupt particle count
+			nbrp = 0;
 		for (int i = 0; i<nbrp; i++)
 		{
 			GeometryVector temp;
@@ -1359,7 +1372,7 @@ public:
 	GeometryVector displacement_periodic(int i, const GeometryVector & r0) const {
 		if (i < this->NumParticle()) {
 			GeometryVector Displacement = ParticleCartesians[i] - r0;
-			this->CartesianCoord2RelativeCoord(Displacement);
+			Displacement = this->CartesianCoord2RelativeCoord(Displacement);
 			for (int k = 0; k < this->Dimension; k++) {
 				if (Displacement.x[k] < -0.5) { Displacement.x[k] += 1.0; }
 				else if (Displacement.x[k] >0.5) { Displacement.x[k] -= 1.0; }
@@ -1373,13 +1386,12 @@ public:
 		}
 	}
 
-	/** \brief Return a uniformly random Cartesian position within the periodic box. */
-	GeometryVector GetRandomPosition() {
-		RandomGenerator gen;
-		GeometryVector result;
-		for (int i = 0; i < MaxDimension; i++) {
+	/** \brief Return a uniformly random Cartesian position within the periodic box.
+	 *  \param gen Caller-owned random generator (seeded by the caller for reproducibility). */
+	GeometryVector GetRandomPosition(RandomGenerator & gen) const {
+		GeometryVector result(this->Dimension);
+		for (DimensionType i = 0; i < this->Dimension; i++)
 			result = result + gen.RandomDouble()*this->BasisVector[i];
-		}
 		return result;
 	}
 
@@ -1412,7 +1424,7 @@ public:
 	double distance2(int i, GeometryVector test) {
 		if (i < this->NumParticle()) {
 			GeometryVector dr = ParticleCartesians[i] - test;
-			this->CartesianCoord2RelativeCoord(dr);
+			dr = this->CartesianCoord2RelativeCoord(dr);
 			for (int k = 0; k < this->Dimension; k++) {
 				if (dr.x[k] < -0.5) { dr.x[k] += 1.0; }
 				else if (dr.x[k] >0.5) { dr.x[k] -= 1.0; }

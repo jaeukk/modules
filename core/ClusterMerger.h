@@ -62,7 +62,7 @@ public:
 			_affiliation.push_back(_clusters.begin());
 			std::vector<Bond> & vb = vBond;
 			//generate a vector of bonds for future computation
-			c.IterateThroughNeighbors(c.GetRelativeCoordinates(i), Rmax, [&vb, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) ->void
+			c.IterateThroughNeighbors(c.GetRelativeCoordinates(i), Rmax, [&vb, &i](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t Sourceparticle) ->void
 			{
 				if (i < Sourceparticle)
 				{
@@ -78,7 +78,7 @@ public:
 		{
 			return left.l2 < right.l2;
 		});
-		_LargestClusterSize = 1;
+		_LargestClusterSize = (_N == 0) ? 0 : 1;
 		next = vBond.begin();
 	}
 

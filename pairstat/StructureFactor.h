@@ -71,20 +71,9 @@ double WeightedStructureFactor(const PeriodicCellList<std::complex<double>> & Co
  */
 void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double CircularKMax, double LinearKMax, std::vector<GeometryVector> & Results, double KPrecision=0.01, double SampleProbability=1.0, size_t option = 0, double CircularKMin = 0.0);
 
-/**
- * \brief Calculate structure factor of all ks in the cubic box [-limit, limit]^d.
- * dk : structure factors at ks in [k,k+dk]^d will be averaged: if dk = 1, structure factors are not averaged.
- * For contourplot in Matlab.
- * \param GetConfigsFunction  Returns the configuration of index i when called.
- * \param NumConfigs          Number of configurations to average over.
- * \param limit               Half-width of the cubic grid [-limit, limit]^d in reciprocal-lattice units.
- * \param Results             Output structure factors on the grid.
- * \param dk                  Averaging block size in reciprocal-lattice units; dk = 1 means no averaging.
- * \param SampleProbability   Probability that each eligible k point is included.
- * \return                    Coordinates of the grid.
- */
-std::vector<GeometryVector> DirectionalStructureFactor(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, long limit, std::vector<GeometryVector> & Results, int dk=1, double SampleProbability = 1.0);
-
-
+// DirectionalStructureFactor(...) was declared here but never defined (its
+// implementation was lost when the top-level StructureFactor was split); the
+// declaration is removed to avoid link failures for callers.  The 2D directional
+// S(k) is available via visualization/Plots' PlotDirectionalStructureFactor2D.
 
 #endif

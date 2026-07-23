@@ -28,6 +28,8 @@ int n_naryNumber::GetNthDigit(size_t N) const {
 }
 
 n_naryNumber& n_naryNumber::operator++ (int) {
+	if (this->digits.empty())//invalid/zero-digit construction: nothing to increment
+		return *this;
 	this->digits[0]++;
 	for (size_t i = 0; i < this->digits.size(); i++) {
 		if (this->digits[i] >= this->upperbounds[i]) {
@@ -68,6 +70,7 @@ std::string cont::GetType() {
  *  \param a   The cont whose pointed-to value receives the extracted value.
  *  \return    The input stream. */
 inline std::istream & operator >> (std::istream & is, cont & a) {
+	a.Fail = false;//reset before extraction so a prior failure does not persist
 	if (a._int_ptr != nullptr) {
 		is >> *(a._int_ptr);
 	}

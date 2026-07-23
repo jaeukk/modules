@@ -37,7 +37,9 @@ public:
 	 *  \param Num Index of the sphere. */
 	virtual double & GetCharacteristics(size_t Num)
 	{
-		//this->MaxRadius = 0.0;
+		//mutable access may enlarge a radius; invalidate the cached MaxRadius so
+		//UpdateMaxRadius() recomputes it before the next neighbor-cutoff use.
+		this->MaxRadius = 0.0;
 		return this->ParticleCharacteristics[Num];
 	}
 
@@ -124,7 +126,7 @@ public:
 			bool Overlap = false;
 			const std::vector<double> * pSphereRadii = &this->ParticleCharacteristics;
 			double Radius = this->GetCharacteristics(i);
-			this->IterateThroughNeighbors(this->GetRelativeCoordinates(i), this->GetCharacteristics(i) + MaxRadius, [&Overlap, &Radius, &pSphereRadii, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) -> void
+			this->IterateThroughNeighbors(this->GetRelativeCoordinates(i), this->GetCharacteristics(i) + MaxRadius, [&Overlap, &Radius, &pSphereRadii, &i](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long *, const size_t Sourceparticle) -> void
 			{
 				if (Sourceparticle != i || LatticeShift.Modulus2() != 0)
 				{

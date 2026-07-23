@@ -24,13 +24,13 @@
 // centered at x0_relative; I[i] is the cumulative local volume up to that radius.
 static void I_1(const SpherePacking & packing, std::vector<double> &I, double Rmax, double dR, const GeometryVector & x0_relative) {
 	I.clear();
-	I.resize((size_t)floor(round(Rmax / dR)));
+	I.resize((size_t)ceil(Rmax / dR));//match I_config/MC_vfv bin count (ceil) so the last radius is sampled
 
 	double r_M = packing.GetMaxRadius();
 	DimensionType d = packing.GetDimension();
 
 	packing.IterateThroughNeighbors(x0_relative, Rmax + r_M,
-		[&I, dR, &packing, d](const GeometryVector & x_i, const GeometryVector & LatticeShift, const signed long * PereodicShift, const size_t i) ->void {
+		[&I, dR, &packing, d](const GeometryVector & x_i, const GeometryVector &, const signed long *, const size_t i) ->void {
 		double abs_x_i = sqrt(x_i.Modulus2());
 		double r_prt = packing.GetCharacteristics(i);
 		size_t rU = std::min(I.size() - 1, (size_t)floor((abs_x_i + r_prt) / dR));
@@ -150,7 +150,7 @@ void MC_vfv(const std::function<SpherePacking(size_t i)> &GetConfig, size_t numC
 		if (i == 0)
 			result[i].x[3] = result[i].x[1];
 		else
-			result[i].x[3] = (1.0 - 1.0 / (i + 1.0))*result[i - 1].x[3] + result[i - 1].x[1] / (i + 1.0);
+			result[i].x[3] = (1.0 - 1.0 / (i + 1.0))*result[i - 1].x[3] + result[i].x[1] / (i + 1.0);
 	}
 }
 

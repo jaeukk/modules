@@ -44,7 +44,9 @@ inline double radius_in_Sphere (const GeometryVector & delta_x){
 inline double radius_in_Superdisk (const GeometryVector & delta_x, double p){
 	double distance2 = 0.0;
 	for (int i=0; i<delta_x.Dimension; i++){
-		distance2 += pow(delta_x.x[i], 2.*p);
+		//|x_i|^(2p): the superdisk uses the absolute value; pow(negative, non-integer)
+		//would return NaN.
+		distance2 += pow(std::fabs(delta_x.x[i]), 2.*p);
 	}
 	return exp(log(distance2) / (2.*p));
 }

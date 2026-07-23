@@ -32,9 +32,9 @@ void GetN(const Configuration &config, std::vector<double> &N, double Rmax, doub
 	N.resize((int)ceil(Rmax / dR), 0.0L);
 	//Count the number of particles within a shell of radius (R-dR, R)
 	double Rc = sqrt(config.GetDimension())*Rmax;
-	config.IterateThroughNeighbors(x0_RelativeCoordinates, Rc, [dR, &N, &GetRadius](const GeometryVector &x0, const GeometryVector &L_shift, const signed long *PeriodicShift, size_t prt_index) ->void {
+	config.IterateThroughNeighbors(x0_RelativeCoordinates, Rc, [dR, &N, &GetRadius](const GeometryVector &x0, const GeometryVector &, const signed long *, size_t) ->void {
 		int index = (int)floor(GetRadius(x0) / dR);
-		if (index < (int)N.size())
+		if (index >= 0 && index < (int)N.size())
 			N[index]++;
 	}
 	);
@@ -223,7 +223,9 @@ inline void RandomRotation(DimensionType d, std::vector<GeometryVector> & R, Ran
 	case 3:
 		//***Euler angles***
 		phi = 2.0*pi*gen.RandomDouble(); //D
-		theta = pi * gen.RandomDouble(); //C
+		//Haar-uniform middle Euler angle: cos(theta) uniform on [-1,1], not theta
+		//uniform on [0,pi] (which biased rotations toward the poles).
+		theta = acos(1.0 - 2.0*gen.RandomDouble()); //C
 		psi = 2.0*pi*gen.RandomDouble(); //B
 										 //R = BCD
 
@@ -232,7 +234,16 @@ inline void RandomRotation(DimensionType d, std::vector<GeometryVector> & R, Ran
 		R.push_back(GeometryVector(sin(theta)*sin(phi), -sin(theta)*cos(phi), cos(theta)));
 		break;
 	default:
-		std::cout << "NumberVariance::RandomMatrix out of dimension";
+		//dimensions other than 2 and 3 are not implemented (1D has no proper
+		//rotation).  Fall back to the identity so callers do not read from an empty
+		//matrix; a warning flags that no random orientation was applied.
+		std::cerr << "NumberVariance::RandomRotation : dimension " << (size_t)d
+			<< " not implemented; using identity (no rotation).\n";
+		for (DimensionType i = 0; i < d; i++) {
+			GeometryVector row(static_cast<int>(d));
+			row.x[i] = 1.0;
+			R.push_back(row);
+		}
 		break;
 	}
 }

@@ -157,7 +157,8 @@ void IsotropicSpectralDensity(std::function<const SpherePacking(size_t i)> GetCo
 			temp.x[1] = iter->SumS / iter->Sum1;
 			double var = (iter->SumK2 / (iter->Sum1) - temp.x[0] * temp.x[0]) / (iter->Sum1);
 			temp.x[2] = (var > 0) ? std::sqrt(var) : 0;
-			temp.x[3] = std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1));
+			double sVar = iter->SumS2 / iter->Sum1 - temp.x[1] * temp.x[1];
+			temp.x[3] = std::sqrt((sVar > 0 ? sVar : 0) / iter->Sum1);//clamp roundoff-negative variance
 			Results.push_back(temp);
 		}
 	}
@@ -243,7 +244,8 @@ void IsotropicSpectralDensity_Lstorage(std::function<const SpherePacking(size_t 
 			temp.x[1] = iter->SumS / iter->Sum1;
 			double var = (iter->SumK2 / (iter->Sum1) - temp.x[0] * temp.x[0]) / (iter->Sum1);
 			temp.x[2] = (var > 0) ? std::sqrt(var) : 0;
-			temp.x[3] = std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1));
+			double sVar = iter->SumS2 / iter->Sum1 - temp.x[1] * temp.x[1];
+			temp.x[3] = std::sqrt((sVar > 0 ? sVar : 0) / iter->Sum1);//clamp roundoff-negative variance
 			Results.push_back(temp);
 		}
 	}

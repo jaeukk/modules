@@ -17,7 +17,7 @@ int SpherePacking::IsInsideParticle(const GeometryVector & RelativeCoordinate) c
 	const std::vector<double> * pSphereRadii = &this->ParticleCharacteristics;
 
 	this->IterateThroughNeighbors(RelativeCoordinate, this->GetMaxRadius(), 
-	[&pSphereRadii, &inside, &idx, this] (const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) -> void{
+	[&pSphereRadii, &inside, &idx, this] (const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t Sourceparticle) -> void{
 		//GeometryVector pos_Cartesian = this->RelativeCoord2CartesianCoord(shift);
 		
 //		double r = pSphereRadii->at(Sourceparticle)
@@ -43,6 +43,11 @@ void SpherePacking::FindNearestNeighbors (const GeometryVector & RelativeCoordin
 		num *= 2;
 	}
 	//std::min((size_t)3, this->NumParticle());
+	if (this->NumParticle() == 0) {
+		//empty packing: nothing to search (avoids /0 and an unbounded search loop)
+		list.clear();
+		return;
+	}
 	double TypicalLength = std::pow((*this).PeriodicVolume() / (*this).NumParticle(), 1.0 / (*this).GetDimension());
 	std::vector<size_t> neighbors;
 	std::vector<GeometryVector> shifts;
@@ -51,7 +56,7 @@ void SpherePacking::FindNearestNeighbors (const GeometryVector & RelativeCoordin
 	{
 		neighbors.clear();
 		shifts.clear();
-		(*this).IterateThroughNeighbors(RelativeCoordinate, TypicalLength, [&shifts, &neighbors](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) ->void
+		(*this).IterateThroughNeighbors(RelativeCoordinate, TypicalLength, [&shifts, &neighbors](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t Sourceparticle) ->void
 		{	
 			neighbors.push_back(Sourceparticle);
 			shifts.push_back(shift);
@@ -77,23 +82,28 @@ void SpherePacking::FindNearestNeighbors (const GeometryVector & RelativeCoordin
 		// find the smallest distance to neighboring particles.
 		if (i==0)
 			smallest_distance = 1.0 + list_i[0].x[0];
-		
-		if ( 
-			(list_i[0].x[0]<list_i[1].x[0])
-		&& (list_i[0].x[0] < smallest_distance) 
-		){
-			smallest_distance = list_i[0].x[0];
-			n2host = 1.0/r*pos_wrt_center ;
-			x0_Relative = (1.0 - this->GetCharacteristics(prt_idx)/r) * shifts[i];	//In Cartesian coordinates.
-		}
-		else if(
-			(list_i[0].x[0] > list_i[1].x[0])
-		&& (list_i[1].x[0] < smallest_distance)
-		){
-			smallest_distance = list_i[1].x[0];
-			n2host = -1.0/r*pos_wrt_center ;
-			x0_Relative = (1.0 + this->GetCharacteristics(prt_idx)/r) * shifts[i];
-			// In Cartesian coordinates.
+
+		//skip the 1/r direction/interface-point update when the test point
+		//coincides with a particle center (r==0 would produce NaN).
+		if (r > 0.0)
+		{
+			if (
+				(list_i[0].x[0]<list_i[1].x[0])
+			&& (list_i[0].x[0] < smallest_distance)
+			){
+				smallest_distance = list_i[0].x[0];
+				n2host = 1.0/r*pos_wrt_center ;
+				x0_Relative = (1.0 - this->GetCharacteristics(prt_idx)/r) * shifts[i];	//In Cartesian coordinates.
+			}
+			else if(
+				(list_i[0].x[0] > list_i[1].x[0])
+			&& (list_i[1].x[0] < smallest_distance)
+			){
+				smallest_distance = list_i[1].x[0];
+				n2host = -1.0/r*pos_wrt_center ;
+				x0_Relative = (1.0 + this->GetCharacteristics(prt_idx)/r) * shifts[i];
+				// In Cartesian coordinates.
+			}
 		}
 		list.insert(list.end(), list_i.begin(), list_i.end());
 	}
@@ -174,9 +184,9 @@ void SpherePackingPack::AddConfig(const SpherePacking & c)
  *  \return  The i-th sphere packing in the pack. */
 SpherePacking SpherePackingPack::GetConfig(long long i)
 {
-	if (i >= this->NConfig)
+	if (i < 0 || i >= this->NConfig)
 	{
-		std::cerr << "Error in SpherePackingPack::GetConfig : Index is larger than number of configuration!\n";
+		std::cerr << "Error in SpherePackingPack::GetConfig : Index is out of range!\n";
 		exit(1);
 	}
 	std::fstream indexFile(IndexName.c_str(), std::fstream::in | std::fstream::binary);
@@ -246,7 +256,7 @@ bool SpherePacking::CheckVoxelOverlap(const GeometryVector & cr, double halfsize
 	const GeometryVector * ba=this->BasisVector;
 	DimensionType dim=this->Dimension;
 	const std::vector<double> * pSphereRadii = & this->ParticleCharacteristics;
-	this->IterateThroughNeighbors(cr, Radius+MaxRadius, [&Overlap, &halfsize, &ba, dim, &Radius, &pSphereRadii](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) -> void
+	this->IterateThroughNeighbors(cr, Radius+MaxRadius, [&Overlap, &halfsize, &ba, dim, &Radius, &pSphereRadii](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t Sourceparticle) -> void
 	{
 		//additional processing of shift
 		GeometryVector ss(shift);
@@ -280,7 +290,7 @@ int SpherePacking::CheckVoxelOverlap2(const GeometryVector & cr, double halfsize
 	DimensionType dim=this->Dimension;
 	const std::vector<double> * pSphereRadii = & this->ParticleCharacteristics;
 	double maxVoxelDiagonal=this->MaxDiagonalLength()*halfsize;
-	this->IterateThroughNeighbors(cr, Radius+MaxRadius+maxVoxelDiagonal, [&maxVoxelDiagonal, &PartialOverlap, &Overlap, &halfsize, &ba, dim, &Radius, &pSphereRadii](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) -> void
+	this->IterateThroughNeighbors(cr, Radius+MaxRadius+maxVoxelDiagonal, [&maxVoxelDiagonal, &PartialOverlap, &Overlap, &halfsize, &ba, dim, &Radius, &pSphereRadii](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t Sourceparticle) -> void
 	{
 		double OverlapRadius=Radius+pSphereRadii->at(Sourceparticle);
 
@@ -318,7 +328,7 @@ bool SpherePacking::CheckOverlap(const GeometryVector & cr, double Radius) const
 	UpdateMaxRadius();
 	bool Overlap=false;
 	const std::vector<double> * pSphereRadii = & this->ParticleCharacteristics;
-	this->IterateThroughNeighbors(cr, Radius+MaxRadius, [&Overlap, &Radius, &pSphereRadii](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t Sourceparticle) -> void
+	this->IterateThroughNeighbors(cr, Radius+MaxRadius, [&Overlap, &Radius, &pSphereRadii](const GeometryVector & shift, const GeometryVector &, const signed long *, const size_t Sourceparticle) -> void
 	{
 		double OverlapRadius=Radius+pSphereRadii->at(Sourceparticle);
 		if(shift.Modulus2()<OverlapRadius*OverlapRadius)

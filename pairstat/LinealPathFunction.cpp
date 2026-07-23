@@ -2,6 +2,10 @@
 
 void ChordLengthDistribution(const std::function<const SpherePacking(size_t i)> & GetC, size_t num_c, std::vector<GeometryVector> & p0, std::vector<GeometryVector> & p1, double Rmax, double dR, size_t num_sample_lines, int seed)
 {
+	if (!(Rmax>0.0) || !(dR>0.0) || num_c==0){//invalid bin geometry / no configurations
+		p0.clear();	p1.clear();
+		return;
+	}
 	p0 = std::vector<GeometryVector>((int)std::round(Rmax/dR), GeometryVector(0,0,0,0));
 	for (size_t i = 0; i < p0.size() ; i++){
 		p0[i].x[0] = dR*i;
@@ -40,8 +44,8 @@ void ChordLengthDistribution(const std::function<const SpherePacking(size_t i)> 
 		double p0_ = 0.0, p1_ = 0.0;
 		#pragma omp parallel for private(p0_, p1_)
 		for (int j=0; j< (int)p0.size(); j++){
-			p0_ = p0[j].x[3] / tot_num_l_matrix / dR;
-			p1_ = p1[j].x[3] / tot_num_l_particle / dR;
+			p0_ = (tot_num_l_matrix>0.0) ? p0[j].x[3] / tot_num_l_matrix / dR : 0.0;
+			p1_ = (tot_num_l_particle>0.0) ? p1[j].x[3] / tot_num_l_particle / dR : 0.0;
 			p0[j].x[1] += p0_;
 			p0[j].x[2] += p0_*p0_;
 			p1[j].x[1] += p1_;
@@ -57,10 +61,14 @@ void ChordLengthDistribution(const std::function<const SpherePacking(size_t i)> 
 	// summarize the data
 	for (size_t i = 0; i < p0.size(); i++){
 		p0[i].x[1] /= (double) num_c;
-		p0[i].x[2] = std::sqrt( (p0[i].x[2] / num_c - p0[i].x[1] * p0[i].x[1]) / (num_c-1));
-
 		p1[i].x[1] /= (double) num_c;
-		p1[i].x[2] = std::sqrt( (p1[i].x[2] / num_c - p1[i].x[1] * p1[i].x[1]) / (num_c-1));
+		if (num_c>1){
+			p0[i].x[2] = std::sqrt( (p0[i].x[2] / num_c - p0[i].x[1] * p0[i].x[1]) / (num_c-1));
+			p1[i].x[2] = std::sqrt( (p1[i].x[2] / num_c - p1[i].x[1] * p1[i].x[1]) / (num_c-1));
+		}
+		else{
+			p0[i].x[2] = 0.0;	p1[i].x[2] = 0.0;
+		}
 	}
 	std::cout<<"done!\n";
 }
@@ -113,38 +121,32 @@ void GetLinealSegments(const SpherePacking &c, std::vector<size_t> &lengths0, st
 			//phases[j] = 0;
 		}
 
-		// Find the continuous segmants
-		int curr_phase = 0, prev_phase = phases[0];
+		// Find the continuous segments (run-length encoding of the phase sequence)
+		if (phases.empty())
+			continue;//nothing sampled along this line
+		int prev_phase = phases[0];
 		int leng = 1;
 		for (size_t j = 1; j < phases.size(); j++){
-			curr_phase = phases[j];
-			bool is_not_at_end = (j < (phases.size()-1));
-			if ((curr_phase == prev_phase) && is_not_at_end){
-				// same phase and before end of the line
-				leng ++ ;
+			int curr_phase = phases[j];
+			if (curr_phase == prev_phase){
+				leng++;
 			}
 			else{
-				// end of the line, or phase boundary
-				if (!is_not_at_end){
-					leng++;
-				}
-
-				if (prev_phase == 0){
+				//phase boundary: close the previous segment before starting a new one
+				if (prev_phase == 0)
 					lengths0.push_back(leng);
-				}
-				else{
+				else
 					lengths1.push_back(leng);
-				}
 				leng = 1;
+				prev_phase = curr_phase;
 			}
-
-			if ((j==phases.size()-1) || (curr_phase != prev_phase)){
-			}
-			else{
-				// same phase
-			}
-			prev_phase = curr_phase;
 		}
+		//record the final segment (previously dropped, or mis-attributed to the
+		//previous segment, when the phase changed at the last sampled point)
+		if (prev_phase == 0)
+			lengths0.push_back(leng);
+		else
+			lengths1.push_back(leng);
 
 
 
@@ -181,6 +183,10 @@ void GetLinealSegments(const SpherePacking &c, std::vector<size_t> &lengths0, st
 
 void LinealPathFunction(const std::function<const SpherePacking(size_t i)> &GetC, size_t num_c, std::vector<GeometryVector> &L0, std::vector<GeometryVector> &L1, double Rmax, double dR, size_t num_sample_lines, int seed)
 {
+	if (!(Rmax>0.0) || !(dR>0.0) || num_c==0){//invalid bin geometry / no configurations
+		L0.clear();	L1.clear();
+		return;
+	}
 	L0 = std::vector<GeometryVector>((int)std::round(Rmax/dR), GeometryVector(0,0,0,0));
 	for (size_t i = 0; i < L0.size() ; i++){
 		L0[i].x[0] = dR*i;
@@ -235,7 +241,7 @@ void LinealPathFunction(const std::function<const SpherePacking(size_t i)> &GetC
 				sum[idx] += sum[idx+1];
 			}
 
-			double l0 = phi0_ *(sum1[idx] - (double)idx * sum[idx]) / lc0_;
+			double l0 = (lc0_>0.0) ? phi0_ *(sum1[idx] - (double)idx * sum[idx]) / lc0_ : 0.0;
 			L0[idx].x[1] += l0;
 			L0[idx].x[2] += l0*l0;
 		}
@@ -257,7 +263,7 @@ void LinealPathFunction(const std::function<const SpherePacking(size_t i)> &GetC
 				sum[idx] += sum[idx+1];
 			}
 
-			double l1 = phi1_ * (sum1[idx] - (double)idx * sum[idx]) / lc1_;
+			double l1 = (lc1_>0.0) ? phi1_ * (sum1[idx] - (double)idx * sum[idx]) / lc1_ : 0.0;
 			L1[idx].x[1] += l1;
 			L1[idx].x[2] += l1*l1;
 		}
@@ -267,10 +273,14 @@ void LinealPathFunction(const std::function<const SpherePacking(size_t i)> &GetC
 	// summarize the data
 	for (size_t i = 0; i < L0.size(); i++){
 		L0[i].x[1] /= (double) num_c;
-		L0[i].x[2] = std::sqrt( (L0[i].x[2] / num_c - L0[i].x[1] * L0[i].x[1]) / (num_c-1));
-
 		L1[i].x[1] /= (double) num_c;
-		L1[i].x[2] = std::sqrt( (L1[i].x[2] / num_c - L1[i].x[1] * L1[i].x[1]) / (num_c-1));
+		if (num_c>1){
+			L0[i].x[2] = std::sqrt( (L0[i].x[2] / num_c - L0[i].x[1] * L0[i].x[1]) / (num_c-1));
+			L1[i].x[2] = std::sqrt( (L1[i].x[2] / num_c - L1[i].x[1] * L1[i].x[1]) / (num_c-1));
+		}
+		else{
+			L0[i].x[2] = 0.0;	L1[i].x[2] = 0.0;
+		}
 	}
 	std::cout<<"done!\n";
 	phi0 /= num_c;

@@ -17,6 +17,8 @@ void ContactNumbers(std::function<const Configuration(size_t i)> GetConfigsFunct
 
 	if(!(MaxDistance>0.0))
 		return;
+	if(NumConfigs==0)//avoid GetConfigsFunction(0) and division by NumConfigs below
+		return;
 	//get the pair distances list
 	if(Verbosity>2)
 		std::cout<<"computing Local Coordination Numbers";
@@ -36,6 +38,8 @@ void ContactNumbers(std::function<const Configuration(size_t i)> GetConfigsFunct
 	#pragma omp parallel for reduction(+:mean)
 	for (size_t i=0; i<NumConfigs; i++){
 		Configuration c = GetConfigsFunction(i);
+		if (c.NumParticle() == 0)
+			continue;//empty configuration: skip (avoids 1/0 and a NaN mean)
 		c.PrepareIterateThroughNeighbors(MaxDistance);
 		double increment = 1.0/ c.NumParticle();
 		std::vector<double> Neighbors (Result.size(), 0);
@@ -44,7 +48,7 @@ void ContactNumbers(std::function<const Configuration(size_t i)> GetConfigsFunct
 			size_t count = 0;
 			c.IterateThroughNeighbors(
 				c.GetRelativeCoordinates(j), MaxDistance, 
-					[&count, &j, Min2](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void{
+					[&count, &j, Min2](const GeometryVector &shift, const GeometryVector &, const signed long *, const size_t SourceAtom) ->void{
 						if ( (SourceAtom != j) && (shift.Modulus2() > Min2)){
 							count ++ ;
 						}
@@ -78,7 +82,7 @@ void ContactNumbers(std::function<const Configuration(size_t i)> GetConfigsFunct
 	for (size_t j = 0; j<Result.size(); j++){
 		double val = Result[j].x[1] / NumConfigs;
 		Result[j].x[1] = val;
-		Result[j].x[2] = std::sqrt( std::abs(Result[j].x[2] / NumConfigs - val*val) / (NumConfigs-1));
+		Result[j].x[2] = (NumConfigs>1) ? std::sqrt( std::abs(Result[j].x[2] / NumConfigs - val*val) / (NumConfigs-1)) : 0.0;
 	}
 
 	if(Verbosity>2)
@@ -88,6 +92,11 @@ void ContactNumbers(std::function<const Configuration(size_t i)> GetConfigsFunct
 double CumulativeCoordinationNumber(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double r_min, double r_max, double dr, std::vector<GeometryVector> &Result, bool logscale)
 {
 //	double log_ratio = log(MaxDistance/MinDistance)/(double)num_bins;
+
+	if (NumConfigs == 0 || !(dr > 0.0)){//avoid GetConfigsFunction(0), /0 bins, and /NumConfigs
+		Result.clear();
+		return 0.0;
+	}
 
 	/* Determine the min distance*/
 	double rmin = 100000000.0;
@@ -171,7 +180,7 @@ double CumulativeCoordinationNumber(std::function<const Configuration(size_t i)>
 			std::vector<double> num_pairs(Result.size(),0.0); // from particle j
 			c.IterateThroughNeighbors(
 				c.GetRelativeCoordinates(j), r_max, 
-				[&num_pairs, rmin, j, &get_bin](const GeometryVector &shift, const GeometryVector &LatticeShift, const signed long *PeriodicShift, const size_t SourceAtom) ->void{
+				[&num_pairs, rmin, j, &get_bin](const GeometryVector &shift, const GeometryVector &, const signed long *, const size_t SourceAtom) ->void{
 					if (SourceAtom != j){
 						double distance = sqrt(shift.Modulus2());
 						size_t idx = get_bin(distance);
@@ -216,7 +225,7 @@ double CumulativeCoordinationNumber(std::function<const Configuration(size_t i)>
 	/* Summary */
 	for (size_t k=0; k < Result.size(); k++){
 		Result[k].x[1] /= NumConfigs;
-		double var = (Result[k].x[2]/NumConfigs - Result[k].x[1]*Result[k].x[1])/(NumConfigs-1.0);
+		double var = (NumConfigs>1) ? (Result[k].x[2]/NumConfigs - Result[k].x[1]*Result[k].x[1])/(NumConfigs-1.0) : 0.0;
 		Result[k].x[2] = (var > 0.0)? sqrt(var) : 0.0;
 	}
 	

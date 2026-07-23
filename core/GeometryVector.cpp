@@ -135,22 +135,31 @@ void ReadFunction(std::vector<GeometryVector> & result, std::istream & ifile, si
 		std::cerr << "Error in ReadFunction : input stream is not good!\n";
 		return;
 	}
+	if (NumColumns > ::MaxDimension)
+	{
+		std::cerr << "Error in ReadFunction : NumColumns exceeds MaxDimension!\n";
+		return;
+	}
 	result.clear();
 	/* Ignore the comments */
 	std::string buffer;	std::istringstream iss;
 	while (std::getline(ifile, buffer)) {
-		if (buffer[0] != '#') {/* ignore comments or field names. */
-			GeometryVector temp(static_cast<DimensionType>(NumColumns));
-			iss.str(buffer);
-			iss.clear();	//THIS IS VERY CRUCIAL!!!
+		if (buffer.empty() || buffer[0] == '#')
+			continue;/* skip blank lines and comments or field names. */
 
-			for (size_t i = 0; i < NumColumns; i++) {
-				iss >> temp.x[i];
-			}
+		GeometryVector temp(static_cast<DimensionType>(NumColumns));
+		iss.str(buffer);
+		iss.clear();	//THIS IS VERY CRUCIAL!!!
 
-			if (ifile.eof() == false)
-				result.push_back(temp);
+		bool ok = true;
+		for (size_t i = 0; i < NumColumns; i++) {
+			if (!(iss >> temp.x[i])) { ok = false; break; }
 		}
+
+		/* keep the row only when every column extracted (also keeps the last
+		 * row when the file has no trailing newline). */
+		if (ok)
+			result.push_back(temp);
 	}
 }
 void ReadFunction(std::vector<GeometryVector> & result, const std::string & InFilePrefix, size_t NumColumns=4)
