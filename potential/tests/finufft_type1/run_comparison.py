@@ -25,17 +25,18 @@ def save_json(path, data):
     path.write_text(json.dumps(data, indent=2, allow_nan=False) + "\n")
 
 
-def build(output, env):
+def build(output, env, entry=None, extra_sources=(), extra_includes=()):
     work = output / "build"
     work.mkdir()
-    sources = [HERE / "compare_optimization.cpp"] + [REPO / p for p in (
+    sources = [entry or HERE / "compare_optimization.cpp"] + [REPO / p for p in (
         "core/GeometryVector.cpp", "core/etc.cpp", "core/RandomGenerator.cpp",
         "core/PeriodicCellList.cpp", "core/SpherePacking.cpp", "core/ConfigurationIO.cpp",
-        "potential/Potential.cpp", "potential/StructureOptimization.cpp")]
+        "potential/Potential.cpp", "potential/StructureOptimization.cpp")] + list(extra_sources)
     common = ["g++", "-std=c++17", "-O2", "-fopenmp", "-DCCPOTENTIAL_USE_FINUFFT",
               "-I" + str(REPO / "core"), "-I" + str(REPO / "potential"),
               "-I" + str(DEPS / "include"), "-I" + str(NATIVE / "install/include"),
               "-I" + str(NATIVE / "source/finufft-2.5.1/include")]
+    common.extend("-I" + str(path) for path in extra_includes)
     commands = []
 
     def compile_one(source):

@@ -1,0 +1,15 @@
+# Five-component validation and finite sweep
+
+Run `python3 potential/tests/five_component/run_study.py prepare --output /absolute/new/run` to build fresh objects and validate the N=2000 five-component potential. Then run the same command with `run` instead of `prepare` to execute the gated queue. The initial prepare refuses to overwrite an existing directory; run reuses only complete receipts and stops on incomplete prior configurations.
+
+The prepared executable is self-contained except for the recorded local GSL, NLopt, and FINUFFT dependencies. The runner selects four distinct physical cores, four OpenMP threads, and passive waiting. All simulations are serial; there is no agent orchestration. Code hash/build receipts and per-run inputs, species labels, endpoints, direct structure factors, optimizer codes, and timings remain in the chosen output directory. `REPORT.md`, `summary.json`, and `state.json` are updated after each run.
+
+Conditions: N=2000, five equally populated species, equal radii, square periodic cell, number density 1, total packing fraction 0.2. Chi is per species. Complete reciprocal shells nearest 0.10,0.20,0.30,0.40,0.45,0.50,0.55 are selected. Energy coefficients are u0=e0=1. No chi=0.60, refinement, additional seeds, or continuation runs.
+
+Step 2 runs three matched vanilla/FINUFFT seed pairs near chi=0.1. Step 3 starts only if the implementation tests and all paired endpoints pass, with FINUFFT below 600 seconds/configuration; otherwise it stops for review, without changing N. Step 3 uses FINUFFT only, ten independent seeds per target. Report tables distinguish per-backend Step 2 times from FINUFFT-only Step 3 times. Time means optimization wall time, not physical simulation time.
+
+The existing L-BFGS routine is unchanged; a link-time observer records statuses/evaluations and imposes a shared 600-second configuration budget across its three passes (at most 2000 evaluations/pass). A 660-second process timeout is an additional safety bound. Time-limit endpoints are saved when the optimizer returns normally and are assessed by the same physical criteria; process failures stop the queue.
+
+Acceptance uses independent direct sums for the species-weighted CC energy, direct forces, and brute-force periodic all-pair contact checks. Total energy<=1e-11, max per-species S<=1e-10, max absolute force component<=1e-7, and max relative overlap<=1e-6 are required. Failed searches do not prove infeasibility. Five translated 20x20 lattices provide separate periodic reference states, verified at all seven chi masks; they do not contribute to random-start success counts.
+
+Validation also covers reverse species assignment, reassignment, cold AllForce calls, a radius increase beyond the original cutoff, direct/FINUFFT density and force comparisons, and finite differences of combined CC/contact forces. The wrapper repairs are separate from the unchanged base FINUFFT density backend. Public manual mutation of the base constraints vector still requires cache invalidation or SetConfiguration, as documented previously.

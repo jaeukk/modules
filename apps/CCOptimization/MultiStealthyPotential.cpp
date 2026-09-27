@@ -53,6 +53,7 @@ void MultiStealthyPotential::SetSpeciesOfParticle(size_t prt_idx, size_t species
 void MultiStealthyPotential::AddConstraint(size_t species, const GeometryVector &k, std::vector<double> V)
 {
 	this->species_constraints[species].CCPotential->AddConstraint(k, V);
+	this->species_constraints[species].CCPotential->RhoValid = false;
 }
 
 /** \brief Compute the structure factor contributions for a species.
@@ -142,7 +143,12 @@ void MultiStealthyPotential::SetConfiguration(const Configuration &Position)
 void MultiStealthyPotential::SetSecureRadii(const std::vector<double> &radii)
 {
 	assert(radii.size() == this->pConfig->NumParticle());
+	for (double radius : radii)
+		if (!std::isfinite(radius) || radius <= 0.0)
+			throw std::invalid_argument("MultiStealthyPotential::SetSecureRadii: radii must be finite and positive.");
 	this->radii = std::vector<double> (radii);
+	this->rc = radii.empty() ? 0.0 : 2.01 * *std::max_element(radii.begin(), radii.end());
+	this->pConfig->PrepareIterateThroughNeighbors(this->rc);
 }
 
 /** \brief Initialize configuration and radii from a packing object.
@@ -183,11 +189,10 @@ void MultiStealthyPotential::UpdateSubconfigs()
 		for (size_t s = 0; s < this->species_constraints.size(); s ++ )
 			this->subc.emplace_back(temp);
 		
-		for (size_t i = 0; i < this->idx2species.size(); i++){
-			if (idx2species[i].species > -1){
-				this->subc[this->idx2species[i].species].Insert("a", this->pConfig->GetRelativeCoordinates(i));
-			}
-		}
+		// The local particle order must match idx and idx2species, including reassignment.
+		for (size_t s = 0; s < this->species_constraints.size(); s++)
+			for (size_t i : this->species_constraints[s].idx)
+				this->subc[s].Insert("a", this->pConfig->GetRelativeCoordinates(i));
 
 		for (size_t s = 0; s < this->species_constraints.size(); s ++ ){
 			//propagate the thread count to each species potential; otherwise only the wrapper is
@@ -195,14 +200,15 @@ void MultiStealthyPotential::UpdateSubconfigs()
 			this->species_constraints[s].CCPotential->ParallelNumThread = this->ParallelNumThread;
 			this->species_constraints[s].CCPotential->SetConfiguration(this->subc[s]);
 		}
+		this->SubconfigValid = true;
 	}
-	this->SubconfigValid = true;
 }
 
 /** \brief Compute total energy from stealthy and repulsive contributions.
  *  \return Total potential energy. */
 double MultiStealthyPotential::Energy()
 {
+	this->UpdateSubconfigs();
 	//every particle must belong to a species; an unassigned particle (species -1) is not in any
 	//species index list and would be silently dropped from the collective-coordinate sum below.
 	for (size_t i = 0; i < this->idx2species.size(); i++)
@@ -261,6 +267,7 @@ double MultiStealthyPotential::Energy()
  *  \param i Particle index. */
 void MultiStealthyPotential::Force(GeometryVector &force, size_t i)
 {
+	this->UpdateSubconfigs();
 	// stealthy potential contribution
 	GeometryVector force_CC(static_cast<int> (this->Dimension));
 	//an unassigned particle keeps species -1; casting that to size_t would index species_constraints
@@ -318,6 +325,10 @@ void MultiStealthyPotential::Force(GeometryVector &force, size_t i)
  *  \param results Output vector of forces. */
 void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 {
+	this->UpdateSubconfigs();
+	// Fill each shared cache before the parallel force loop (also safe without prior Energy).
+	for (auto & species : this->species_constraints)
+		species.CCPotential->GetRho();
 	long end = this->pConfig->NumParticle();
 	results.resize(end);
 	unsigned long tempNumThread = 1;
