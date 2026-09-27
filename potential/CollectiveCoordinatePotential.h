@@ -14,8 +14,23 @@
 #include <omp.h>
 #include <stdexcept>
 #include <typeinfo>
+#include <cfloat>
+#include <cstdint>
+#include <limits>
+#include <new>
 
 #include "Potential.h"
+
+// Optional FINUFFT Type 1 backend for ShiftedCCPotential::GetRho (off by default).
+// Enable with -DCCPOTENTIAL_USE_FINUFFT, add the FINUFFT include directories, and link libfinufft;
+// then select it at run time with ShiftedCCPotential::SetRhoBackend(RhoBackend::FinufftType1).
+// Without the macro no FINUFFT header or library is needed and only the direct sum exists.
+// The macro must be set identically in every translation unit of one program (ODR).
+// See tests/finufft_type1/README.md for compile and run commands.
+#ifdef CCPOTENTIAL_USE_FINUFFT
+#include <complex>
+#include <finufft.h>
+#endif
 
 //#define HAVETWOFIXEDPARTICLES
 
@@ -75,10 +90,255 @@ public:
 		}
 	}
 
+	/** \brief Backend used by ShiftedCCPotential::GetRho to evaluate rho(k).
+	 *  Scope: only ShiftedCCPotential::GetRho honors the selection, so classes that inherit it
+	 *  (LogCCPotential, ShiftedCCPotential_S2, the _varBox variants, ShiftedCCPotential_ForMC) use it.
+	 *  ShiftedCCPotential_withWeight and ShiftedCCPotential_S2_MultiConfig override GetRho and always
+	 *  use their own direct sums; the inherited setting is ignored there. */
+	enum class RhoBackend
+	{
+		Direct,		//< Direct O(N*Nk) summation (default, always available).
+		FinufftType1	//< FINUFFT Type 1 on the reciprocal-lattice mode grid (needs -DCCPOTENTIAL_USE_FINUFFT).
+	};
+
+	/** \brief Value of GetLastFinufftStatus() when the last GetRho did not call FINUFFT. */
+	static constexpr int FinufftNotCalled=-1;
+	/** \brief FINUFFT is skipped when the mode grid exceeds this factor times (constraints + particles). */
+	static constexpr double FinufftSparseGridFactor=64.0;
+
+	/** \brief Report whether a backend was compiled into this build.
+		\param backend  Backend to query.
+		\return true for Direct always, and for FinufftType1 only when built with CCPOTENTIAL_USE_FINUFFT. */
+	static bool IsRhoBackendAvailable(RhoBackend backend)
+	{
+		if(backend==RhoBackend::Direct)
+			return true;
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		return backend==RhoBackend::FinufftType1;
+#else
+		return false;
+#endif
+	}
+
+	/** \brief Select the rho(k) backend and invalidate the cached rho.
+		\param backend  Backend to use from the next GetRho call on.
+		\throw std::invalid_argument if the backend is not compiled in; the object is then left unchanged. */
+	void SetRhoBackend(RhoBackend backend)
+	{
+		if(!IsRhoBackendAvailable(backend))
+			throw std::invalid_argument("ShiftedCCPotential::SetRhoBackend: backend not available; FinufftType1 requires compiling with -DCCPOTENTIAL_USE_FINUFFT and linking FINUFFT.");
+		this->RhoBackendSelected=backend;
+		this->RhoValid=false;
+	}
+
+	/** \brief Return the selected rho(k) backend.
+		\return The backend chosen with SetRhoBackend (Direct by default). */
+	RhoBackend GetRhoBackend(void) const
+	{
+		return this->RhoBackendSelected;
+	}
+
+	/** \brief Set the FINUFFT requested relative tolerance and invalidate the cached rho.
+		\param eps  Tolerance passed to FINUFFT; must be positive and finite (default 1e-12).
+		\throw std::invalid_argument for an invalid eps; the object is then left unchanged. */
+	void SetFinufftTolerance(double eps)
+	{
+		if(!(eps>0.0) || !std::isfinite(eps))
+			throw std::invalid_argument("ShiftedCCPotential::SetFinufftTolerance: eps must be positive and finite.");
+		this->FinufftTolerance=eps;
+		this->RhoValid=false;
+	}
+
+	/** \brief Return the FINUFFT requested tolerance.
+		\return The tolerance set with SetFinufftTolerance. */
+	double GetFinufftTolerance(void) const
+	{
+		return this->FinufftTolerance;
+	}
+
+	/** \brief Cap the number of FINUFFT output modes (memory guard) and invalidate the cached rho.
+		The output array takes 16 bytes per mode and FINUFFT's fine grid roughly 2^d times more.
+		\param maxModes  Largest allowed product of grid sizes (2K_d+1); must be >= 1 (default 2^22).
+		\throw std::invalid_argument if maxModes < 1; the object is then left unchanged. */
+	void SetFinufftMaxModes(std::int64_t maxModes)
+	{
+		if(maxModes<1)
+			throw std::invalid_argument("ShiftedCCPotential::SetFinufftMaxModes: maxModes must be >= 1.");
+		this->FinufftMaxModes=maxModes;
+		this->RhoValid=false;
+	}
+
+	/** \brief Return the FINUFFT mode-count cap.
+		\return The cap set with SetFinufftMaxModes. */
+	std::int64_t GetFinufftMaxModes(void) const
+	{
+		return this->FinufftMaxModes;
+	}
+
+	/** \brief Return the backend that actually produced the cached rho in the last ShiftedCCPotential::GetRho.
+		Direct means either Direct was selected or the FINUFFT path fell back. Not updated by derived GetRho overrides.
+		\return The backend used by the most recent base-class evaluation. */
+	RhoBackend GetLastRhoBackendUsed(void) const
+	{
+		return this->RhoBackendLastUsed;
+	}
+
+	/** \brief Return the FINUFFT status of the last ShiftedCCPotential::GetRho.
+		\return 0 on FINUFFT success, the nonzero FINUFFT code that caused a direct fallback, or FinufftNotCalled. */
+	int GetLastFinufftStatus(void) const
+	{
+		return this->FinufftLastStatus;
+	}
+
+protected:
+	RhoBackend RhoBackendSelected;	//< Backend requested by the user.
+	RhoBackend RhoBackendLastUsed;	//< Backend that produced the cached rho.
+	double FinufftTolerance;	//< FINUFFT requested tolerance.
+	std::int64_t FinufftMaxModes;	//< Cap on the FINUFFT mode-grid size.
+	int FinufftLastStatus;	//< Last FINUFFT return code, or FinufftNotCalled.
+
+#ifdef CCPOTENTIAL_USE_FINUFFT
+	/** \brief Try to fill RhoReal/RhoImag with one FINUFFT Type 1 transform.
+		rho(k) = sum_j exp(+i k.r_j) with unit strengths and no normalization; since k = sum_d n_d b_d with
+		n_d = k.a_d/(2 pi), k.r_j = sum_d n_d (2 pi s_jd) for fractional coordinates s_j. The mapping from
+		constraints to integer modes is recomputed on every call because constraints is public and mutable.
+		Snapping n_d to the nearest integer changes each phase by at most 2 pi dim max_d|n_d-round(n_d)|,
+		so a mode is accepted only if both the rounding residual |n_d-round(n_d)| and the roundoff estimate
+		4*DBL_EPSILON*(1+sum_c|k_c a_dc|/(2 pi)) are within budget = min(1e-8, eps)/(8 pi dim), keeping the
+		snapping error below min(1e-8, eps)/4 in phase. This conservatively rejects large indices (e.g. at
+		eps=1e-12 sum_c|k_c a_dc|/(2 pi) > about 43/dim) and every eps below about 2e-14*dim, before FINUFFT is called.
+		Returns false, leaving the caller to use the direct sum, when: the dimension is not 1-3; there are
+		no constraints or no particles; some mode fails the budget above; |n_d| > 2^30; the mode grid exceeds
+		FinufftMaxModes or FinufftSparseGridFactor*(Nk+N); allocation fails; or FINUFFT returns nonzero.
+		All mapping checks run before the dense mode array is allocated.
+		\return true if RhoReal/RhoImag hold the FINUFFT result, false if a direct fallback is required. */
+	bool GetRho_FinufftType1(void)
+	{
+		const DimensionType dim=this->Dimension;
+		const size_t nk=this->constraints.size();
+		const size_t np=this->pConfig->NumParticle();
+		if(dim<1 || dim>3 || nk==0 || np==0)
+			return false;
+		if(np>static_cast<size_t>(std::numeric_limits<std::int64_t>::max()))
+			return false;
+
+		const double twopi=2.0*::pi;
+		const double maxIndex=static_cast<double>(std::int64_t(1)<<30);
+		const double budget=std::min(1e-8, this->FinufftTolerance)/(4.0*twopi*static_cast<double>(dim));
+		try
+		{
+			GeometryVector basis[3];
+			for(DimensionType d=0; d<dim; d++)
+				basis[d]=this->pConfig->GetBasisVector(d);
+
+			//integer reciprocal-lattice indices of every constraint
+			std::vector<std::int64_t> modes(nk*dim);
+			std::int64_t K[3]={0, 0, 0};
+			for(size_t i=0; i<nk; i++)
+			{
+				const GeometryVector & k=this->constraints[i].k;
+				for(DimensionType d=0; d<dim; d++)
+				{
+					double dot=0.0, scale=0.0;
+					for(DimensionType c=0; c<dim; c++)
+					{
+						double t=k.x[c]*basis[d].x[c];
+						dot+=t;
+						scale+=std::abs(t);
+					}
+					double n=dot/twopi;
+					if(!std::isfinite(n) || std::abs(n)>maxIndex)
+						return false;
+					double nr=std::round(n);
+					double roundoff=4.0*DBL_EPSILON*(1.0+scale/twopi);
+					if(std::abs(n-nr)>budget || roundoff>budget)
+						return false;
+					std::int64_t m=static_cast<std::int64_t>(nr);
+					modes[i*dim+d]=m;
+					K[d]=std::max(K[d], m<0 ? -m : m);
+				}
+			}
+
+			//grid sizes, guarded against overflow and unbounded allocation
+			std::int64_t ms[3]={1, 1, 1};
+			std::int64_t total=1;
+			for(DimensionType d=0; d<dim; d++)
+			{
+				ms[d]=2*K[d]+1;
+				if(ms[d]>this->FinufftMaxModes/total)
+					return false;
+				total*=ms[d];
+			}
+			if(static_cast<double>(total)>FinufftSparseGridFactor*(static_cast<double>(nk)+static_cast<double>(np)))
+				return false;
+
+			//fractional coordinates as angles in [0, 2 pi]
+			std::vector<double> angles[3];
+			for(DimensionType d=0; d<dim; d++)
+				angles[d].resize(np);
+			for(size_t j=0; j<np; j++)
+			{
+				const GeometryVector & s=this->pConfig->GetRelativeCoordinates(j);
+				for(DimensionType d=0; d<dim; d++)
+					angles[d][j]=twopi*(s.x[d]-std::floor(s.x[d]));
+			}
+			std::vector<std::complex<double> > strengths(np, std::complex<double>(1.0, 0.0));
+			std::vector<std::complex<double> > f(static_cast<size_t>(total));
+
+			finufft_opts opts;
+			finufft_default_opts(&opts);
+			opts.modeord=0;
+			unsigned long nthreads=this->ParallelNumThread;
+			if(nthreads<1)
+				nthreads=1;
+			if(nthreads>static_cast<unsigned long>(std::numeric_limits<int>::max()))
+				nthreads=std::numeric_limits<int>::max();
+			opts.nthreads=static_cast<int>(nthreads);
+
+			const std::int64_t nj=static_cast<std::int64_t>(np);
+			int status;
+			if(dim==1)
+				status=finufft1d1(nj, angles[0].data(), strengths.data(), +1, this->FinufftTolerance, ms[0], f.data(), &opts);
+			else if(dim==2)
+				status=finufft2d1(nj, angles[0].data(), angles[1].data(), strengths.data(), +1, this->FinufftTolerance, ms[0], ms[1], f.data(), &opts);
+			else
+				status=finufft3d1(nj, angles[0].data(), angles[1].data(), angles[2].data(), strengths.data(), +1, this->FinufftTolerance, ms[0], ms[1], ms[2], f.data(), &opts);
+			this->FinufftLastStatus=status;
+			if(status!=0)
+				return false;
+
+			//modeord=0: mode n_d sits at n_d+K_d, first dimension fastest
+			this->RhoReal.resize(nk);
+			this->RhoImag.resize(nk);
+			for(size_t i=0; i<nk; i++)
+			{
+				std::int64_t idx=0;
+				for(int d=static_cast<int>(dim)-1; d>=0; d--)
+					idx=idx*ms[d]+(modes[i*dim+d]+K[d]);
+				double tr=f[static_cast<size_t>(idx)].real();
+				double ti=f[static_cast<size_t>(idx)].imag();
+#ifdef HAVETWOFIXEDPARTICLES
+				tr+=2;
+#endif
+				this->RhoReal[i]=tr;
+				this->RhoImag[i]=ti;
+			}
+		}
+		catch(const std::bad_alloc &)
+		{
+			return false;
+		}
+		return true;
+	}
+#endif
+
+public:
 	//this class will manage these members, users can also read it.
 	std::vector<double> RhoReal, RhoImag;
 	bool RhoValid;
-	/** \brief Compute and cache the complex collective density rho(k) at every constraint. */
+	/** \brief Compute and cache the complex collective density rho(k) at every constraint.
+		Uses the backend chosen with SetRhoBackend. When FinufftType1 is selected but cannot be used
+		(see GetRho_FinufftType1), this falls back to the direct sum, so rho is always valid on return. */
 	virtual void GetRho(void)
 	{
 		assert(this->pConfig!=nullptr);
@@ -87,6 +347,16 @@ public:
 			return;
 		}
 		this->Volume=this->pConfig->PeriodicVolume();
+		this->FinufftLastStatus=FinufftNotCalled;
+
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		if(this->RhoBackendSelected==RhoBackend::FinufftType1 && this->GetRho_FinufftType1())
+		{
+			this->RhoBackendLastUsed=RhoBackend::FinufftType1;
+			this->RhoValid=true;
+			return;
+		}
+#endif
 
 		signed long end=this->constraints.size();
 		this->RhoReal.resize(end);
@@ -109,6 +379,7 @@ public:
 			this->RhoImag[i]=ti;
 		}
 
+		this->RhoBackendLastUsed=RhoBackend::Direct;
 		this->RhoValid=true;
 	}
 
@@ -120,6 +391,11 @@ public:
 		this->RhoValid=false;
 		this->ParallelNumThread=1;
 		this->Shift=0.0;
+		this->RhoBackendSelected=RhoBackend::Direct;
+		this->RhoBackendLastUsed=RhoBackend::Direct;
+		this->FinufftTolerance=1e-12;
+		this->FinufftMaxModes=std::int64_t(1)<<22;
+		this->FinufftLastStatus=FinufftNotCalled;
 	}
 
 	/** \brief Destructor. */
