@@ -1,0 +1,12 @@
+**PASS — read-only audit of cycle 1.** No blocking findings in the new delta.
+
+- `CollectiveCoordinatePotential.h:189,224,318,420`: validates positive overrides before mutation, invalidates cached rho, defaults FINUFFT threads to 1 independently of `ParallelNumThread`, and forwards the stored value directly. Direct remains the default. Copy semantics preserve the new scalar member; physical formulas, tolerance, and fallback logic are unchanged.
+- `finufft_repeatability/finufft_observer.cpp:48–67`: records options and statuses while forwarding every argument unchanged. The production fix does not depend on an options-mutating wrapper.
+- `finufft_repeatability/run_repeatability.py:219–265,312–425`: freshly builds current sources, covers enabled/disabled API variants, and requires independent ground-state acceptance, actual FINUFFT use without optimization fallback, observed `nthreads=1`, identical repeated final files, and matching pass records. The reused harness supplies independent energy, structure-factor, force, and overlap checks. Exceptions and failed required checks produce nonzero exit status. Cross-backend displacement remains descriptive.
+
+Nonblocking findings:
+
+- **Low — `finufft_repeatability/run_repeatability.py:297–299`:** the dependency check ignores `ldd`’s return code. Empty stdout from a failed invocation satisfies `"finufft" not in linked`. Require successful execution and retain stderr before accepting this check. The explicit library-free link currently provides additional protection.
+- **Low — `finufft_repeatability/README.md:65–67`:** “cached rho bitwise unchanged” overstates `api_test.cpp:99–101`, which uses floating-point value equality. Change the claim to “exactly equal values,” or compare representations if bitwise preservation is intended.
+
+Limitations: No compilation, tests, or optimizations were executed, and no files were changed. This PASS concerns code review, not observed optimization repeatability. Forced library-error/allocation-failure fallback paths are not exercised by the new tests; their production logic is unchanged. Any eventual successful run establishes finite evidence for that machine, build, and settings—not cross-machine reproducibility.

@@ -240,7 +240,10 @@ double MultiStealthyPotential::Energy()
 
 	/* compute the contact potential contribution (CP)*/
 	if (this->WithRepulsion){
-#pragma omp parallel for schedule (guided, 1) num_threads(this->ParallelNumThread) reduction(+:CP)
+		// Keep arithmetic order independent of worker assignment and reduction order.
+		// Each particle owns one slot; only the final, ordered sum combines slots.
+		std::vector<double> contactEnergy(this->pConfig->NumParticle(), 0.0);
+#pragma omp parallel for schedule (static) num_threads(this->ParallelNumThread)
 		for (size_t i = 0; i < this->pConfig->NumParticle(); i++){
 
 			double E = 0.0L;
@@ -256,8 +259,10 @@ double MultiStealthyPotential::Energy()
 				}
 			);
 			
-			CP += E;
+			contactEnergy[i] = E;
 		}
+		for (double energy : contactEnergy)
+			CP += energy;
 	} 
 	return this->u0 * CC + this->e0 * CP;
 }
