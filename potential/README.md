@@ -2,6 +2,10 @@
 
 Pair potentials, dynamics, and energy minimization. Library module (no `main`).
 
+FINUFFT integration status, benchmark results, retained reproducibility fixes, and
+the unresolved cross-backend L-BFGS limitation are documented in the
+[consolidated FINUFFT report](../docs/finufft/REPORT.md).
+
 ## Contents
 
 | File | Purpose |

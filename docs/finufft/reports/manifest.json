@@ -1,0 +1,142 @@
+[
+  {
+    "snapshot": "graft-repository.md",
+    "original": "_multiagent/tasks/2026-09-22-graft-finufft/repository/REPORT.md",
+    "sha256": "53e9cfde0baedf8ed41c0149615a582197acffdf8088680af72e395171ea6597"
+  },
+  {
+    "snapshot": "initial-validation.md",
+    "original": "_multiagent/tasks/2026-09-22-graft-finufft/validation/REPORT.md",
+    "sha256": "778c162df05d40174d0d9577a553c57e51d002c7075694d41087d96e38e6343f"
+  },
+  {
+    "snapshot": "numerical-background.md",
+    "original": "_multiagent/tasks/2026-09-22-graft-finufft/numerical/REPORT.md",
+    "sha256": "2397c5de89f9b1bf6f0d96898a79e143ad4ae9b74a04158e8ea19839b53c9f14"
+  },
+  {
+    "snapshot": "one-component-benchmark.md",
+    "original": "_multiagent/tasks/2026-09-27-finufft-comparison/full/REPORT.md",
+    "sha256": "e8bae4c168f893eab2e24b80af716147758c4a9e1cb485d2627444325cdc0062"
+  },
+  {
+    "snapshot": "five-component-original.md",
+    "original": "_multiagent/tasks/2026-09-28-five-component/run/REPORT.md",
+    "sha256": "8d281c97cddb1124b8b92d1b355ef5559f4a4346c874775953c3a42b564c69cd"
+  },
+  {
+    "snapshot": "five-component-pairing.md",
+    "original": "_multiagent/tasks/2026-09-28-five-component/PAIR_AUDIT.md",
+    "sha256": "9c086492af39f76ca5c80a5739c45a9cf5faa89da7e2cb4a063d2a4d0abcc47e"
+  },
+  {
+    "snapshot": "rho-comparison.md",
+    "original": "_multiagent/tasks/2026-09-28-five-component/rho-audit/REPORT.md",
+    "sha256": "35ed4fdd48b58bc0368ae37b26ddf8ad573b590e5be62a5f060870f6dadf86e8"
+  },
+  {
+    "snapshot": "contact-results.md",
+    "original": "_multiagent/tasks/2026-09-28-contact-reproducibility/RESULTS.md",
+    "sha256": "70840739c94529489a0b03fb894e73fcbe1b6e7ed85b919a6c65267a9ba5d80d"
+  },
+  {
+    "snapshot": "contact-full-report.md",
+    "original": "_multiagent/tasks/2026-09-28-contact-reproducibility/REPORT.md",
+    "sha256": "10c03c1c2c5a960558b3009a8a24166fd79b91e11752a71bb64a51cd9d3f6459"
+  },
+  {
+    "snapshot": "single-thread-control.md",
+    "original": "_multiagent/tasks/2026-09-28-finufft-single-thread/REPORT.md",
+    "sha256": "b83e5dbeb882875d65e88776ffacf370b82a3071d5752f71ddfe7e377fb82bd3"
+  },
+  {
+    "snapshot": "repeatability-results.md",
+    "original": "_multiagent/tasks/finufft-repeatability-fix/RESULTS.md",
+    "sha256": "35058f7218dfda881feceb79ea4cdb728d1daa62967c1c8cfea5506543039c89"
+  },
+  {
+    "snapshot": "repeatability-regression.md",
+    "original": "_multiagent/tasks/finufft-repeatability-fix/evidence-cycle1/REPORT.md",
+    "sha256": "20c3f12d422ad52f78976ec6855fa7abf360b07c6693a78e8173113435797a3a"
+  },
+  {
+    "snapshot": "repeatability-audit.md",
+    "original": "_multiagent/tasks/finufft-repeatability-fix/audit-cycle1.md",
+    "sha256": "37d55cfe10c15af648d266b6d979cb0512540e04f7c6e8090346d0e675ffc054"
+  },
+  {
+    "snapshot": "repeatability-verification.md",
+    "original": "_multiagent/tasks/finufft-repeatability-fix/verification-cycle1.md",
+    "sha256": "643464ef9dce998793f4a6e39a9525daf9fcb89b1fe6c17007a634e3fc4ae6a5"
+  },
+  {
+    "snapshot": "cross-backend-results.md",
+    "original": "_multiagent/tasks/finufft-cross-backend/RESULTS.md",
+    "sha256": "5c37bbe08be143d7537fbee51d29134d6e187343c0493fd97e22d6276a86a225"
+  },
+  {
+    "snapshot": "cross-backend-audit1.md",
+    "original": "_multiagent/tasks/finufft-cross-backend/audit-cycle1.md",
+    "sha256": "307fe561c45ce3836aa95ed27dab3c1d2501a256a9000098c02ab429c5479150"
+  },
+  {
+    "snapshot": "cross-backend-audit2.md",
+    "original": "_multiagent/tasks/finufft-cross-backend/audit-cycle2.md",
+    "sha256": "f290c0ccc14efe766bdd9a4e4e92060f98a8621e341618a10b9274e23bdfd6c9"
+  },
+  {
+    "snapshot": "cross-backend-verification.md",
+    "original": "_multiagent/tasks/finufft-cross-backend/verification.md",
+    "sha256": "3ad9d72770edb3564524ea1346a07a32ec7a704cbd73208afe659bc5b4fe571f"
+  },
+  {
+    "snapshot": "cross-backend-pairing.md",
+    "original": "_multiagent/tasks/finufft-cross-backend/verification-pairing.md",
+    "sha256": "d1dedfd6f2780c327d3f4970ba7a38bb216c029f21184cbed8a684866e952644"
+  },
+  {
+    "snapshot": "energy-diagnosis.md",
+    "original": "_multiagent/tasks/finufft-energy-diagnosis/REPORT.md",
+    "sha256": "f0caee9bc3ef121e13f9b5182bbe485c1ae77e319c803e9e4d5b698c2ef1f448"
+  },
+  {
+    "snapshot": "geometric-identity.md",
+    "original": "_multiagent/tasks/finufft-energy-diagnosis/ZHANG_PROTOCOL.md",
+    "sha256": "a03e9e4488eec95af1d56f1f00357af008577fb76dcee1c968f61e121d0e2a40"
+  },
+  {
+    "snapshot": "retired-factors.md",
+    "original": "_multiagent/tasks/finufft-factors/REPORT.md",
+    "sha256": "3458b248c9728d479686cc1f0ca97f2ad95ee33cb13eb186c67335e22c48dcb5"
+  },
+  {
+    "snapshot": "retired-factor-audits.md",
+    "original": "_multiagent/tasks/finufft-factors/audit-cycles.md",
+    "sha256": "1b061a08ac2c027133ce3faeeccd20c885b4e2cef6b494d19608cdbc54767267"
+  },
+  {
+    "snapshot": "ingestion-aliasing.md",
+    "original": "_multiagent/tasks/2026-09-22-graft-finufft/numerical/ingestion/aliasing/REPORT.md",
+    "sha256": "2ca51d13c86668c2b87c7579b5bd5f5efd26cae7cfc4fa5643b2819d3998adde"
+  },
+  {
+    "snapshot": "ingestion-manual-audit.md",
+    "original": "_multiagent/tasks/2026-09-22-graft-finufft/numerical/ingestion/manual-audit/REPORT.md",
+    "sha256": "aae2bd25f859ed389f524d058ed2f0b0ba2c686ee0aafd6c4c0caf412a68a235"
+  },
+  {
+    "snapshot": "ingestion-manual-reaudit.md",
+    "original": "_multiagent/tasks/2026-09-22-graft-finufft/numerical/ingestion/manual-reaudit/REPORT.md",
+    "sha256": "76f595627254b03447d53ecfc199889a9915f99cbd067a646521330369227ff4"
+  },
+  {
+    "snapshot": "ingestion-parallel.md",
+    "original": "_multiagent/tasks/2026-09-22-graft-finufft/numerical/ingestion/parallel/REPORT.md",
+    "sha256": "706dff8858622307258653c61235c0c0f33be46eb205739ca4391bf6f084c61f"
+  },
+  {
+    "snapshot": "ingestion-wiki-judgment.md",
+    "original": "_multiagent/tasks/2026-09-22-graft-finufft/numerical/ingestion/wiki-judgment/REPORT.md",
+    "sha256": "337f2475cc22e29e7345182c69bac2f8819f95738a430202299c829634ee1f63"
+  }
+]

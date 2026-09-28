@@ -175,6 +175,32 @@ public:
 		return this->FinufftMaxModes;
 	}
 
+	/** \brief Set the number of threads FINUFFT uses (opts.nthreads) and invalidate the cached rho.
+		The default is 1, independent of ParallelNumThread: only FINUFFT runs single-threaded, so that
+		repeated runs can reproduce rho(k) bitwise. Earlier builds passed ParallelNumThread instead.
+		A value > 1 is an optional performance choice; FINUFFT's multithreaded spreading may then change
+		the summation order between runs, so no repeatability is promised. The setting affects only the
+		FINUFFT call; the direct sums, energies, forces and other OpenMP regions still use ParallelNumThread.
+		Repeatability means the same machine, build, settings and inputs; it does not mean identity between
+		the FINUFFT and Direct backends or across platforms.
+		Available in every build; without CCPOTENTIAL_USE_FINUFFT the value is stored but unused.
+		\param nthreads  Number of FINUFFT threads; must be >= 1 (default 1).
+		\throw std::invalid_argument if nthreads < 1; the object is then left unchanged. */
+	void SetFinufftNumThreads(int nthreads)
+	{
+		if(nthreads<1)
+			throw std::invalid_argument("ShiftedCCPotential::SetFinufftNumThreads: nthreads must be >= 1.");
+		this->FinufftNumThreads=nthreads;
+		this->RhoValid=false;
+	}
+
+	/** \brief Return the number of threads FINUFFT uses.
+		\return The value set with SetFinufftNumThreads (1 by default). */
+	int GetFinufftNumThreads(void) const
+	{
+		return this->FinufftNumThreads;
+	}
+
 	/** \brief Return the backend that actually produced the cached rho in the last ShiftedCCPotential::GetRho.
 		Direct means either Direct was selected or the FINUFFT path fell back. Not updated by derived GetRho overrides.
 		\return The backend used by the most recent base-class evaluation. */
@@ -195,6 +221,7 @@ protected:
 	RhoBackend RhoBackendLastUsed;	//< Backend that produced the cached rho.
 	double FinufftTolerance;	//< FINUFFT requested tolerance.
 	std::int64_t FinufftMaxModes;	//< Cap on the FINUFFT mode-grid size.
+	int FinufftNumThreads;	//< FINUFFT opts.nthreads (default 1, independent of ParallelNumThread).
 	int FinufftLastStatus;	//< Last FINUFFT return code, or FinufftNotCalled.
 
 #ifdef CCPOTENTIAL_USE_FINUFFT
@@ -288,12 +315,7 @@ protected:
 			finufft_opts opts;
 			finufft_default_opts(&opts);
 			opts.modeord=0;
-			unsigned long nthreads=this->ParallelNumThread;
-			if(nthreads<1)
-				nthreads=1;
-			if(nthreads>static_cast<unsigned long>(std::numeric_limits<int>::max()))
-				nthreads=std::numeric_limits<int>::max();
-			opts.nthreads=static_cast<int>(nthreads);
+			opts.nthreads=this->FinufftNumThreads;
 
 			const std::int64_t nj=static_cast<std::int64_t>(np);
 			int status;
@@ -395,6 +417,7 @@ public:
 		this->RhoBackendLastUsed=RhoBackend::Direct;
 		this->FinufftTolerance=1e-12;
 		this->FinufftMaxModes=std::int64_t(1)<<22;
+		this->FinufftNumThreads=1;
 		this->FinufftLastStatus=FinufftNotCalled;
 	}
 

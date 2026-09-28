@@ -13,7 +13,21 @@
 
 using Backend=ShiftedCCPotential::RhoBackend;
 using Clock=std::chrono::steady_clock;
-constexpr size_t N=2000, Species=5, Ns=N/Species;
+#ifndef CC_TEST_N
+#define CC_TEST_N 2000
+#endif
+#ifndef CC_TEST_SPECIES
+#define CC_TEST_SPECIES 5
+#endif
+#ifndef CC_TEST_THREADS
+#define CC_TEST_THREADS 4
+#endif
+#ifndef CC_TEST_MODES
+#define CC_TEST_MODES 0
+#endif
+constexpr size_t N=CC_TEST_N, Species=CC_TEST_SPECIES, Ns=N/Species;
+constexpr int Threads=CC_TEST_THREADS;
+static_assert(N % Species == 0, "equal component sizes required");
 const double L=std::sqrt(double(N)), Radius=std::sqrt(0.2/::pi), Diameter=2*Radius;
 size_t Verbosity=0;
 double elapsed(Clock::time_point t){return std::chrono::duration<double>(Clock::now()-t).count();}
@@ -42,6 +56,12 @@ Modes modes(double target){
         double delta=std::abs(double(accumulated.size())/(2*(Ns-1))-target);
         if(delta<error){error=delta;best.indices=accumulated;best.shell=shell.first;}
     }
+    if(CC_TEST_MODES>0){
+        best.indices.clear();
+        for(const auto& shell:shells)for(auto index:shell.second)
+            if(best.indices.size()<CC_TEST_MODES){best.indices.push_back(index);best.shell=shell.first;}
+        check(best.indices.size()==CC_TEST_MODES,"insufficient test modes");
+    }
     for(auto index:best.indices){GeometryVector k(2);k.x[0]=2*::pi*index[0]/L;k.x[1]=2*::pi*index[1]/L;best.k.push_back(k);}
     return best;
 }
@@ -58,7 +78,7 @@ void save(const Configuration& c,const std::filesystem::path& path){
     for(size_t i=0;i<N;++i){auto s=c.GetRelativeCoordinates(i);out<<i<<'\t'<<i%Species<<'\t'<<s.x[0]<<'\t'<<s.x[1]<<'\t'<<Radius<<'\n';}
 }
 void setup(MultiStealthyPotential& p,const Configuration& c,const Modes& m,Backend backend,bool reverse=false){
-    p.ParallelNumThread=4;p.SetConfiguration(c);p.SetNumSpecies(Species);p.SetSecureRadii(std::vector<double>(N,Radius));
+    p.ParallelNumThread=Threads;p.SetConfiguration(c);p.SetNumSpecies(Species);p.SetSecureRadii(std::vector<double>(N,Radius));
     for(size_t j=0;j<N;++j){size_t i=reverse?N-1-j:j;p.SetSpeciesOfParticle(i,i%Species);}
     for(size_t s=0;s<Species;++s){for(const auto& k:m.k)p.AddConstraint(s,k,{1.0});p.species_constraints[s].CCPotential->SetRhoBackend(backend);}
     p.SetConfiguration(c);
@@ -164,7 +184,7 @@ int main(int argc,char** argv)try{
     check(backend=="direct"||rhoCalls==fastCalls,"FINUFFT fallback during optimization");
     {Quiet quiet;MultiStealthyPotential vanilla(2,1);setup(vanilla,c,m,Backend::Direct);std::vector<GeometryVector> f;double e=vanilla.Energy();vanilla.AllForce(f);
         check(std::abs(e-ref.cc-ref.contact)<1e-8*(1+std::abs(e)),"final energy independent check failed");check(forceDifference(f,ref.force)<1e-8,"final force independent check failed");}
-    std::cout<<"{\"seed\":"<<seed<<",\"backend\":\""<<backend<<"\",\"N\":"<<N<<",\"threads\":4,\"packing_fraction\":0.2,\"target_chi\":"<<target
+    std::cout<<"{\"seed\":"<<seed<<",\"backend\":\""<<backend<<"\",\"N\":"<<N<<",\"threads\":"<<Threads<<",\"packing_fraction\":0.2,\"target_chi\":"<<target
       <<",\"actual_chi\":"<<double(m.k.size())/(2*(Ns-1))<<",\"mode_pairs\":"<<m.k.size()<<",\"shell_squared\":"<<m.shell<<",\"optimization_seconds\":"<<wall
       <<",\"rho_seconds\":"<<rhoTime<<",\"rho_calls\":"<<rhoCalls<<",\"finufft_calls\":"<<fastCalls<<",\"passes\":[";
     for(size_t i=0;i<passes.size();++i){if(i)std::cout<<',';auto a=passes[i];std::cout<<"{\"status\":"<<a.status<<",\"evaluations\":"<<a.count<<",\"energy\":"<<a.energy<<'}';}
