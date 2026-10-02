@@ -223,6 +223,18 @@ Source: **`c++/PairStat/`** (driver) + **`new_c++/PairStat/`** (compute).
 | cli.cpp | c++/PairStat/main.cpp | the PairStat CLI driver, renamed (similarity 0.92) |
 | Computation.{h,cpp} | new_c++/PairStat/ | newer compute core (similarity 0.96 cpp); this is the `Computation` dropped from the `pairstat` module |
 
+## apps/Statistics/
+Source: **`new_c++/Statistics/`** ✅ (no `c++/` copy).
+
+| File | From | Notes |
+|------|------|-------|
+| gn.{h,cpp} | new_c++/Statistics/ | kernel rewritten (same estimator); dead `__g3_old`/`__g4`/`__g4_old`/`__gn` removed |
+| tau_n.{h,cpp} | new_c++/Statistics/ | warning/doc fixes only |
+| main.cpp | new_c++/Statistics/ | `gn_1D` flag fix, std::string file names, duplicate core prototypes dropped |
+| gen.cpp | new_c++/Statistics/ | includes normalized; now built (`gen.out`) |
+| check_url_gn.py | new | exact URL g_n validation |
+| gn.out (legacy binary), obj/ | — | not copied |
+
 ## apps/Tessellation-based/  (tiling / Voronoi)
 Source: **`c++/`** (flat); `TilingProblem.cpp` split into three units. ✅ all
 objects compile (2026-06-23); has a `README.md`. A runnable binary needs CGAL/voro++/MathGL.
