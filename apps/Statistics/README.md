@@ -2,9 +2,9 @@
 
 Computes the ensemble-averaged **n-body correlation function** $g_n$ ($n = 2, 3, 4$)
 and the **$\tau_n$ order metric** of one-dimensional point patterns stored in a
-`ConfigurationPack`, plus hole and overlap statistics. Also ships a small generator
-of perturbed lattices. Migrated from the legacy `new_c++/Statistics/` consumer; all
-configurations of an ensemble are assumed to have the same box length.
+`ConfigurationPack`, plus hole and overlap statistics. Migrated from the legacy
+`new_c++/Statistics/` consumer; all configurations of an ensemble are assumed to have
+the same box length. Validation tools are kept apart in [tests/](tests/).
 
 ## Layout
 
@@ -13,17 +13,17 @@ configurations of an ensemble are assumed to have the same box length.
 | [gn.h](gn.h) / [gn.cpp](gn.cpp) | `gn`: binned $g_n$ estimator with checkpointing (resumable), $\tau_n$ and long-range $\tau_n$ from the stored $g_n$. |
 | [tau_n.h](tau_n.h) / [tau_n.cpp](tau_n.cpp) | `tau_n`: $\tau_n$ without storing $g_n$ (global-grid estimator; legacy algorithm, not optimized). |
 | [main.cpp](main.cpp) | `gn.out` CLI: modes `gn_1D`, `taun_1D`, `hole`, `overlap`, `test`. |
-| [gen.cpp](gen.cpp) | `gen.out`: perturbed lattices (`PL`) and Poisson patterns (`Poisson`). |
-| [check_url_gn.py](check_url_gn.py) | Validation: compares `gn_1D` output with the **exact** $g_n$ of the uniformly randomized lattice (URL), or two runs with each other. |
+| [tests/](tests/) | Not part of the app: test-input generator `gen.out` and the exact-$g_n$ check `check_url_gn.py` (see [tests/README.md](tests/README.md)). |
 
 ## Build
 
 ```sh
-make            # -> gn.out, gen.out (builds core / models objects first)
+make            # -> gn.out (builds core objects first)
 make clean
+make -C tests   # validation tools (adds models)
 ```
 
-Depends on `core` (`gn.out`) and `core` + `models` (`gen.out`); GSL, OpenMP.
+Depends on `core`; GSL, OpenMP.
 
 ## $g_n$ estimator (`gn_1D`)
 
@@ -83,8 +83,10 @@ The legacy kernel opened one OpenMP region per particle ($n=4$) and swept the wh
 $(R_\max/\Delta x)^{n-1}$ array every configuration. Now: sorted-position window scan
 instead of the generic cell list; one parallel region per configuration (none below
 ~$10^5$ operations), dynamically scheduled over $x_{21}$ slabs that each thread owns
-(no atomics); only touched bins are accumulated. Results do not depend on the thread
-count (byte-identical checkpoints for 1 and 4 threads).
+(no atomics); only touched bins are accumulated. For $n=4$ the counts are symmetric
+under $x_{31} \leftrightarrow x_{41}$, so only $x_{31} \le x_{41}$ is accumulated (halves the
+work; outputs byte-identical). Results do not depend on the thread count (byte-identical
+checkpoints for 1 and 4 threads).
 
 Cloaked URL, $N=1000$, 4 threads, on a loaded 8-core WSL machine (absolute times are
 noisy):
@@ -94,37 +96,19 @@ noisy):
 | $n=2$, $R_\max=3$, $\Delta x=0.05$, 1000 configs | 12 s | 0.16 s |
 | $n=3$, $R_\max=3$, $\Delta x=0.1$, 1000 configs | 12 s | 0.29 s |
 | $n=4$, $R_\max=2$, $\Delta x=0.1$, 1000 configs | 697 s (8 threads) | 0.28 s |
-| $n=4$, $R_\max=10$, $\Delta x=0.1$ (4.1 M bins), per config | 50 ms | 8.6 ms |
+| $n=4$, $R_\max=10$, $\Delta x=0.1$ (4.1 M bins), per config | 50 ms | 8.6 ms → 4.2 ms with the $x_{31} \leftrightarrow x_{41}$ symmetry (idle machine) |
 
-In the last case nearly every bin is touched per configuration, so the per-bin
-$\sum v,\ \sum v^2$ update (memory-bound) dominates.
+Cost per configuration scales with the number of occupied-bin tuples,
+$\approx N m^{n-1}/2$ ($m$ = occupied bins around a particle, $\le$ neighbors + 1), not with
+the number of bins: per configuration at most that many bins are touched (48 % of the
+4.1 M bins at $\Delta x = 0.1$, 9 % at $\Delta x = 0.05$), and the $\sum v,\ \sum v^2$ update
+costs about half of the kernel.
 
-## Validation (`check_url_gn.py`)
+## Validation
 
-For the 1D URL ($u_k \sim U[-a/2, a/2)$ i.i.d., integer $a$ ⇒ cloaked; Klatt, Kim &
-Torquato, PRE **101**, 032118 (2020)),
-
-$$
-g_n(0, r_2, \dots, r_n) = a^{-(n-1)}\,\mathbb{E}_u\Big[\#\{\text{injective }(k_2..k_n):
-k_j \ne 0,\ |r_j + u - k_j| < a/2\}\Big],\qquad u \sim U[-a/2, a/2),
-$$
-
-integrated exactly between its breakpoints in $u$ (for $a=1$: $g_2 = \min(|r|,1)$).
-The script bin-averages it and reports $z = (g_n - g_n^\text{exact})/\delta g_n$:
-
-```sh
-uv run check_url_gn.py <out prefix> --n 3 --a 1 [--sub 6]     # vs exact: PASS/FAIL
-uv run check_url_gn.py <out prefix> --n 3 --compare <other>    # two runs (add --interior to skip edges)
-```
-
-Status (1000 configs, $N = 1000$, $a = 1, 2$, $n = 2, 3, 4$): all PASS, rms $z$ = 0.96–1.04
-over all bins. Pooled bias $\langle g_n - g_n^\text{exact}\rangle$ is within 1.5 standard errors
-in every case; $\tau_n(L_\max)$ agrees with the exact value to 0.1 %. The $\rho^{n-1}$
-normalization was checked on a spacing-2 URL ($\rho = 1/2$): far-field $g_2 = 1.0001(12)$,
-$g_3 = 0.9992(8)$ (the legacy $\rho = 1$ normalization would give 0.50 and 0.25). The exact formula was cross-checked against brute-force Monte Carlo, and
-the $n=4$ estimator against direct enumeration of ordered quadruples (agreement to
-$2\times10^{-16}$). Bins where $g_n$ is tiny have few, overdispersed counts (one
-cluster of $n$ particles fills several bins), so empty bins there are expected.
+Checked against the exact $g_n$ of the 1D cloaked uniformly randomized lattice
+($a = 1, 2$; $n = 2, 3, 4$; $\rho = 1$ and $1/2$): all PASS. Method, commands, and
+results: [tests/README.md](tests/README.md).
 
 ## Other modes
 
@@ -132,5 +116,3 @@ cluster of $n$ particles fills several bins), so empty bins there are expected.
 - `hole` — hole probability $H_V$ and $E_V$; stdin: `ConfigPack begin end threads dR samples prefix`.
 - `overlap` — overlap function $Q(t;a)$; stdin: `ConfigPack begin end threads sigma_max dsigma prefix`.
 - `test` — index ↔ multi-index round trip.
-- `gen.out PL` — stdin: `dim uniform <R> L Nc prefix` (seed 0); in 1D, `uniform R` is the URL
-  with $a = 2R$. `gen.out Poisson` — stdin: `rho mode(0 canonical/1 grand canonical) dim volume Nc prefix`.

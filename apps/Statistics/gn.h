@@ -22,9 +22,16 @@
  * dx.  The ensemble mean and its standard error over configurations are accumulated.
  * g_2 is symmetrized over x_21 -> -x_21.
  *
+ *
+ * Periodic images. Neighbors are all periodic images within (num_half + 1/2)*dx.  If
+ * that exceeds L/2, images of the same particle (including x_1's own) count as distinct
+ * particles, as in the legacy cell-list search.
+ *
  * Storage. Only x_21 >= 0 is kept, so the flat array has (num_half+1) * len_row^{n-2}
  * entries, len_row = 2*num_half+1, laid out as
- * idx = i2*len_row^{n-2} + (i3+num_half)*len_row^{n-3} + ... (row-major).
+ * idx = i2*len_row^{n-2} + (i3+num_half)*len_row^{n-3} + ... (row-major).  For n = 4
+ * the counts are symmetric under x_31 <-> x_41, so only x_31 <= x_41 is accumulated and
+ * the other half is read through the mirrored index.
  * Memory grows like (Rmax/dx)^{n-1}; time like Nc * N * (2*rho*Rmax)^{n-1}.
  */
 
@@ -65,7 +72,7 @@ struct gn{
 	 *  <prefix>.g<n> exists, Rmax/dx are taken from it and the two input tokens are ignored.
 	 *  \param ofile  Output stream for prompts.
 	 *  \param ifile  Input stream with the parameters.
-	 *  \throw std::invalid_argument if n is not 2, 3, or 4. */
+	 *  \throw std::invalid_argument if n is not 2, 3, or 4, dR <= 0, or Rmax < dR. */
 	gn(std::ostream & ofile, std::istream & ifile);
 
 	/** \brief Write the checkpoint (progress, grid, and per-bin ensemble means of g_n and
@@ -80,7 +87,8 @@ struct gn{
 	/** \brief Accumulate g_n of one more configuration (multi-threaded; the result does not
 	 *  depend on the number of threads).
 	 *  \param c  A 1D configuration.
-	 *  \throw std::invalid_argument if c is not one-dimensional. */
+	 *  \throw std::invalid_argument if c is not one-dimensional, is empty, or has a
+	 *         non-positive box length. */
 	void AddConfig(const Configuration & c);
 
 	/** \brief Write g_n and its standard error as text.
@@ -122,6 +130,12 @@ private:
 	std::vector<double> sum2;			///< per bin: sum over configurations of g_n^2
 	std::vector<std::vector<double>> slab;	///< per-thread scratch for one x_21 slab (n >= 3)
 	ConfigurationPack CP;				///< input ensemble
+
+	/** \brief Index of the bin that holds the data of bin i: for n = 4, (i2, i3, i4) with
+	 *  i3 > i4 maps to its mirror (i2, i4, i3); otherwise i itself.
+	 *  \param i  Flat bin index.
+	 *  \return Flat index of the accumulated bin. */
+	size_t Canonical(size_t i) const;
 
 	/** \brief Ensemble mean of g_n in bin i and its standard error.
 	 *  \param i          Flat bin index.

@@ -32,6 +32,9 @@ gn::gn(std::ostream & ofile, std::istream & ifile){
 		ifile >> this->Rmax;	ofile << this->Rmax << std::endl;
 		ofile << "dR = ";
 		ifile >> this->dx;	ofile << this->dx << std::endl;
+		// Rmax >= dR keeps num_half >= 1, which Compute_tau_n relies on (also catches swapped inputs).
+		if (!(this->dx > 0.0) || !(this->Rmax >= this->dx))
+			throw std::invalid_argument("gn: need dR > 0 and Rmax >= dR");
 
 		this->num_half = (int) floor(this->Rmax/this->dx);
 		this->len_row = 2*this->num_half + 1 ;
@@ -81,7 +84,8 @@ void gn::WriteBinary(std::ostream & ofile ) const {
 	// Legacy layout: per bin, the ensemble means of g_n and g_n^2.
 	const double c = (this->curr_c_idx > 0) ? (double)this->curr_c_idx : 1.0;
 	for (size_t i = 0; i < this->sum1.size(); i++) {
-		double m1 = this->sum1[i] / c, m2 = this->sum2[i] / c;
+		const size_t j = this->Canonical(i);
+		double m1 = this->sum1[j] / c, m2 = this->sum2[j] / c;
 		ofile.write((char *)(&m1), sizeof(m1));
 		ofile.write((char *)(&m2), sizeof(m2));
 	}
@@ -108,7 +112,17 @@ void gn::ReadBinary(std::istream & ifile ){
 	}
 }
 
+size_t gn::Canonical(size_t i) const {
+	if (this->n != 4)
+		return i;
+	const size_t lr = this->len_row;
+	const size_t i3 = (i / lr) % lr, i4 = i % lr;
+	// Swap (i3, i4): base + i3*lr + i4 -> base + i4*lr + i3.
+	return (i3 > i4) ? i - (i3 - i4) * (lr - 1) : i;
+}
+
 void gn::Moments(size_t i, double & mean, double & err) const {
+	i = this->Canonical(i);
 	const double c = (double)this->curr_c_idx;
 	mean = (c > 0) ? this->sum1[i] / c : 0.0;
 	err = (c > 1) ? std::sqrt(std::max(0.0, this->sum2[i] / c - mean * mean) / (c - 1.0)) : 0.0;
@@ -368,6 +382,8 @@ void gn::AddConfig(const Configuration & c){
 	if (N == 0)
 		throw std::invalid_argument("gn::AddConfig: empty configuration");
 	const double L = std::sqrt(c.GetBasisVector(0).Modulus2());
+	if (!(L > 0.0))
+		throw std::invalid_argument("gn::AddConfig: box length must be positive");
 	const double dx = this->dx;
 	const int nh = this->num_half;
 	const size_t lr = this->len_row;
@@ -471,7 +487,9 @@ void gn::AddConfig(const Configuration & c){
 					}
 					const double f = n2 * n3;
 					const size_t row = (size_t)i3 * lr;
-					for (size_t b = 0; b < m; b++){
+					// Counts are symmetric under x_3 <-> x_4, so accumulate only i4 >= i3
+					// (entries are sorted by bin); Canonical() mirrors the other half.
+					for (size_t b = a; b < m; b++){
 						const int i4 = e[b].bin;
 						const double n4_ = e[b].count - (i4 == nh) - (i4 == i2) - (i4 == i3);
 						if (n4_ > 0) add(row + i4, f * n4_);
