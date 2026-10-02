@@ -47,9 +47,15 @@ The script bin-averages it and reports $z = (g_n - g_n^\text{exact})/\delta g_n$
 
 ```sh
 printf "3\nck\n3\n0.1\n4\nURL_a1_N1000\n1000\nout\n" | ../gn.out gn_1D 1
-uv run check_url_gn.py out --n 3 --a 1 [--sub 6]        # vs exact: PASS/FAIL
-uv run check_url_gn.py out --n 3 --compare <other>       # two runs (add --interior to skip edges)
+uv run check_url_gn.py out --n 3 --a 1 --sub 6     # vs exact: PASS/FAIL (--sub: reference sub-samples per bin)
+
+# Compare two runs, e.g. the same input with another gn.out build (output prefix "ref"):
+printf "3\nck_ref\n3\n0.1\n4\nURL_a1_N1000\n1000\nref\n" | ../gn.out gn_1D 1
+uv run check_url_gn.py out --n 3 --compare ref     # add --interior to skip the outermost bins
 ```
+
+A checkpoint prefix (`ck`, `ck_ref`) that already exists is resumed, not recomputed; use a
+fresh prefix for a new run.
 
 The exact test cannot see errors confined to bins where $g_n < 0.05$ (bins without samples
 are tolerated there), e.g. a dropped $x_{31} = x_{41}$ diagonal for $a = 1$. After changing the
