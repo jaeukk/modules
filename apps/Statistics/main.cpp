@@ -153,7 +153,13 @@ int main (int argc, char ** argv){
 			}
 		}
 
-		model.Run(ofile, TimeLimit);
+		try{
+			model.Run(ofile, TimeLimit);
+		}
+		catch (const std::invalid_argument & e){
+			ofile << e.what() << std::endl;
+			return 1;
+		}
 	}
 	else if (strcmp(argv[1], "Kirkwood")==0){
 		/* Compute the Kirkwood approximation of g_n from g_n */

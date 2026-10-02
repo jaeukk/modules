@@ -231,8 +231,8 @@ Source: **`new_c++/Statistics/`** ✅ (no `c++/` copy).
 | gn.{h,cpp} | new_c++/Statistics/ | kernel rewritten (same estimator); dead `__g3_old`/`__g4`/`__g4_old`/`__gn` removed |
 | tau_n.{h,cpp} | new_c++/Statistics/ | warning/doc fixes only |
 | main.cpp | new_c++/Statistics/ | `gn_1D` flag fix, std::string file names, duplicate core prototypes dropped |
-| gen.cpp | new_c++/Statistics/ | includes normalized; now built (`gen.out`) |
-| check_url_gn.py | new | exact URL g_n validation |
+| tests/gen.cpp | new_c++/Statistics/gen.cpp | includes normalized; test-input generator, built by `tests/makefile` |
+| tests/check_url_gn.py | new | exact URL g_n validation |
 | gn.out (legacy binary), obj/ | — | not copied |
 
 ## apps/Tessellation-based/  (tiling / Voronoi)
