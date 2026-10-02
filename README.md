@@ -15,6 +15,7 @@ see **`CLAUDE.md`**.
           ┌──────────────────────────────────────────────────────────────┐
   apps/   │  inverse  Tessellation-based  CHI  NR  FFH  CCOptimization     │
           │  FirstPassageTime  CPmanager  PairStatCLI  weighted            │
+          │  Statistics                                                    │
           ├──────────────────────────────────────────────────────────────┤
   leaf    │  phonons   lp (opt Gurobi)   misc   visualization (opt GL/MathGL)
           ├──────────────────────────────────────────────────────────────┤
@@ -62,6 +63,7 @@ See `PROGRESS.md` for the full per-app status.
 | [NR](apps/NR/) | Local number statistics N(R) in spherical observation windows over an ensemble — number-variance analysis. |
 | [OrderMetric_PeriodicNetwork](apps/OrderMetric_PeriodicNetwork/) | Two programs for **nonspherical** two-phase media: orientationally-averaged χ_V(k) of dispersions (`GetChivDispersions.out`) and surface-area coefficient / volume-fraction variance of periodic networks (`NetworkBV.out`). |
 | [PairStatCLI](apps/PairStatCLI/) | Interactive CLI for ensemble-averaged pair statistics of point configurations: g₂(r), S(k), nearest-neighbor and coordination statistics (the former `pairstat` CLI driver). |
+| [Statistics](apps/Statistics/) | **n-body correlation functions** $g_n$ ($n=2,3,4$) and the $\tau_n$ order metric of 1D point patterns (`gn.out`, resumable), hole/overlap statistics, and a 1D perturbed-lattice generator (`gen.out`); validated against the exact $g_n$ of the cloaked URL. |
 | [Tessellation-based](apps/Tessellation-based/) | **Tessellation-based procedure** for constructing large disordered hyperuniform two-phase media; Voronoi/space-filling analysis CLI (`TessellationCLI.out`, needs `USE_VORO=1`). |
 | [inverse](apps/inverse/) | Collective-coordinate **inversion** (`CCInversion.out`) — complete, warning-clean, no MathGL/OpenGL needed. |
 | [polygon_packing](apps/polygon_packing/) | Placeholder — currently empty (no sources migrated yet). |
@@ -82,6 +84,7 @@ make -C models objs             # library objects
 make -C examples                # end-to-end demo consumer (g2_sk_demo.out)
 make -C apps/inverse            # -> runnable CCInversion.out
 make -C apps/Tessellation-based # compile objects (binary needs CGAL/voro++/MathGL)
+make -C apps/Statistics         # -> gn.out (1D g_n, tau_n), gen.out (perturbed lattices)
 ```
 
 Optional features are command-line toggles handled by `config.mk`:
