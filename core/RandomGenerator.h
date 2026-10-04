@@ -53,7 +53,7 @@ public:
 };
 
 /** \brief Random unit vector whose direction is statistically isotropic.
- *  Exact per-dimension sampling (closed-form for d=1,2,3; Gaussian-normalised
+ *  Exact per-dimension sampling (closed-form for d=1,2,3; Gaussian-normalized
  *  otherwise).
  *  \param d Space dimension.  \param gen Random number generator. */
 GeometryVector RandomUnitVector(DimensionType d, RandomGenerator & gen);
@@ -63,7 +63,7 @@ GeometryVector RandomUnitVector(DimensionType d);
  *  Unlike RandomUnitVector (which returns a GeometryVector via exact per-
  *  dimension sampling), this fills result[0..Dimension-1] in place by drawing
  *  uniformly in the cube, rejecting points outside the unit ball, then
- *  normalising.
+ *  normalizing.
  *  \param Dimension Dimension of the target space.
  *  \param gen Random number generator to sample from.
  *  \param result Output buffer (length Dimension) to receive the components. */

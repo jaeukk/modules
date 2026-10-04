@@ -170,7 +170,7 @@ objects still compile green.
 
 ### Tessellation-based split (tiling / Voronoi)
 The legacy top-level tiling sources were migrated into `apps/Tessellation-based/`:
-- `Voronoi.{h,cpp}` — relocated as-is (includes re-normalised to `<X.h>`; the
+- `Voronoi.{h,cpp}` — relocated as-is (includes re-normalized to `<X.h>`; the
   unused `etc1.h` include dropped).
 - `TilingProblem.cpp` (2100 lines) split into three units:
   - `SpacefillingPacking.{h,cpp}` — the `SpacefillingPacking` class +

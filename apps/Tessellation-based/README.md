@@ -42,7 +42,7 @@ The hyperuniform polydisperse packings produced here were also used in:
 
 | file | contents |
 |------|----------|
-| [Voronoi.{h,cpp}](Voronoi.h) | Voronoi-cell computations (cell volume, vertices, neighbours) via **voro++** (`USE_VORO`) / **CGAL** (`USE_CGAL`). Carries a file-local `MergeSort` / `Merge_Sort` helper (copied from the former `misc/Discrepancy`) used to order particles along a coordinate in the 1-D branch — so the app needs no `misc` dependency. |
+| [Voronoi.{h,cpp}](Voronoi.h) | Voronoi-cell computations (cell volume, vertices, neighbors) via **voro++** (`USE_VORO`) / **CGAL** (`USE_CGAL`). Carries a file-local `MergeSort` / `Merge_Sort` helper (copied from the former `misc/Discrepancy`) used to order particles along a coordinate in the 1-D branch — so the app needs no `misc` dependency. |
 | [PolyPacking.{h,cpp}](PolyPacking.h) | `MakeMono2Poly*` — grow spheres to a target fraction of each Voronoi-cell volume (the core construction step; needs `USE_CGAL`). |
 | [SpacefillingPacking.{h,cpp}](SpacefillingPacking.h) | multiscale space-filling packing (`SpacefillingPacking`, `getSpacefillingPacking*`). |
 | [Computation.{h,cpp}](Computation.h) | the `Computation` analysis-task hierarchy: spectral density $\chi_V(k)$, Voronoi cell-volume / vertex distributions, max packing fraction, local number / volume-fraction variance, centroids, and the multiscale family. |

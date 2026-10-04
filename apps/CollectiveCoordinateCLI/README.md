@@ -1,10 +1,10 @@
 # CollectiveCoordinateCLI
 
-A command-line driver for generating and analysing **stealthy hyperuniform**
+A command-line driver for generating and analyzing **stealthy hyperuniform**
 (and related collective-coordinate) classical ground states in 1, 2 and 3
 dimensions. It builds a collective-coordinate potential from a target set of
 constrained wavevectors, then finds ground-state point configurations by
-gradient optimisation (NLopt L-BFGS, conjugate gradient, MINOP), molecular
+gradient optimization (NLopt L-BFGS, conjugate gradient, MINOP), molecular
 dynamics, MD annealing, or Wang–Landau Monte Carlo.
 
 ## Authorship & citations
@@ -95,7 +95,7 @@ Redirect a script (recommended) or type interactively:
 | `GeneratePotential` | build the Type-0 **stealthy** CC potential for the current χ |
 | `GenerateOtherPotential` | build another CC potential (prompts χ and a numeric *type*; see the `GeneratePotential` type catalog comment in the source) |
 
-**Optimise / evolve**
+**Optimize / evolve**
 
 | Command | Meaning |
 |---|---|
@@ -103,7 +103,7 @@ Redirect a script (recommended) or type interactively:
 | `Run` | relax via NLopt (L-BFGS) |
 | `RunGSL` | relax via GSL conjugate gradient |
 | `RunMINOP` | relax via MINOP |
-| `RunNewton` | Newton optimisation — **requires `USE_EIGEN`** (see notes) |
+| `RunNewton` | Newton optimization — **requires `USE_EIGEN`** (see notes) |
 | `MultiRun` | `SampleNumber` independent relaxations → ConfigurationPack (prompts `Algorithm`: LBFGS/LocalGradientDescent/ConjugateGradient/SteepestDescent/MINOP) |
 | `MD` | NVT molecular dynamics |
 | `Anneal` | MD simulated annealing (prompts T_init, T_cut, time step) |
@@ -151,12 +151,12 @@ bash run_example.sh
 - **The `Debug` command was dropped.** Its dispatch branch and the entire
   `Solvers.h`/`Degeneracy.h` + `CollectiveCoordinateDebug` tail of the legacy
   file were intentionally not migrated (a scratch/experimental sink with no
-  stable behaviour). Every other command is preserved verbatim.
+  stable behavior). Every other command is preserved verbatim.
 - **`USE_EIGEN`.** `RunNewton` and the Hessian-eigenvalue routines need Eigen;
   the default build compiles the non-Eigen stubs (they print an error and
   return). Build with `-DUSE_EIGEN` and Eigen on the include path to enable them.
 - **Includes / globals.** Library headers use angle brackets resolved by the
   makefile's `-I` paths (PROGRESS.md R4). The executable owns `Verbosity` and
   seeds the timing globals `ProgramStart`/`TimeLimit` in `main.cpp` (core
-  zero-initializes them; leaving `TimeLimit = 0` would make the optimiser's
+  zero-initializes them; leaving `TimeLimit = 0` would make the optimizer's
   time-limit guard exit immediately).

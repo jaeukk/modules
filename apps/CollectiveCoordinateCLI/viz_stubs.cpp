@@ -46,7 +46,7 @@ void Plot(std::string prefix, const Configuration & c, const std::string & remar
  *  \param LogScale      Log-scale flag (unused).
  *  \param MinSOverride  Lower S(k) clamp (unused).
  *  \param MaxSOverride  Upper S(k) clamp (unused).
- *  \param TileSize      Colour-map tile size (unused). */
+ *  \param TileSize      Color-map tile size (unused). */
 void PlotDirectionalStructureFactor2D(const Configuration & c, long limit, std::string prefix, bool LogScale, double MinSOverride, double MaxSOverride, double TileSize)
 {
 	(void)c; (void)limit; (void)prefix; (void)LogScale;

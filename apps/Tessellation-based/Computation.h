@@ -35,7 +35,7 @@
 // legacy members it relied on -- LatticeGen(basis,int), SetBasis, currPhi,
 // SetNumInEachSides, N, rMax -- no longer exist. Instead we build a 1-particle
 // cubic unit cell (number density 1; the LatticeGen ctor sets each particle
-// radius to half the nearest-neighbour distance = 0.5 here), keep our own
+// radius to half the nearest-neighbor distance = 0.5 here), keep our own
 // tile-count and particle radius, then tile the cell and delete random
 // vacancies. N0 is the vacancy-free site count = (sites/side)^d, so p is the
 // mean vacancy fraction.

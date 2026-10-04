@@ -21,7 +21,7 @@ high-level `Computation` driver and its CLI now live in
 | `SpectralDensity.{h,cpp}` | Spectral density χ_V(k) of sphere packings (`SpectralDensity[_Lstorage]`, `IsotropicSpectralDensity[_Lstorage]`). Split out of `StructureFactor`; built from `Mtilde`. |
 | `NumberVariance.{h,cpp}` | Local number variance σ²(R) (uses Boost gamma). |
 | `VolumeFractionVariance.{h,cpp}` | Local volume-fraction variance σ_V²(R) of sphere packings (the `MC_vfv` family). Split out of `NumberVariance`. |
-| `ContactStatistics.{h,cpp}` | Contact-number / nearest-neighbour statistics. |
+| `ContactStatistics.{h,cpp}` | Contact-number / nearest-neighbor statistics. |
 | `LinealPathFunction.{h,cpp}` | Lineal-path function L(z) and chord-length distribution of sphere packings / two-phase media. |
 
 ### Why the splits

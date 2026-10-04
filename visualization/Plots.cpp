@@ -13,7 +13,7 @@
  *  \param x                X coordinate of the circle center.
  *  \param y                Y coordinate of the circle center.
  *  \param r                Circle radius.
- *  \param MGLOptions       MathGL plot style/colour options.
+ *  \param MGLOptions       MathGL plot style/color options.
  *  \param NumLineSegments  Number of line segments approximating the circle. */
 void PlotCircle2D(mglGraph & graph, double x, double y, double r, const char * MGLOptions, size_t NumLineSegments=100)
 {
@@ -33,7 +33,7 @@ void PlotCircle2D(mglGraph & graph, double x, double y, double r, const char * M
  *  \param x                X coordinate of the disk center.
  *  \param y                Y coordinate of the disk center.
  *  \param r                Disk radius.
- *  \param MGLOptions       MathGL fill style/colour options.
+ *  \param MGLOptions       MathGL fill style/color options.
  *  \param NumLineSegments  Number of line segments approximating the disk boundary. */
 void PlotDisk2D(mglGraph & graph, double x, double y, double r, const char * MGLOptions, size_t NumLineSegments=200)
 {

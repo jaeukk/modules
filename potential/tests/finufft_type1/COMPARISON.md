@@ -7,7 +7,7 @@ python3 potential/tests/finufft_type1/run_comparison.py --output /absolute/path/
 python3 potential/tests/finufft_type1/audit_comparison.py /absolute/path/to/new-results
 ```
 
-The runner compiles fresh dependency objects into the experiment directory (two compiler jobs), then runs experiments serially. FINUFFT defaults to the task-local `control/native-finufft` installation and GSL/NLopt to `/home/jaeukk/install`. It does not rebuild or modify application objects. `--binary PATH` reuses an existing benchmark executable, whose hash is recorded.
+The runner compiles fresh dependency objects into the experiment directory (two compiler jobs), then runs experiments serially. FINUFFT (`FINUFFT_PREFIX`), GSL, and NLopt default to `/home/jaeukk/install`. It does not rebuild or modify application objects. `--binary PATH` reuses an existing benchmark executable, whose hash is recorded.
 
 Default design: N=500, 2D, number density1, 299 independent mode pairs, chi=299/998, five fixed seeds, three repetitions per backend, two threads, two distinct physical cores, FINUFFT tolerance1e-12. Both runs reload one saved starting configuration. Backend order alternates. The same unmodified `RelaxStructure_NLOPT` used by CCOptimization performs three L-BFGS passes. A link-time wrapper records return codes and objective counts without changing the algorithm. Each pass allows2000 objective evaluations; original stopping settings are preserved.
 

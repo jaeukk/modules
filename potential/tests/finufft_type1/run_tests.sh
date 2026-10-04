@@ -8,8 +8,7 @@
 #   fixed2   : -DCCPOTENTIAL_USE_FINUFFT -DHAVETWOFIXEDPARTICLES
 #
 # Environment overrides:
-#   FINUFFT_ROOT  FINUFFT tree with source/finufft-2.5.1/include, install/include, install/lib
-#                 (default: <task>/control/native-finufft, resolved relative to this script)
+#   FINUFFT_PREFIX  FINUFFT 2.5.1 install prefix with include/ and lib/ (default: $HOME/install)
 #   GSL_PREFIX    GSL prefix (default: $HOME/install)
 #   CXX           compiler (default: g++)
 #   KEEP_WORK=1   keep the temporary directory for inspection
@@ -18,13 +17,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODS="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SRC="$SCRIPT_DIR/test_finufft_type1.cpp"
-FINUFFT_ROOT="${FINUFFT_ROOT:-$SCRIPT_DIR/../../../../../control/native-finufft}"
+FINUFFT_PREFIX="${FINUFFT_PREFIX:-$HOME/install}"
 GSL_PREFIX="${GSL_PREFIX:-$HOME/install}"
 CXX="${CXX:-g++}"
 
-FINUFFT_CFLAGS=(-DCCPOTENTIAL_USE_FINUFFT
-	-I"$FINUFFT_ROOT/source/finufft-2.5.1/include" -I"$FINUFFT_ROOT/install/include")
-FINUFFT_LFLAGS=("$FINUFFT_ROOT/install/lib/libfinufft.so" -Wl,-rpath,"$FINUFFT_ROOT/install/lib")
+FINUFFT_CFLAGS=(-DCCPOTENTIAL_USE_FINUFFT -I"$FINUFFT_PREFIX/include")
+FINUFFT_LFLAGS=("$FINUFFT_PREFIX/lib/libfinufft.so" -Wl,-rpath,"$FINUFFT_PREFIX/lib")
 
 # No -DNDEBUG: GeometryVector's layout depends on NDEBUG and must match the prebuilt objects
 # (config.mk builds them without it).
@@ -45,9 +43,10 @@ for f in "$SRC" "${FULL_OBJS[@]}"; do
 		exit 2
 	fi
 done
-for f in "$FINUFFT_ROOT/source/finufft-2.5.1/include/finufft.h" "$FINUFFT_ROOT/install/lib/libfinufft.so"; do
+for f in "$FINUFFT_PREFIX/include/finufft.h" "$FINUFFT_PREFIX/include/finufft_common/defines.h" \
+	"$FINUFFT_PREFIX/lib/libfinufft.so"; do
 	if [[ ! -e "$f" ]]; then
-		echo "missing FINUFFT file: $f (set FINUFFT_ROOT)" >&2
+		echo "missing FINUFFT file: $f (set FINUFFT_PREFIX)" >&2
 		exit 2
 	fi
 done
@@ -94,6 +93,13 @@ build finufft "${FINUFFT_CFLAGS[@]}" -- "${FINUFFT_LFLAGS[@]}"
 build fixed2 "${FINUFFT_CFLAGS[@]}" -DHAVETWOFIXEDPARTICLES -- "${FINUFFT_LFLAGS[@]}"
 
 status=0
+# FINUFFT may share the GSL prefix, so the direct build can see finufft.h; it must not include it.
+direct_deps="$("$CXX" "${CXXFLAGS[@]}" -M "$SRC")"
+if grep -q '/finufft\.h' <<<"$direct_deps"; then
+	echo "FAIL: direct-only build includes finufft.h"; status=1
+else
+	echo "ok: direct-only build does not include finufft.h"
+fi
 if command -v ldd >/dev/null 2>&1; then
 	if ldd "$WORK/direct" | grep -q libfinufft; then
 		echo "FAIL: direct-only binary depends on libfinufft"; status=1

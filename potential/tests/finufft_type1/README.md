@@ -28,13 +28,13 @@ Every setter invalidates the rho cache (`RhoValid=false`); a setter that throws 
 Default builds need no FINUFFT header or library. To enable the backend, define the macro in
 **every** translation unit that includes the header (mixing it violates the ODR):
 
+FINUFFT 2.5.1 is installed as a shared library under `$HOME/install`, next to GSL. Its
+`finufft_common/defines.h`, which upstream's install omits, was copied there from the source tree.
+
 ```sh
-FINUFFT_ROOT=<task>/control/native-finufft
 g++ -std=c++17 -O2 -fopenmp -DCCPOTENTIAL_USE_FINUFFT \
-    -I"$FINUFFT_ROOT/source/finufft-2.5.1/include" -I"$FINUFFT_ROOT/install/include" \
     -Icore -Ipotential -I"$HOME/install/include" my_app.cpp <core/potential objects> \
-    "$FINUFFT_ROOT/install/lib/libfinufft.so" -Wl,-rpath,"$FINUFFT_ROOT/install/lib" \
-    -L"$HOME/install/lib" -Wl,-rpath,"$HOME/install/lib" -lgsl -lgslcblas
+    -L"$HOME/install/lib" -Wl,-rpath,"$HOME/install/lib" -lfinufft -lgsl -lgslcblas
 ```
 
 ## Method and fallbacks
@@ -80,7 +80,8 @@ The runner compiles `test_finufft_type1.cpp` in a `mktemp -d` directory as three
 prebuilt `core/obj` and `potential/obj/Potential.o` (build them with `make -C core objs` and
 `make -C potential objs` if missing; they must be built without `-DNDEBUG`), runs each with
 `OMP_NUM_THREADS=2`, and removes only the files it created. Set `KEEP_WORK=1` to keep them, and
-`FINUFFT_ROOT`, `GSL_PREFIX`, or `CXX` to override the defaults.
+`FINUFFT_PREFIX`, `GSL_PREFIX`, or `CXX` to override the defaults. Because FINUFFT and GSL share
+`$HOME/install/include`, the runner also checks that the direct-only build never includes `finufft.h`.
 
 Coverage: default/disabled backend selection and setter validation; analytic sign checks; empty
 constraint and particle lists; rho, Energy, Force, and AllForce Direct vs FINUFFT in 1D-3D with

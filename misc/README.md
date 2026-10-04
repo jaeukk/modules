@@ -8,7 +8,7 @@ the headers are pulled in (via `-I$(misc)`) by consumers; the corresponding
 | File | Purpose |
 |------|---------|
 | `Discrepancy.h` | `MergeSort` / `Merge_Sort` ordering helpers, `Crop`, van der Corput sequences, star-discrepancy templates. |
-| `ParameterSet.h` | Abstract `ParameterSet` base + `CombinedParameterization` for pair-potential optimisation. |
+| `ParameterSet.h` | Abstract `ParameterSet` base + `CombinedParameterization` for pair-potential optimization. |
 | `Interfaces.h` | The legacy `cli()` command dispatcher and the `*CLI()` entry-point declarations (kept as reference; individual apps extract the command they need). |
 
 ## Dependencies

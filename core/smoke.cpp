@@ -4,7 +4,7 @@
  *
  * Demonstrates the three foundational types every other module builds on:
  *   - GeometryVector       : a point/vector in up to MaxDimension Euclidean dims
- *   - PeriodicCellList<T>  : a periodic point pattern with O(1) neighbour queries
+ *   - PeriodicCellList<T>  : a periodic point pattern with O(1) neighbor queries
  *   - RandomGenerator      : reproducible Mersenne-Twister RNG
  *
  * Build & run:  make && ./smoke.out

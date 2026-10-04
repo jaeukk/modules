@@ -51,7 +51,7 @@ contact = load("contact_reproducibility_run", TESTS / "contact_reproducibility/r
 REPO = paired.REPO
 APP = REPO / "apps/CCOptimization"
 ENTRY = TESTS / "contact_reproducibility/experiment.cpp"
-LIBFINUFFT = paired.NATIVE / "install/lib/libfinufft.so"
+LIBFINUFFT = paired.NATIVE / "lib/libfinufft.so"
 SEEDS = [20260928, 20260929, 20260930]
 REPEATS = 2
 BACKENDS = ["direct", "finufft"]
@@ -255,8 +255,9 @@ def build_all(root, env):
                               observer_obj, "-Wl,--wrap=finufft2d1", *gsl, LIBFINUFFT,
                               "-Wl,-rpath," + str(LIBFINUFFT.parent), "-o", api_finufft])
 
-    native = "-I" + str(paired.NATIVE)
-    direct_flags = [f for f in common if f != "-DCCPOTENTIAL_USE_FINUFFT" and not f.startswith(native)]
+    # FINUFFT may share the GSL prefix; drop its include path only when it is separate.
+    dropped = {"-DCCPOTENTIAL_USE_FINUFFT", "-I" + str(paired.NATIVE / "include")} - {"-I" + str(paired.DEPS / "include")}
+    direct_flags = [f for f in common if f not in dropped]
     api_direct = extra / "api_test_direct"
     step("api_direct_compile", direct_flags + ["-c", HERE / "api_test.cpp", "-o", extra / "api_test_direct.o"])
     step("msp_direct_compile", direct_flags + ["-c", APP / "MultiStealthyPotential.cpp",

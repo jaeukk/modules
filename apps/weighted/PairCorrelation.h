@@ -33,8 +33,8 @@ void WeightedIsotropicTwoPairCorrelation(std::function<const PeriodicCellList<st
 
 /**
  * \brief Compute the weighted single-sided isotropic pair correlation function over an ensemble.
- * Unlike WeightedIsotropicTwoPairCorrelation, each neighbour contributes only the weight of the
- * source particle (not the conjugated product), giving the one-sided weighted neighbour density.
+ * Unlike WeightedIsotropicTwoPairCorrelation, each neighbor contributes only the weight of the
+ * source particle (not the conjugated product), giving the one-sided weighted neighbor density.
  * \param[in] GetConfigsFunction	A lambda returning the i-th marked configuration.
  * \param[in] NumConfigs	The number of configurations to average over.
  * \param[in] MaxDistance	Up to this distance, the function is computed.

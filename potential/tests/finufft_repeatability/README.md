@@ -29,16 +29,16 @@ not reuse any old build strategy or old objects.
 ## Run
 
 Needs the same toolchain as the earlier tests: `g++`, GSL/NLopt under
-`/home/jaeukk/install`, FINUFFT under `<task>/control/native-finufft`, Python 3 with
+`/home/jaeukk/install`, FINUFFT 2.5.1 there too (override with `FINUFFT_PREFIX`), Python 3 with
 `numpy`, and at least four physical cores.
 
 ```bash
-python3 _multiagent/tasks/2026-09-22-graft-finufft/source/modules/potential/tests/finufft_repeatability/run_repeatability.py \
+python3 potential/tests/finufft_repeatability/run_repeatability.py \
     --output /ABSOLUTE/NEW/DIR/outside/source
 ```
 
-`--output` must be an absolute path that does not exist yet and lies outside the task's
-`source/` tree. Everything runs serially. The exit code is 0 only if every required
+`--output` must be an absolute path that does not exist yet and lies outside the directory
+that contains this repository. Everything runs serially. The exit code is 0 only if every required
 check passes, 1 if any fails (including build or harness errors), and 2 for invalid
 arguments. The driver never changes existing results or restarts any sweep.
 
@@ -56,8 +56,8 @@ arguments. The driver never changes existing results or restarts any sweep.
 3. **API tests** (`api/`). The macro-enabled variant links the fresh core,
    `Potential`, and `MultiStealthyPotential` objects plus the observer and libfinufft
    (no `main` object, no second full rebuild). The macro-disabled variant recompiles
-   only `api_test.cpp` and `MultiStealthyPotential.cpp`, without the macro or FINUFFT
-   include paths, and links no FINUFFT library. The core objects do not include the
+   only `api_test.cpp` and `MultiStealthyPotential.cpp` without the macro (and without the
+   FINUFFT include path when it differs from the GSL prefix), and links no FINUFFT library. The core objects do not include the
    header, so there is no ODR mismatch. `ldd` must show no libfinufft. The checks cover:
    - default 1 (also for `ShiftedCCPotential_S2` and the species potentials);
    - Direct as the default backend;

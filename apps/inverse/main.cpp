@@ -2,7 +2,7 @@
  *  \brief Entry point for the CC-inversion application.
  *
  *  Reconstructs point configurations from a subset of their collective
- *  coordinates (structure-factor constraints) by minimising the
+ *  coordinates (structure-factor constraints) by minimizing the
  *  FrankInvertCCPotential family of objectives.
  *
  *  This driver is extracted from the legacy `cli()` dispatcher in

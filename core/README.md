@@ -9,7 +9,7 @@ dependencies; only external GSL (linear algebra in `GeometryVector`) and Boost
 | File | Purpose |
 |------|---------|
 | `GeometryVector.{h,cpp}` | Point/vector in up to `MaxDimension` Euclidean dimensions; dot products, GSL-backed matrix helpers. |
-| `PeriodicCellList.{h,cpp}` | `PeriodicCellList<T>` — a periodic point pattern with a cell list for O(1) neighbour queries. `Configuration` = `PeriodicCellList<AtomName>`. Re-includes the headers below as a backward-compatibility umbrella. |
+| `PeriodicCellList.{h,cpp}` | `PeriodicCellList<T>` — a periodic point pattern with a cell list for O(1) neighbor queries. `Configuration` = `PeriodicCellList<AtomName>`. Re-includes the headers below as a backward-compatibility umbrella. |
 | `SpherePacking.{h,cpp}` | `SpherePacking` (a `PeriodicCellList<double>` whose characteristic is a sphere radius) and its on-disk pack container `SpherePackingPack`. |
 | `ConfigurationIO.{h,cpp}` | File-format readers/writers for `Configuration`/`SpherePacking` (`.pos`, binary `.Config`, HOOMD XML, stealth, GROMACS `.gro`, Torquato–Jiao packings, plain `.txt`). |
 | `ClusterMerger.h` | Header-only incremental cluster merger over a `PeriodicCellList` (merges particles into clusters as a connection distance grows). |
@@ -36,5 +36,5 @@ override: `make GSL_PREFIX=/path/to/gsl`.
 ## Minimal usage
 
 See [`smoke.cpp`](smoke.cpp): build a cubic periodic box, insert random points
-with a seeded RNG, and count neighbours of a particle with
+with a seeded RNG, and count neighbors of a particle with
 `IterateThroughNeighbors`.

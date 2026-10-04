@@ -13,8 +13,8 @@ import time
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
-NATIVE = REPO.parent.parent / "control/native-finufft"
 DEPS = Path("/home/jaeukk/install")
+NATIVE = Path(os.environ.get("FINUFFT_PREFIX", DEPS))  # FINUFFT 2.5.1 install prefix
 
 
 def digest(path):
@@ -34,8 +34,7 @@ def build(output, env, entry=None, extra_sources=(), extra_includes=()):
         "potential/Potential.cpp", "potential/StructureOptimization.cpp")] + list(extra_sources)
     common = ["g++", "-std=c++17", "-O2", "-fopenmp", "-DCCPOTENTIAL_USE_FINUFFT",
               "-I" + str(REPO / "core"), "-I" + str(REPO / "potential"),
-              "-I" + str(DEPS / "include"), "-I" + str(NATIVE / "install/include"),
-              "-I" + str(NATIVE / "source/finufft-2.5.1/include")]
+              "-I" + str(DEPS / "include"), "-I" + str(NATIVE / "include")]
     common.extend("-I" + str(path) for path in extra_includes)
     commands = []
 
@@ -55,8 +54,8 @@ def build(output, env, entry=None, extra_sources=(), extra_includes=()):
     command = ["g++", "-fopenmp"] + [str(obj) for obj, _ in objects] + [
         "-Wl,--wrap=nlopt_optimize", "-L" + str(DEPS / "lib"),
         "-Wl,-rpath," + str(DEPS / "lib"), "-lnlopt", "-lgsl", "-lgslcblas",
-        str(NATIVE / "install/lib/libfinufft.so"),
-        "-Wl,-rpath," + str(NATIVE / "install/lib"), "-o", str(binary)]
+        str(NATIVE / "lib/libfinufft.so"),
+        "-Wl,-rpath," + str(NATIVE / "lib"), "-o", str(binary)]
     commands.append(command)
     save_json(work / "commands.json", commands)
     with (work / "link.log").open("w") as log:
@@ -149,7 +148,7 @@ def main():
                 "binary": str(binary), "binary_sha256": digest(binary),
                 "header_sha256": digest(REPO / "potential/CollectiveCoordinatePotential.h"),
                 "runner_sha256": digest(Path(__file__)),
-                "finufft_library_sha256": digest(NATIVE / "install/lib/libfinufft.so"),
+                "finufft_library_sha256": digest(NATIVE / "lib/libfinufft.so"),
                 "linked_libraries": subprocess.check_output(["ldd", str(binary)], text=True),
                 "compiler": subprocess.check_output(["g++", "--version"], text=True).splitlines()[0],
                 "position_comparison": "fixed particle labels, periodic minimum-image, best global translation; no permutation matching",

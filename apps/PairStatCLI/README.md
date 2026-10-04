@@ -1,7 +1,7 @@
 # PairStatCLI — pair-statistics command-line interface
 
 An interactive CLI that computes ensemble-averaged pair / two-point statistics of
-point configurations (g(r), S(k), nearest-neighbour and coordination statistics,
+point configurations (g(r), S(k), nearest-neighbor and coordination statistics,
 local number variance). It is the driver split out of the `pairstat` **library**
 module: it ships the high-level `Computation` class hierarchy plus the `cli.cpp`
 interpreter, and links against `core` + `pairstat`.
@@ -39,7 +39,7 @@ Active (queued by typing the keyword, which then prompts for its parameters):
 | `g2Computation` | isotropic g(r) | `R_max` | `<prefix>_gofr` |
 | `Directionalg2Computation` | g(r, θ) | `R_max`, `NumThetaBins` | `<prefix>_x/_y/_g2` |
 | `SkComputation` | structure factor S(k) | circular `K_max`, linear `K_max`, `K_precision` | `<prefix>_Sofk` |
-| `NearestNeighborStatistics` | nearest-neighbour distance distribution | `SampleDistanceSize` | `<prefix>` files |
+| `NearestNeighborStatistics` | nearest-neighbor distance distribution | `SampleDistanceSize` | `<prefix>` files |
 | `CoordinationNumber` | coordination-number distribution | `rmin`, `rmax`, `bins` | `<prefix>_Z` |
 | `LocalNumberVariance` | local number variance σ²(R) | (reads its own block) | `<prefix>` files |
 

@@ -73,7 +73,7 @@ void DisplayConfiguration(const Configuration & a, double BondLength = 0.0, doub
  *  \param Radius      Sphere radius; 0 selects an automatic radius. */
 void Display3DConfigurationMovie(ConfigurationPack & pk, double BondLength = 0.0, double Radius = 0.0);
 
-/** \brief Display the 3D structure factor of a configuration as colour-coded spheres.
+/** \brief Display the 3D structure factor of a configuration as color-coded spheres.
  *  \param a              3D configuration to analyze.
  *  \param KCutOff        Maximum wavevector magnitude to include.
  *  \param KSphereRadius  Radius drawn for each k-point sphere; 0 selects an automatic radius. */

@@ -59,7 +59,7 @@ public:
 	/**
 	 * \brief Handle a CLI command not understood by PairStatisticsCLI().
 	 * Any such command is forwarded here so a computation can expose extra options.
-	 * \param option	The unrecognised command token.
+	 * \param option	The unrecognized command token.
 	 * \param input	The CLI input stream (for reading option arguments).
 	 * \param output	The CLI output stream (for messages).
 	 */
