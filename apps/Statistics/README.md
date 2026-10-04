@@ -12,7 +12,7 @@ the same box length. Validation tools are kept apart in [tests/](tests/).
 |------|----------|
 | [gn.h](gn.h) / [gn.cpp](gn.cpp) | `gn`: binned $g_n$ estimator with checkpointing (resumable), $\tau_n$ and long-range $\tau_n$ from the stored $g_n$. |
 | [tau_n.h](tau_n.h) / [tau_n.cpp](tau_n.cpp) | `tau_n`: $\tau_n$ without storing $g_n$ (global-grid estimator; legacy algorithm, not optimized). |
-| [main.cpp](main.cpp) | `gn.out` CLI: modes `gn_1D`, `taun_1D`, `hole`, `overlap`, `test`. |
+| [main.cpp](main.cpp) | `gn.out` CLI: modes `gn_1D`, `taun_1D`, `hole`, `overlap`. |
 | [tests/](tests/) | Not part of the app: test-input generator `gen.out` and the exact-$g_n$ check `check_url_gn.py` (see [tests/README.md](tests/README.md)). |
 
 ## Build
@@ -115,4 +115,3 @@ results: [tests/README.md](tests/README.md).
 - `taun_1D [hours]` — stdin: `n ConfigPack Nc threads out_prefix ckpt_prefix Lmax dx`.
 - `hole` — hole probability $H_V$ and $E_V$; stdin: `ConfigPack begin end threads dR samples prefix`.
 - `overlap` — overlap function $Q(t;a)$; stdin: `ConfigPack begin end threads sigma_max dsigma prefix`.
-- `test` — index ↔ multi-index round trip.

@@ -144,31 +144,4 @@ private:
 	void Moments(size_t i, double & mean, double & err) const;
 };
 
-/** \brief Flatten a multi-index (i_1, ..., i_m) into a row-major index with row length len_row.
- *  \param vector   Multi-index; vector[0] is the slowest-varying component.
- *  \param len_row  Extent of components 1..m-1.
- *  \return i_1*len_row^{m-1} + ... + i_m. */
-inline size_t vector2idx(const std::vector<size_t> & vector, size_t len_row){
-	size_t idx = vector.at(0);
-	for (size_t i = 1; i <  vector.size(); i++){
-		idx *= len_row;
-		idx += vector.at(i);
-	}
-	return idx;
-}
-
-/** \brief Inverse of vector2idx for an (n-1)-component multi-index.
- *  \param idx           Flat index.
- *  \param[out] vector   Multi-index (resized to n-1).
- *  \param n             Order of the correlation function (components = n-1).
- *  \param len_row       Extent of components 1..n-2. */
-inline void idx2vector(size_t idx, std::vector<size_t> & vector, size_t n, size_t len_row){
-	vector.resize(n-1);
-	size_t val = idx;
-	for(size_t i = 0; i < vector.size(); i++){
-		vector[n-2-i] = val % len_row;
-		val /= len_row;
-	}
-}
-
 #endif // __GN_H__

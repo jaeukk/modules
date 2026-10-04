@@ -38,7 +38,7 @@ size_t Verbosity = 3;
 void Measure_Hole_Prob(std::function<const Configuration(size_t i)> getc, size_t numconfigs,
 	double dR, std::vector<GeometryVector> & Ev, std::vector<GeometryVector> & Hv, size_t SamplesPerConfig = 1000);
 
-/** \brief CLI entry point; argv[1] selects the mode (test, gn_1D, taun_1D, hole, overlap),
+/** \brief CLI entry point; argv[1] selects the mode (gn_1D, taun_1D, hole, overlap),
  *  and the remaining parameters are read from stdin.
  *  gn_1D [hours] [n]: time limit in hours (default 10); a third argument "n" skips writing g_n.
  *  taun_1D [hours]: time limit in hours (default 10).
@@ -58,76 +58,7 @@ int main (int argc, char ** argv){
 		return 0;
 	}
 
-	if (strcmp(argv[1], "test") == 0){
-		/* test */
-		int nh;
-		size_t n =4;
-		ofile << "nh = ";
-		ifile >> nh;
-		int lr = 2*nh+1;
-		size_t total_length = (nh+1)*pow(lr, n-2);
-		ofile << nh <<std::endl;
-		ofile << lr <<std::endl;
-		ofile << total_length <<std::endl;
-	//# pragma omp parallel for 
-
-
-		int idx = 0;
-		for (int i2 = nh; i2 < 2*nh + 1; i2 ++){
-			std::cout << "------" << std::endl <<std::endl;
-			for (int i3 = 0; i3 < 2*nh+1 ; i3 ++){
-				std::cout << std::endl;
-				for (int i4 = 0; i4 < 2*nh+1; i4 ++ ){
-					std::vector<size_t> indices1 = {(size_t)(i2-nh),(size_t)i3,(size_t)i4};
-					std::vector<size_t> indices2;
-					size_t idx1 = vector2idx(indices1, lr);
-					idx2vector(idx1, indices2, 4, lr);
-					size_t idx2 = vector2idx(indices2, lr);
-					
-					// #pragma omp critical
-					// 	{
-					// 		std::cout << i2 <<"\t"<<i3<<"\t"<<i4<<"\t"<<idx1 << "\t" << idx2 <<std::endl;
-					// 		std::cout << indices1[0] <<"\t"<< indices1[1] <<"\t"<< indices1[2] << std::endl;
-					// 	}	
-					int tt = (int)idx1;
-					ofile << indices1[0] <<"\t"<< indices1[1] <<"\t" << indices1[2] <<"\t" << tt <<"\t" ;
-
-					ofile << (int)idx2 << "\t" << idx <<std::endl;
-
-					idx ++;
-
-
-					if (idx1 >= total_length){
-						#pragma omp critical
-						{
-							ofile << "overflow: " << i2 <<"\t"<<i3<<"\t"<<i4<<"\t"<<idx1 <<" / "<<total_length <<std::endl;
-						}
-					}
-
-					bool correct = true;
-					for (size_t i=0; i<3; i++){
-						correct &= (indices1[i] == indices2[i]);
-					}
-					if (! correct){	
-						#pragma omp critical
-						{
-							ofile << "conversion error: " << i2 <<"\t"<<i3<<"\t"<<i4<<"\t"<<idx1  <<std::endl;
-						}					
-					}
-					if (! (idx1 == idx2)){	
-						#pragma omp critical
-						{
-							ofile << "vector2idx: " << i2 <<"\t"<<i3<<"\t"<<i4<<"\t"<<idx2  <<std::endl;
-						}					
-					}
-						
-				}
-			}
-		}
-		return 0;
-	}
-
-	else if (strcmp(argv[1], "gn_1D") == 0){
+	if (strcmp(argv[1], "gn_1D") == 0){
 		/* Time limit */
 		double timelimit_in_hour = 10;
 		if (argc > 2){
@@ -161,18 +92,6 @@ int main (int argc, char ** argv){
 			return 1;
 		}
 	}
-	else if (strcmp(argv[1], "Kirkwood")==0){
-		/* Compute the Kirkwood approximation of g_n from g_n */
-
-		/* Load g2 */
-
-		/* Load gn */
-
-		/* Compute gn approximation */
-
-		/* Compare gn approximation */
-
-	}
 	else if (strcmp(argv[1], "taun_1D") == 0){
 		/* Time limit */
 		double timelimit_in_hour = 10;
@@ -185,7 +104,6 @@ int main (int argc, char ** argv){
 		
 		tau_n model(ofile, ifile);
 		model.Run(ofile, TimeLimit, false);
-		//model.Test2(ofile);
 	}
 	else if (strcmp(argv[1], "hole") == 0){
 		ofile << "-------------------------------------- \n";

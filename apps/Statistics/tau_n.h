@@ -83,7 +83,6 @@ struct tau_n
 	std::string bin_name;		///< checkpoint file name (<prefix>.tau_<n>)
 	std::string savename;		///< prefix of the output text files
 	size_t num_threads = 1;		///< OpenMP threads
-	bool print_gn = true;		///< unused by Run (output_gn argument decides)
 
 	size_t Nc = 0;				///< number of configurations
 
@@ -92,7 +91,6 @@ struct tau_n
 
 	int num_half = 0;			///< floor(Lmax/dx)
 	size_t len_row = 0;			///< 2*num_half+1
-	double Rmin = 5.0;			///< unused here (kept for parity with gn)
 	size_t tot_num_tuples = 0;	///< total number of offset tuples (x_21, ..., x_n1) to visit
 
 	/** \brief Default constructor (empty). */
@@ -114,32 +112,7 @@ struct tau_n
 	/** \brief Write tau_n(L) and its error to <savename>-tau<n>. */
 	void Write_tau_n();
 
-	/** \brief Set the number of OpenMP threads.
-	 *  \param num_threads  Number of threads. */
-	void SetNumThreads(size_t num_threads){
-		this->num_threads = num_threads;
-		omp_set_num_threads(this->num_threads);
-	}
-
-	/** \brief Set print_gn = false (Run ignores it; kept for parity with gn). */
-	void DisablePrint_gn(){
-		this->print_gn = false;
-		std::cout << "Disabled printing gn data\n";
-	}
-
-	/** \brief Flatten bin offsets (i_2 >= 0, i_3..i_n in [-num_half, num_half]) to a tuple index.
-	 *  \param pos  Offsets in units of dx.
-	 *  \return Row-major tuple index. */
-	inline int pos2idx(const std::vector<int> & pos){
-		int idx = pos.at(0);
-		for (size_t i = 1; i <  pos.size(); i++){
-			idx *= this->len_row;
-			idx += (pos.at(i)+this->num_half);
-		}
-	return idx;
-	}
-
-	/** \brief Inverse of pos2idx.
+	/** \brief Convert a row-major tuple index to bin offsets.
 	 *  \param idx       Tuple index.
 	 *  \param[out] pos  Offsets in units of dx (size n-1). */
 	inline void idx2pos(int idx, std::vector<int> & pos){
@@ -162,31 +135,12 @@ struct tau_n
 	 *  \param output_gn  Also write g_n per tuple to <savename>_g<n>.txt. */
 	void Run(std::ostream & ofile, time_t TimeLimit, bool output_gn=false);
 
-	/** \brief Self-check: pos2idx(idx2pos(i)) == i for every tuple index.
-	 *  \param ofile  Output stream for mismatches. */
-	void Test1(std::ostream & ofile);
-
-	/** \brief Debug dump of the overlap indices of every offset tuple.
-	 *  \param ofile  Output stream. */
-	void Test2(std::ostream & ofile);
-
-
 private:
 	size_t curr_idx = 0;					///< next tuple index to visit
 	std::string cp_name;					///< input ConfigPack name
 	std::vector<GeometryVector> result;		///< result[L] = (L, sum of [1-g_n]^2, error sum)
 	double normalization_factor = 0;		///< 1/dx^{n-1}
-	double dR = 0.0;						///< neighbor radius = dx/2 (used by gn)
 	ConfigurationPack CP;					///< input ensemble
-
-	/** \brief Number of ordered distinct (n-1)-tuples near given offsets from one particle
-	 *  (obsolete neighbor-search path; Run uses gn_from_nlist).
-	 *  \param c_list          Configuration.
-	 *  \param xs              Offsets x_21, ..., x_n1 (relative coordinates).
-	 *  \param prt_idx         Index of x_1.
-	 *  \param idx_overlapped  Overlap indices (see Run).
-	 *  \return Product of effective counts, or 0. */
-	double gn (const Configuration & c_list, const std::vector<GeometryVector> & xs, size_t prt_idx, const std::vector<int> idx_overlapped);
 
 	/** \brief Unnormalized g_n of one configuration at given bin offsets, from its occupancy grid.
 	 *  \param nlist_            Occupancy grid of the configuration.
