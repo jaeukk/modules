@@ -3,12 +3,15 @@ import pathlib
 import subprocess
 import tempfile
 import struct
+import math
 
 executable = pathlib.Path(__file__).resolve().parents[1] / "soft_core_stealthy.out"
 with tempfile.TemporaryDirectory(prefix="cco-cli-") as directory:
     root = pathlib.Path(directory)
-    for mode in ("txt", "binary", "off"):
+    for mode in ("txt", "binary", "off", "legacy"):
         prefix = root / mode
+        export_command = "" if mode == "legacy" else f"export {mode}"
+        analysis_command = "" if mode == "legacy" else "pairstat 3 0.2 0.4 0.2 16 17"
         # Ten particles, two components; no constrained nonzero wavevectors.
         text = f"""random
 2
@@ -25,7 +28,8 @@ with tempfile.TemporaryDirectory(prefix="cco-cli-") as directory:
 ground
 combined
 maxsteps 1
-export {mode}
+{export_command}
+{analysis_command}
 run
 """
         result = subprocess.run([str(executable), "multi", "1", "17"], input=text,
@@ -35,6 +39,13 @@ run
         binary = pathlib.Path(str(prefix) + "_Success_0.mspb")
         assert txt.exists() == (mode == "txt"), result.stdout
         assert binary.exists() == (mode == "binary"), result.stdout
+        report_path = pathlib.Path(str(prefix) + "_PairStat_0.txt")
+        assert report_path.exists() == (mode != "legacy")
+        if report_path.exists():
+            rows = [line.split() for line in report_path.read_text().splitlines() if not line.startswith("#")]
+            assert {row[0] for row in rows} == {"S", "NV", "VFV"}
+            assert {int(row[1]) for row in rows} == {-1, 0, 1}
+            assert all(math.isfinite(float(value)) for row in rows for value in row[1:])
         if txt.exists():
             assert "# coordinates relative" in txt.read_text()
             rows = [line.split() for line in txt.read_text().splitlines() if not line.startswith("#")]
@@ -44,4 +55,16 @@ run
             data = binary.read_bytes()
             assert struct.unpack("<8sIIQQI", data[:36]) == (b"MSPB\r\n\x1a\n", 1, 2, 10, 2, 3)
             assert len(data) == 36 + 8*4 + 10*36
-print("CLI export tests passed: txt, binary, off.")
+            resumed = subprocess.run([str(executable), "multi", "1", "17"],
+                input=text.replace(f"{prefix}\n1\nground", f"{prefix}\n2\nground"),
+                text=True, capture_output=True, cwd=root, timeout=30)
+            assert resumed.returncode == 0, resumed.stdout + resumed.stderr
+            assert binary.read_bytes() == data
+            assert pathlib.Path(str(prefix) + "_Success_1.mspb").exists()
+            assert pathlib.Path(str(prefix) + "_PairStat_1.txt").exists()
+    for commands in ("export invalid\nrun\n", "pairstat 3 0.2 0.4 0.2 1 17\nrun\n", ""):
+        bad = subprocess.run([str(executable), "multi", "1", "17"],
+            input=text.replace("run\n", commands), text=True, capture_output=True,
+            cwd=root, timeout=30)
+        assert bad.returncode != 0, bad.stdout + bad.stderr
+print("CLI tests passed: text/binary/off, legacy defaults, PairStat, resume, invalid/EOF input.")

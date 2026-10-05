@@ -33,6 +33,7 @@ size_t Verbosity = 3;  // each executable defines it (new_c++ convention)
 
 #include "RepulsiveCCPotential.h"
 #include "MultiStealthyPotential.h"
+#include "MultiComponentPairStat.h"
 
 /** \brief Perform the energy optimization multiple times for a given potential energy.
 Obtain ground-state configurations from multi initial configurations.
@@ -1247,7 +1248,9 @@ int GetMultiCCO(int argc, char ** argv){
 	int num_threads = 4;
 	
 	ofile << "# threads = "; ifile >> num_threads;	ofile << "\t "<< num_threads << "\n";
+	if (!ifile || num_threads < 1) throw std::invalid_argument("Thread count must be positive.");
 	potential->ParallelNumThread = num_threads;
+	omp_set_num_threads(num_threads); // PairStat uses the OpenMP runtime default.
 	ofile << "Save as "; ifile >> savename; ofile << "\t "<< savename << "\n";
 	ofile << "target num configs = "; ifile >> N_config; ofile << "\t "<< N_config << "\n";
 
@@ -1375,25 +1378,41 @@ int GetMultiCCO(int argc, char ** argv){
 			double tolerance = 1e-14;
 			bool split_species = true;
 			bool export_enabled = false;
+			bool pairstat_enabled = false;
+			MultiComponentPairStatOptions pairstat_options;
 			auto export_format = MultiStealthyPotential::ExportFormat::Text;
 			auto onAccepted = [&](const Configuration & c, size_t index) {
-				if (!export_enabled) return;
+				if (!export_enabled && !pairstat_enabled) return;
 				potential->SetConfiguration(c);
-				const bool binary = export_format == MultiStealthyPotential::ExportFormat::Binary;
-				const std::string path = savename + "_Success_" + std::to_string(index) + (binary ? ".mspb" : ".txt");
-				std::ofstream output(path, std::ios::out | (binary ? std::ios::binary : std::ios::openmode(0)));
-				potential->ExportConfiguration(output, export_format);
-				output.close();
-				if (!output) throw std::runtime_error("Could not finish export: " + path);
+				if (export_enabled) {
+					const bool binary = export_format == MultiStealthyPotential::ExportFormat::Binary;
+					const std::string path = savename + "_Success_" + std::to_string(index) + (binary ? ".mspb" : ".txt");
+					std::ofstream output(path, std::ios::out | (binary ? std::ios::binary : std::ios::openmode(0)));
+					potential->ExportConfiguration(output, export_format);
+					output.close();
+					if (!output) throw std::runtime_error("Could not finish export: " + path);
+				}
+				if (pairstat_enabled) {
+					const auto statistics = ComputeMultiComponentPairStatistics(*potential, pairstat_options);
+					const std::string path = savename + "_PairStat_" + std::to_string(index) + ".txt";
+					std::ofstream output(path);
+					WriteMultiComponentPairStatistics(output, statistics, pairstat_options);
+					output.close();
+					if (!output) throw std::runtime_error("Could not finish PairStat report: " + path);
+				}
 			};
 			ofile << "Optional: export txt|binary|off (default off); then run\n";
+			ofile << "Optional: pairstat Kmax dK Rmax dR samples seed (default disabled)\n";
 			std::string algorithm = "LBFGS";
 
 			ofile << "--------------------------------------- \n";
 			ofile << "\t\t Input parameters for minimizations \n";
 			ofile << "--------------------------------------- \n";
 			for(;;){
-				ifile >> tempstring2;
+				if (!(ifile >> tempstring2)) {
+					ofile << "Unexpected end of ground-state parameters before run.\n";
+					return 1;
+				}
 				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),[](unsigned char c){ return static_cast<char>(::tolower(c)); }); // make the input in the lower case (cast through unsigned char: passing a negative char to tolower is UB)
 				if (tempstring2.compare("run") == 0){
 					/* start minimizations simulation */
@@ -1423,6 +1442,16 @@ int GetMultiCCO(int argc, char ** argv){
 					}
 					export_enabled = format != "off";
 					export_format = format == "binary" ? MultiStealthyPotential::ExportFormat::Binary : MultiStealthyPotential::ExportFormat::Text;
+				}
+				else if (tempstring2 == "pairstat") {
+					if (!(ifile >> pairstat_options.kMax >> pairstat_options.kBinWidth
+						>> pairstat_options.rMax >> pairstat_options.rStep
+						>> pairstat_options.windowSamples >> pairstat_options.seed)) {
+						ofile << "Expected: pairstat Kmax dK Rmax dR samples seed\n";
+						return 1;
+					}
+					pairstat_options.Validate();
+					pairstat_enabled = true;
 				}
 				else {
 					ofile << tempstring2 << " is an undefined command\n";
@@ -1586,7 +1615,11 @@ int main(int argc, char ** argv){
 
 	int driverResult = 0;
 	if (argc > 1 && strcmp(argv[1], "multi") == 0){
-		driverResult = GetMultiCCO(argc, argv);
+		try { driverResult = GetMultiCCO(argc, argv); }
+		catch (const std::exception &error) {
+			std::cerr << "Multicomponent run failed: " << error.what() << '\n';
+			return 1;
+		}
 	}
 	else
 	{

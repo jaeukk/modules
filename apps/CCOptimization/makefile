@@ -18,14 +18,15 @@ include ../../config.mk
 ODIR   := obj/
 TARGET := soft_core_stealthy.out
 
-SRCS := main.cpp MultiStealthyPotential.cpp
+SRCS := main.cpp MultiStealthyPotential.cpp MultiComponentPairStat.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I$(pairstat) -I$(potential) -I. $(NLOPT_INC)
 
 CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
-PAIR_OBJS := $(pairstat)/obj/StructureFactor.o $(pairstat)/obj/PairCorrelation.o
+PAIR_OBJS := $(pairstat)/obj/StructureFactor.o $(pairstat)/obj/PairCorrelation.o \
+             $(pairstat)/obj/NumberVariance.o $(pairstat)/obj/VolumeFractionVariance.o
 POT_OBJS  := $(potential)/obj/Potential.o $(potential)/obj/StructureOptimization.o \
              $(potential)/obj/MD_System.o
 

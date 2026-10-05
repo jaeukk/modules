@@ -8,6 +8,19 @@
 #include <cstring>
 #include <climits>
 
+SpherePacking MultiStealthyPotential::GetPackingSnapshot() const
+{
+	if (!pConfig || radii.size() != pConfig->NumParticle())
+		throw std::logic_error("GetPackingSnapshot: missing configuration or radii.");
+	SpherePacking packing(*pConfig, 0.0);
+	for (size_t i = 0; i < radii.size(); ++i) {
+		if (!std::isfinite(radii[i]) || radii[i] <= 0.0)
+			throw std::logic_error("GetPackingSnapshot: invalid radius.");
+		packing.GetCharacteristics(i) = radii[i];
+	}
+	return packing;
+}
+
 void MultiStealthyPotential::ExportConfiguration(std::ostream &ofile, ExportFormat format) const
 {
 	if (format != ExportFormat::Text && format != ExportFormat::Binary)

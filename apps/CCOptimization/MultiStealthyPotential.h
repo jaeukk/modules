@@ -218,6 +218,10 @@ public :
 	 *  Encoding is explicit, not inferred from a filename. */
 	void ExportConfiguration(std::ostream & ofile, ExportFormat format = ExportFormat::Text) const;
 
+	/** Return an in-memory snapshot with the stored cell, relative coordinates, and
+	 *  individual radii. Refresh with SetConfiguration(finalPosition) first. */
+	SpherePacking GetPackingSnapshot() const;
+
 	/** \brief Set the working configuration.
 	 *  \param Position  Full particle configuration. */
 	virtual void SetConfiguration(const Configuration & Position);
