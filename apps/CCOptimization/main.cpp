@@ -48,7 +48,8 @@ Obtain ground-state configurations from multi initial configurations.
 \param[in]	TimeLimit		When running time becomes larger than this, this function automatically ends.
 \param[in]	Algorithm	Name of alogrithm for optimizations. The followings are allowed; LBFGS, LocalGradientDescent, ConjugateGradient, SteepestDescent, MINOP
 \return 0 = exit without any problem. */
-int CollectiveCoordinateMultiRun(Configuration * pConfig, Potential * pPotential, RandomGenerator & gen, std::string Prefix, size_t SampleNumber, time_t TimeLimit, const std::string & AlgorithmName, double E_max, size_t max_num);
+int CollectiveCoordinateMultiRun(Configuration * pConfig, Potential * pPotential, RandomGenerator & gen, std::string Prefix, size_t SampleNumber, time_t TimeLimit, const std::string & AlgorithmName, double E_max, size_t max_num,
+    const std::function<void(const Configuration &, size_t)> & onAccepted = {});
 
 
 /** \brief Perform a molecular dynamic simulation under NVT environment for a given potential energy.
@@ -1373,6 +1374,19 @@ int GetMultiCCO(int argc, char ** argv){
 			size_t max_steps = 10000;
 			double tolerance = 1e-14;
 			bool split_species = true;
+			bool export_enabled = false;
+			auto export_format = MultiStealthyPotential::ExportFormat::Text;
+			auto onAccepted = [&](const Configuration & c, size_t index) {
+				if (!export_enabled) return;
+				potential->SetConfiguration(c);
+				const bool binary = export_format == MultiStealthyPotential::ExportFormat::Binary;
+				const std::string path = savename + "_Success_" + std::to_string(index) + (binary ? ".mspb" : ".txt");
+				std::ofstream output(path, std::ios::out | (binary ? std::ios::binary : std::ios::openmode(0)));
+				potential->ExportConfiguration(output, export_format);
+				output.close();
+				if (!output) throw std::runtime_error("Could not finish export: " + path);
+			};
+			ofile << "Optional: export txt|binary|off (default off); then run\n";
 			std::string algorithm = "LBFGS";
 
 			ofile << "--------------------------------------- \n";
@@ -1398,8 +1412,17 @@ int GetMultiCCO(int argc, char ** argv){
 					ifile >> algorithm ; 
 				}
 				else if (tempstring2.compare("combined") == 0){
-					ofile << "\nWrite the configurations of all species\n";
+				ofile << "\nWrite the configurations of all species\n";
 					split_species = false;
+				}
+				else if (tempstring2 == "export") {
+					std::string format;
+					if (!(ifile >> format) || (format != "txt" && format != "binary" && format != "off")) {
+						ofile << "Expected: export txt|binary|off\n";
+						return 1;
+					}
+					export_enabled = format != "off";
+					export_format = format == "binary" ? MultiStealthyPotential::ExportFormat::Binary : MultiStealthyPotential::ExportFormat::Text;
 				}
 				else {
 					ofile << tempstring2 << " is an undefined command\n";
@@ -1430,9 +1453,9 @@ int GetMultiCCO(int argc, char ** argv){
 				ofile << "just compute "<< numConfig_comp <<" more Configurations \n";
 
 				ofile << "max_eval = " << max_steps << std::endl;
-				CollectiveCoordinateMultiRun(&pConfig, potential.get(), rngGod, savename, numConfig_comp, TimeLimit, algorithm, tolerance, max_steps);
+				CollectiveCoordinateMultiRun(&pConfig, potential.get(), rngGod, savename, numConfig_comp, TimeLimit, algorithm, tolerance, max_steps, onAccepted);
 
-				// separate configurations 
+				// separate configurations
 				if (split_species){
 					std::vector<ConfigurationPack> cp;
 					for(size_t s = 0; s  < potential->species_constraints.size(); s++){
@@ -1648,7 +1671,8 @@ int main(int argc, char ** argv){
 }
 
 
-int CollectiveCoordinateMultiRun(Configuration * pConfig, Potential * pPotential, RandomGenerator & gen, std::string Prefix, size_t SampleNumber, time_t TimeLimit, const std::string & AlgorithmName, double E_max, size_t max_num)
+int CollectiveCoordinateMultiRun(Configuration * pConfig, Potential * pPotential, RandomGenerator & gen, std::string Prefix, size_t SampleNumber, time_t TimeLimit, const std::string & AlgorithmName, double E_max, size_t max_num,
+    const std::function<void(const Configuration &, size_t)> & onAccepted)
 {
 	DimensionType dim=pConfig->GetDimension();
 	size_t Num=pConfig->NumParticle();
@@ -1690,6 +1714,7 @@ int CollectiveCoordinateMultiRun(Configuration * pConfig, Potential * pPotential
 		{
 			std::cout<<"Add to success pack\n";
 			SuccessPack.AddConfig(result);
+			if (onAccepted) onAccepted(result, static_cast<size_t>(SuccessPack.NumConfig() - 1));
 		}
 		if(std::time(nullptr) > TimeLimit)
 		{

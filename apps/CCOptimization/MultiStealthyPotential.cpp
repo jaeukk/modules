@@ -1,4 +1,110 @@
 #include "MultiStealthyPotential.h"
+#include <iomanip>
+#include <limits>
+#include <locale>
+#include <sstream>
+#include <stdexcept>
+#include <cstdint>
+#include <cstring>
+#include <climits>
+
+void MultiStealthyPotential::ExportConfiguration(std::ostream &ofile, ExportFormat format) const
+{
+	if (format != ExportFormat::Text && format != ExportFormat::Binary)
+		throw std::invalid_argument("ExportConfiguration: unknown format.");
+	if (!pConfig)
+		throw std::logic_error("ExportConfiguration: no configuration has been set.");
+	const size_t count = pConfig->NumParticle();
+	if (idx2species.size() != count || radii.size() != count)
+		throw std::logic_error("ExportConfiguration: inconsistent particle metadata.");
+	for (size_t i = 0; i < count; ++i) {
+		if (idx2species[i].species < 0 ||
+			static_cast<size_t>(idx2species[i].species) >= species_constraints.size())
+			throw std::logic_error("ExportConfiguration: particle has no valid species.");
+		if (!std::isfinite(radii[i]) || radii[i] <= 0.0)
+			throw std::logic_error("ExportConfiguration: particle has an invalid radius.");
+	}
+
+	if (format == ExportFormat::Binary) {
+		static_assert(CHAR_BIT == 8 && sizeof(double) == 8 &&
+			std::numeric_limits<double>::is_iec559, "MSPB requires IEEE-754 binary64.");
+		// Encode individual fields explicitly: no native struct padding or endianness.
+		std::string bytes("MSPB\r\n\x1a\n", 8);
+		auto integer = [&bytes](std::uint64_t value, unsigned int width) {
+			for (unsigned int b = 0; b < width; ++b) {
+				const unsigned char octet = static_cast<unsigned char>(value & 0xff);
+				bytes.append(reinterpret_cast<const char *>(&octet), 1);
+				value >>= 8;
+			}
+		};
+		auto real = [&integer](double value) {
+			if (!std::isfinite(value))
+				throw std::logic_error("ExportConfiguration: nonfinite binary value.");
+			std::uint64_t bits;
+			std::memcpy(&bits, &value, sizeof(bits));
+			integer(bits, 8);
+		};
+		const auto dimension = pConfig->GetDimension();
+		integer(1, 4); // Format version.
+		integer(dimension, 4);
+		integer(count, 8);
+		integer(species_constraints.size(), 8);
+		integer(3, 4); // Bit 0: relative coordinates; bit 1: Cartesian radii.
+		for (DimensionType d = 0; d < dimension; ++d) {
+			const auto basis = pConfig->GetBasisVector(d);
+			for (DimensionType axis = 0; axis < dimension; ++axis) real(basis.x[axis]);
+		}
+		for (size_t i = 0; i < count; ++i) {
+			integer(i, 8);
+			integer(static_cast<std::uint32_t>(idx2species[i].species), 4);
+			const auto &s = pConfig->GetRelativeCoordinates(i);
+			for (DimensionType d = 0; d < dimension; ++d) real(s.x[d]);
+			real(radii[i]);
+		}
+		ofile.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+		if (!ofile) throw std::runtime_error("ExportConfiguration: output failed.");
+		return;
+	}
+
+	// Format in a private buffer: preserve caller flags, precision, and locale.
+	std::ostringstream table;
+	table.imbue(std::locale::classic());
+	table << std::setprecision(std::numeric_limits<double>::max_digits10);
+	const auto dimension = pConfig->GetDimension();
+	table << "# dimension " << static_cast<unsigned int>(dimension) << '\n';
+	table << "# particles " << count << '\n';
+	for (DimensionType d = 0; d < dimension; ++d) {
+		const auto basis = pConfig->GetBasisVector(d);
+		table << "# basis_vector-" << static_cast<unsigned int>(d);
+		for (DimensionType axis = 0; axis < dimension; ++axis) {
+			if (!std::isfinite(basis.x[axis]))
+				throw std::logic_error("ExportConfiguration: nonfinite basis vector.");
+			table << ' ' << basis.x[axis];
+		}
+		table << '\n';
+	}
+	table << "# coordinates relative\n# radius_units cartesian\n";
+	table << "# id\tspecies";
+	for (DimensionType d = 0; d < dimension; ++d) {
+		if (d < 3) table << "\ts" << "xyz"[d];
+		else table << "\ts" << static_cast<unsigned int>(d);
+	}
+	table << "\tradius\n";
+	for (size_t i = 0; i < count; ++i) {
+		const auto &s = pConfig->GetRelativeCoordinates(i);
+		table << i << '\t' << idx2species[i].species;
+		for (DimensionType d = 0; d < dimension; ++d) {
+			if (!std::isfinite(s.x[d]))
+				throw std::logic_error("ExportConfiguration: nonfinite coordinate.");
+			table << '\t' << s.x[d];
+		}
+		table << '\t' << radii[i] << '\n';
+	}
+	const std::string text = table.str();
+	ofile.write(text.data(), static_cast<std::streamsize>(text.size()));
+	if (!ofile)
+		throw std::runtime_error("ExportConfiguration: output failed.");
+}
 
 /**
  *	Author	: Jaeuk Kim

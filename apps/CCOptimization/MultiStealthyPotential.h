@@ -199,6 +199,25 @@ public :
 	 *  \param ofile  Destination output stream. */
 	void PrintConstraints(std::ostream & ofile = std::cout);
 
+	/** Output encodings: readable .txt or versioned Multi-Stealthy Packing Binary .mspb. */
+	enum class ExportFormat { Text, Binary };
+
+	/** \brief Export the currently stored configuration as text or MSPB binary.
+	 *  Columns are id, species, fractional coordinates (sx, sy, sz, then s3, ...),
+	 *  and radius in Cartesian units. The header begins with "# "; the 2D data
+	 *  columns match the sweep final.tsv files.
+	 *  Particle order and actual assigned species/radii are preserved. Comment-prefixed
+	 *  metadata includes dimension, particle count, basis_vector-0, basis_vector-1, ...,
+	 *  coordinates relative, and radius_units cartesian to recover the periodic cell.
+	 *  Call SetConfiguration(finalPosition) after optimization to refresh the snapshot.
+	 *  Throws on missing configuration, inconsistent metadata, unassigned species,
+	 *  or output failure. Does not change the destination stream's formatting.
+	 *  \param ofile Destination stream; open binary files with std::ios::binary.
+	 *  Caller owns opening/closing files and must check for errors on close.
+	 *  \param format Text by default; Binary writes the layout in EXPORT_FORMAT.md.
+	 *  Encoding is explicit, not inferred from a filename. */
+	void ExportConfiguration(std::ostream & ofile, ExportFormat format = ExportFormat::Text) const;
+
 	/** \brief Set the working configuration.
 	 *  \param Position  Full particle configuration. */
 	virtual void SetConfiguration(const Configuration & Position);
