@@ -771,7 +771,7 @@ void WriteConfiguration(const SpherePacking & conf, const std::string & OutputNa
 
 	std::string name = OutputName + std::string(".txt");
 	std::fstream ofile(name.c_str(), std::fstream::out);
-	ofile << std::setprecision(10);
+	ofile << std::setprecision(17);
 	ofile << conf.GetDimension() << "\n";
 	for (int i = 0; i < conf.GetDimension(); i++) {
 		ofile << conf.GetBasisVector(i);

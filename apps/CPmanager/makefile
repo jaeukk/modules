@@ -1,8 +1,8 @@
 #==============================================================================
 # modules/apps/CPmanager/makefile   (migrated consumer; legacy "EXC_formats")
 #
-# ConfigPack file-format manager: convert ConfigPack <-> txt-format point
-# configurations.  Depends on: core only.
+# ConfigPack/SpherePack manager: convert binary ensembles <-> text
+# configurations and sphere packings.  Depends on: core only.
 #
 #   make && ./CPmanager.out
 #==============================================================================
@@ -35,4 +35,15 @@ $(ODIR):
 	mkdir -p $(ODIR)
 
 clean:
-	rm -f $(ODIR)*.o $(TARGET)
+	rm -f $(ODIR)*.o $(ODIR)binary_roundtrip.out $(TARGET)
+
+.PHONY: test
+test: $(TARGET) $(ODIR)binary_roundtrip.out
+	@tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; ./$(ODIR)binary_roundtrip.out "$$tmp/pack"
+	python3 tests/roundtrip.py ./$(TARGET)
+
+$(ODIR)binary_roundtrip.o: tests/binary_roundtrip.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -o $@ $<
+
+$(ODIR)binary_roundtrip.out: $(ODIR)binary_roundtrip.o core-objs
+	$(CC) -o $@ $< $(CORE_OBJS) $(LFLAGS)

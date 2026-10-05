@@ -5,7 +5,7 @@
  *	Modified: November 2025 */
 
 /** \file main.cpp
- *	\brief Implementations for converting ConfigPack files to txt formats 
+ *	\brief Implementations for converting ConfigPack and SpherePack files to text formats.
  *	and vice versa.	 */
 
 
@@ -15,6 +15,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <limits>
+#include <stdexcept>
 
 //-------Core part--------
 //#include <etc.h>
@@ -64,11 +66,9 @@ static bool IsSafeIndexPattern(const std::string & pattern)
 	return num_conversions == 1;
 }
 
-/** \brief Entry point dispatching ConfigurationPack <-> txt conversion utilities by option code.
- *  \param argc  Argument count; argv[1] selects the mode and the remaining entries are mode-specific parameters.
- *  \param argv  Argument vector: argv[1] is the option (0=CheckCP statistics, 1=CP2txt, 2=txt2CP), followed by the parameters required for that option.
- *  \return      Process exit status (0 on normal completion). */
-int main(int argc, char ** argv) {
+/** \brief Shared inspect/import/export implementation for both pack types. */
+template<class Pack, class Config>
+int ManagePack(int argc, char ** argv, int option) {
 
 	//char tempstring[1000];
 	//std::istream & ifile = std::cin;
@@ -77,12 +77,6 @@ int main(int argc, char ** argv) {
 	omp_set_num_threads(4);
 	
 
-
-	if (argc < 2) {
-		ofile << "Usage: CPmanager <option: 0=CheckCP, 1=CP2txt, 2=txt2CP> [parameters]\n";
-		return 1;
-	}
-	int option = std::atoi(argv[1]);
 
 	switch (option){
 	case 0:
@@ -101,7 +95,7 @@ int main(int argc, char ** argv) {
 			int dim = 0;
 			double num_prts = 0, num_density = 0;
 			
-			ConfigurationPack cp(cp_name);
+			Pack cp(cp_name);
 			num_config = cp.NumConfig();
 
 			ofile << "# configs = "<< num_config <<"\n";
@@ -110,8 +104,8 @@ int main(int argc, char ** argv) {
 				ofile << "dimension = "<< dim <<"\n";
 
 	#pragma omp parallel for
-				for(int i=0; i<num_config; i++){
-					Configuration c_temp = cp.GetConfig(i);
+				for(long long i=0; i<num_config; i++){
+					Config c_temp = cp.GetConfig(i);
 					double n = (double)c_temp.NumParticle(), rho = n / c_temp.PeriodicVolume();
 
 	#pragma omp atomic
@@ -132,7 +126,7 @@ int main(int argc, char ** argv) {
 	
 		else{
 			ofile << num_param << " parameters are required\n";
-			ofile << "e.g., [Name of a ConfigPack file]\n";
+			ofile << "e.g., [Name of a pack file]\n";
 		}
 	}
 		break;
@@ -142,11 +136,11 @@ int main(int argc, char ** argv) {
 		/* CP2txt */
 		int num_param = 3;
 		ofile	<< "===================================\n"
-				<< "\tConvert ConfigPack to txt formats\n\n";
+				<< "\tConvert pack to txt formats\n\n";
 	
 		if(argc == num_param+2){
 			std::string cp_name(argv[2]);
-			ConfigurationPack cp(cp_name);
+			Pack cp(cp_name);
 			long long num_tot_configs = cp.NumConfig();
 			int start_idx = std::atoi(argv[3]), num_configs = std::atoi(argv[4]),
 				i = 0;
@@ -156,23 +150,23 @@ int main(int argc, char ** argv) {
 				break;
 			}
 
-			ofile << "prefix of a target ConfigPack file = "<< cp_name<<"\n";
+			ofile << "prefix of a target pack file = "<< cp_name<<"\n";
 			ofile << "start index = "<< start_idx<<"\n";
 			ofile << "configuration number = "<< num_configs<<"\n";
 
 			for(i=0; (i<num_configs) && (i+start_idx < num_tot_configs); i++){
-				Configuration c = cp.GetConfig(i+start_idx);
-				snprintf(name, sizeof(name), "%s__%04d", cp_name.c_str(), start_idx + i);
-				WriteConfiguration(c, name);
+				Config c = cp.GetConfig(i+start_idx);
+				snprintf(name, sizeof(name), "__%04d", start_idx + i);
+				WriteConfiguration(c, cp_name + name);
 			}
 
-			ofile << i <<" (out of " << num_tot_configs <<  ") configurations are sucessfully converted\n";
+			ofile << i <<" (out of " << num_tot_configs <<  ") configurations are successfully converted\n";
 			
 
 		}
 		else{
 			ofile << num_param << " parameters are required\n";
-			ofile << "e.g., [Name of a ConfigPack file] [start index] [number of configs]"<<std::endl;
+			ofile << "e.g., [Name of a pack file] [start index] [number of configs]"<<std::endl;
 		}
 		
 	
@@ -184,7 +178,7 @@ int main(int argc, char ** argv) {
 		/* txt2CP */
 		int num_param = 4;
 		ofile	<< "===================================\n"
-				<< "\tConvert txt formats to ConfigPack\n\n";
+				<< "\tConvert txt formats to pack\n\n";
 
 		if(argc == num_param+2){
 
@@ -198,21 +192,21 @@ int main(int argc, char ** argv) {
 				ofile << "Input prefix \"" << prefix << "\" is not a valid filename pattern; "
 					<< "it must contain exactly one integer conversion like config_%04d "
 					<< "(no %s / %n / extra conversions).\n";
-				break;
+				return 1;
 			}
-			snprintf(name, sizeof(name), "%s", argv[5]);
+			const std::string save_prefix(argv[5]);
 
 			ofile << "prefix = "<<  prefix <<"\n";
 			ofile << "start index = "<< start_index<<"\n";
 			ofile << "configuration number = "<< num_configs<<"\n";
-			ofile << "save prefix = "	<< name<<"\n";
+			ofile << "save prefix = "	<< save_prefix<<"\n";
 
-			ConfigurationPack save(name);
+			Pack save(save_prefix);
 			int i=0;
 			long long num_conf_prev = save.NumConfig();
 			for (i=0; i<num_configs; i++){
 					int idx = start_index + i;
-					Configuration c;
+					Config c;
 					// prefix was validated by IsSafeIndexPattern(): exactly one
 					// %[0-9]*d conversion, so this snprintf is well-defined.
 					int written = snprintf(name, sizeof(name), prefix.c_str(), idx);
@@ -232,7 +226,7 @@ int main(int argc, char ** argv) {
 	
 		else{
 			ofile << num_param << " parameters are required\n";
-			ofile << "e.g., [Name of txt files] [start index] [number of configs] [name of the saved ConfigPack file]"<<std::endl;
+			ofile << "e.g., [Name of txt files] [start index] [number of configs] [name of the saved pack file]"<<std::endl;
 		}
 
 	}
@@ -242,4 +236,49 @@ int main(int argc, char ** argv) {
 	break;
 	}
 
+	return 0;
+}
+
+/** \brief Preserve ConfigPack modes 0-2 and provide SpherePack modes 3-5. */
+int main(int argc, char ** argv)
+{
+    if (argc < 2 || std::string(argv[1]).size() != 1 || argv[1][0] < '0' || argv[1][0] > '5') {
+        std::cerr << "Usage: CPmanager <mode> [parameters]\n"
+                  << "  0=CheckCP, 1=CP2txt, 2=txt2CP\n"
+                  << "  3=CheckSP, 4=SP2txt, 5=txt2SP\n"
+                  << "  inspect: <pack prefix>\n"
+                  << "  export:  <pack prefix> <start> <count>\n"
+                  << "  import:  <text prefix pattern> <start> <count> <save prefix>\n";
+        return 1;
+    }
+    const int mode = argv[1][0] - '0';
+    const int operation = mode % 3;
+    const int expected = operation == 0 ? 3 : operation == 1 ? 5 : 6;
+    if (argc != expected) {
+        std::cerr << "Incorrect number of parameters for mode " << mode << "\n";
+        return 1;
+    }
+    // Validate before atoi and prevent overflow in start + count.
+    if (operation != 0) {
+        long long values[2];
+        for (int i = 0; i < 2; ++i) {
+            const std::string value(argv[i + 3]);
+            try {
+                if (value.empty() || value.find_first_not_of("0123456789") != std::string::npos)
+                    throw std::invalid_argument("index");
+                values[i] = std::stoll(value);
+                if (values[i] > std::numeric_limits<int>::max())
+                    throw std::out_of_range("index");
+            } catch (const std::exception &) {
+                std::cerr << "start and count must be non-negative integers in range\n";
+                return 1;
+            }
+        }
+        if (values[0] + values[1] > std::numeric_limits<int>::max()) {
+            std::cerr << "start + count exceeds the supported index range\n";
+            return 1;
+        }
+    }
+    return mode < 3 ? ManagePack<ConfigurationPack, Configuration>(argc, argv, operation)
+                    : ManagePack<SpherePackingPack, SpherePacking>(argc, argv, operation);
 }
