@@ -8,7 +8,10 @@
  * (no prior Energy, the MD call order) equals the warm one bitwise; two fresh potentials give
  * bitwise-identical energies and forces (same-backend repeatability); results stay correct after
  * moving every particle and after a species reassignment round trip; and a lattice state with
- * rho(k) = 0 on all constraints has FINUFFT energy and forces within 1e-10 (absolute) of Direct.
+ * rho(k) = 0 on all constraints has FINUFFT energy within 1e-10 and forces within
+ * max(1e-10, 1e-13 F_scale) of Direct, F_scale = (2/V) sum_k |V_k| |k| N_s. Near zero the absolute
+ * error of either backend scales with F_scale (Direct's own rounding is ~1e-16 F_scale), so the
+ * bound is scale-aware; a compressed 1D box (density 100) covers that regime.
  * Build and run: make USE_FINUFFT=1 test_finufft_multi.out && ./test_finufft_multi.out */
 
 #include "MultiStealthyPotential.h"
@@ -48,14 +51,15 @@ void Check(bool ok, const std::string & what)
 	}
 }
 
-/** \brief Cell of volume N (unit number density), optionally skewed.
- *  \param d     Dimension.
- *  \param n     Particle number.
- *  \param skew  Use a non-orthogonal basis.
- *  \return      Empty configuration. */
-Configuration Cell(DimensionType d, size_t n, bool skew)
+/** \brief Cell of volume n/density, optionally skewed.
+ *  \param d        Dimension.
+ *  \param n        Particle number.
+ *  \param skew     Use a non-orthogonal basis.
+ *  \param density  Number density (1 in GetMultiCCO).
+ *  \return         Empty configuration. */
+Configuration Cell(DimensionType d, size_t n, bool skew, double density = 1.0)
 {
-	const double L = std::pow(double(n), 1.0 / d);
+	const double L = std::pow(double(n) / density, 1.0 / d);
 	GeometryVector basis[3] = {GeometryVector(d), GeometryVector(d), GeometryVector(d)};
 	for (DimensionType i = 0; i < d; i++)
 		basis[i].x[i] = L;
@@ -114,7 +118,8 @@ double ForceDiff(const std::vector<GeometryVector> & a, const std::vector<Geomet
 	scale = 0;
 	for (size_t i = 0; i < b.size(); i++)
 		for (DimensionType d = 0; d < dim; d++) {
-			diff = std::max(diff, std::abs(a[i].x[d] - b[i].x[d]));
+			const double delta = std::abs(a[i].x[d] - b[i].x[d]);
+			diff = std::isfinite(delta) ? std::max(diff, delta) : INFINITY;  // a NaN must fail
 			scale = std::max(scale, std::abs(b[i].x[d]));
 		}
 	return diff;
@@ -138,7 +143,7 @@ bool Same(const std::vector<GeometryVector> & a, const std::vector<GeometryVecto
  *  \param direct  Direct potential (rebound to c here).
  *  \param c       Configuration.
  *  \param label   Case label for messages.
- *  \param absTol  If > 0, use this absolute tolerance for energy and forces (near-zero states). */
+ *  \param absTol  If > 0 (near-zero states): energy within 1e-10 and forces within absTol, absolutely. */
 void Compare(MultiStealthyPotential & fast, MultiStealthyPotential & direct, const Configuration & c,
              const std::string & label, double absTol = 0.0)
 {
@@ -151,7 +156,7 @@ void Compare(MultiStealthyPotential & fast, MultiStealthyPotential & direct, con
 	double scale = 0;
 	const double df = ForceDiff(ff, fd, c.GetDimension(), scale);
 	if (absTol > 0) {
-		Check(std::abs(ef - ed) <= absTol, label + ": near-zero energy differs " + std::to_string(ef - ed));
+		Check(std::abs(ef - ed) <= 1e-10, label + ": near-zero energy differs " + std::to_string(ef - ed));
 		Check(df <= absTol, label + ": near-zero force differs " + std::to_string(df));
 	}
 	else {
@@ -219,14 +224,15 @@ void Run(const Case & tc, int threads)
 
 /** \brief Lattice state with rho(k) = 0 on every constraint: FINUFFT must match Direct absolutely.
  *  \param dim      Dimension.
- *  \param threads  ParallelNumThread. */
-void NearZero(DimensionType dim, int threads)
+ *  \param threads  ParallelNumThread.
+ *  \param density  Number density of the cell. */
+void NearZero(DimensionType dim, int threads, double density)
 {
 	const size_t side = dim == 3 ? 6 : (dim == 2 ? 14 : 150), species = 2;
 	size_t ns = 1;
 	for (DimensionType d = 0; d < dim; d++) ns *= side;
 	Case tc{dim, false, std::vector<size_t>(species, ns), 0.0, true, 0.0};
-	Configuration c = Cell(dim, species * ns, false);
+	Configuration c = Cell(dim, species * ns, false, density);
 	for (size_t s = 0; s < species; s++)
 		for (size_t j = 0; j < ns; j++) {
 			GeometryVector x(dim);
@@ -236,11 +242,15 @@ void NearZero(DimensionType dim, int threads)
 		}
 	// Each species is a simple lattice of `side` points per axis, so rho(k) = 0 for every reciprocal
 	// vector of the cell with all integer indices |n_d| < side; constrain all with |k| < 2 pi (side-1)/L.
-	const double L = std::pow(double(species * ns), 1.0 / dim), K = 2 * pi * (side - 1) / L;
+	const double L = std::pow(double(species * ns) / density, 1.0 / dim), K = 2 * pi * (side - 1) / L;
 	std::vector<std::vector<GeometryVector>> modes(species, GetKs(c, K, K, 1));
+	double scale = 0;  // F_scale with the weights V_k = 1 + |k|^2 used by Make
+	for (const auto & k : modes[0])
+		scale += 2.0 / c.PeriodicVolume() * (1.0 + k.Modulus2()) * std::sqrt(k.Modulus2()) * ns;
 	auto direct = Make(c, tc, Backend::Direct, threads, modes);
 	auto fast = Make(c, tc, Backend::FinufftType1, threads, modes);
-	Compare(*fast, *direct, c, std::to_string(dim) + "D lattice rho=0 T=" + std::to_string(threads), 1e-10);
+	Compare(*fast, *direct, c, std::to_string(dim) + "D lattice rho=0 density=" + std::to_string(density) + " T=" + std::to_string(threads),
+	        std::max(1e-10, 1e-13 * scale));
 }
 
 }  // namespace
@@ -265,7 +275,8 @@ int main()
 		for (const auto & tc : cases)
 			Run(tc, threads);
 		for (DimensionType d = 1; d <= 3; d++)
-			NearZero(d, threads);
+			NearZero(d, threads, 1.0);
+		NearZero(1, threads, 100.0);
 	}
 	std::cout << (failures ? "FAILED: " + std::to_string(failures) + " check(s)\n" : std::string("All FINUFFT multi-species checks passed\n"));
 	return failures ? 1 : 0;
