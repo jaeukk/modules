@@ -86,6 +86,8 @@ void setup(MultiStealthyPotential& p,const Configuration& c,const Modes& m,Backe
 struct Counted:ShiftedCCPotential{
     size_t count=0,fast=0;double seconds=0;
     explicit Counted(const ShiftedCCPotential& p):ShiftedCCPotential(p){}
+    // Reads particles only through the base class, so MultiStealthyPotential may bind its indexed view.
+    bool SupportsIndexedView()const override{return true;}
     void GetRho()override{if(RhoValid)return;auto t=Clock::now();ShiftedCCPotential::GetRho();seconds+=elapsed(t);++count;fast+=GetLastRhoBackendUsed()==Backend::FinufftType1;}
 };
 struct Reference{
