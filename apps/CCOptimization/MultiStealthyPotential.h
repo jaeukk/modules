@@ -269,6 +269,9 @@ public :
 	 *  \param radii  Radii list matching the particles. */
 	void SetSecureRadii(const std::vector<double> & radii);
 
+	/** \brief Size the contact cell list to the contact cutoff and prepare the neighbor search. */
+	void PrepareContactCells();
+
 	/** \brief Set the configuration from a sphere packing.
 	 *  \param pck  Input sphere packing. */
 	void SetPacking(const SpherePacking & pck);

@@ -250,12 +250,25 @@ void MultiStealthyPotential::SetConfiguration(const Configuration &Position)
 	// Invalidate the species views before their configuration is replaced.
 	this-> SubconfigValid = false;
 	pConfig = std::make_unique<Configuration>(Position, "a");
-	pConfig->PrepareIterateThroughNeighbors(this->rc);
+	this->PrepareContactCells();
 
 	this-> UpdateSubconfigs();
 	for (size_t s = 0; s < this->species_constraints.size(); s++){
 		this->species_constraints[s].CCPotential->RhoValid = false;
 	}
+}
+
+/** \brief Size the contact cell list to the contact cutoff and prepare the neighbor search.
+ *  The copied configuration keeps the caller's cells, e.g. 10 per side for random packings built from
+ *  GetUnitCubicBox(d, 0.1) and rescaled, which makes every contact query scan about 0.09 N particles
+ *  (an O(N^2) contact sum). Cells of width max(rc, (V/N)^(1/d)) hold O(1) particles each, and the second
+ *  term keeps the cell count at most about N when radii are tiny. */
+void MultiStealthyPotential::PrepareContactCells()
+{
+	const double n = std::max<double>(1.0, double(this->pConfig->NumParticle()));
+	const double spacing = std::pow(this->pConfig->PeriodicVolume() / n, 1.0 / this->Dimension);
+	this->pConfig->SetCellSize(std::max(this->rc, spacing));
+	this->pConfig->PrepareIterateThroughNeighbors(this->rc);
 }
 
 /** \brief Set particle radii for a configuration.
@@ -268,7 +281,7 @@ void MultiStealthyPotential::SetSecureRadii(const std::vector<double> &radii)
 			throw std::invalid_argument("MultiStealthyPotential::SetSecureRadii: radii must be finite and positive.");
 	this->radii = std::vector<double> (radii);
 	this->rc = radii.empty() ? 0.0 : 2.01 * *std::max_element(radii.begin(), radii.end());
-	this->pConfig->PrepareIterateThroughNeighbors(this->rc);
+	this->PrepareContactCells();
 }
 
 /** \brief Initialize configuration and radii from a packing object.
@@ -291,7 +304,7 @@ void MultiStealthyPotential::SetPacking(const SpherePacking &pck)
 	// Invalidate the species views before their configuration is replaced.
 	this-> SubconfigValid = false;
 	pConfig = std::make_unique<Configuration>(pck, "a");
-	pConfig->PrepareIterateThroughNeighbors(this->rc);
+	this->PrepareContactCells();
 	
 	/* bind the species views. */
 	this-> UpdateSubconfigs();
