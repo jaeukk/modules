@@ -784,10 +784,11 @@ protected:
 	// ponytail: machine-specific cost constants [microseconds], fitted on 2026-10-14 on the 8-thread (4-core SMT) WSL
 	// development machine while another job loaded it: FINUFFT 2.5.1 persistent plans (setpts + execute plus the
 	// coefficient and output copies of FinufftType2Forces), one thread, eps=1e-12, g++ -O3. The Type 2 constants are
-	// the tightest linear upper envelope of 136 cases (1-3D, N=100-10000, chi 0.02-0.8, orthogonal and skew cells);
+	// the tightest linear upper envelope of 142 cases (1-3D, N=100-10000, chi 0.02-0.8, orthogonal and skew cells);
 	// the pair cost is the smallest single-thread rate of the long direct loops. They only choose the faster path,
 	// never the result's accuracy. Ceiling: another CPU, compiler or FINUFFT version moves the crossover. Upgrade:
-	// refit them with a calibration run on the production node (never from timings taken during a run).
+	// refit them on the production node with apps/CCOptimization/tests/finufft_gate (calibrate, fit, check; see its
+	// README.md), never from timings taken during a run.
 	static constexpr double FinufftCostCall[3]={1.8, 8.3, 129.5};	//< Type 2 fixed cost per execution, by dimension.
 	static constexpr double FinufftCostParticle[3]={0.0150, 0.134, 1.95};	//< Type 2 cost per particle (all d transforms) at kernel width 13.
 	static constexpr double FinufftCostMode[3]={0.0361, 0.0128, 0.0569};	//< Type 2 cost per mode-grid point.
