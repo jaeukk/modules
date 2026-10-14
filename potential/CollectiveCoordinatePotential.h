@@ -94,11 +94,20 @@ public:
 	 *  Scope: only ShiftedCCPotential::GetRho honors the selection, so classes that inherit it
 	 *  (LogCCPotential, ShiftedCCPotential_S2, the _varBox variants, ShiftedCCPotential_ForMC) use it.
 	 *  ShiftedCCPotential_withWeight and ShiftedCCPotential_S2_MultiConfig override GetRho and always
-	 *  use their own direct sums; the inherited setting is ignored there. */
+	 *  use their own direct sums; the inherited setting is ignored there.
+	 *  FinufftType1 also makes ShiftedCCPotential::AllForce use a FINUFFT Type 2 transform (see
+	 *  AllForce_FinufftType2), but only on objects whose dynamic type is exactly ShiftedCCPotential. */
 	enum class RhoBackend
 	{
 		Direct,		//< Direct O(N*Nk) summation (default, always available).
 		FinufftType1	//< FINUFFT Type 1 on the reciprocal-lattice mode grid (needs -DCCPOTENTIAL_USE_FINUFFT).
+	};
+
+	/** \brief How ShiftedCCPotential::AllForce computed the collective-coordinate forces. */
+	enum class ForceBackend
+	{
+		Direct,		//< Per-particle direct O(Nk) sums (Force).
+		FinufftType2	//< One FINUFFT Type 2 transform with ntransf = dimension.
 	};
 
 	/** \brief Value of GetLastFinufftStatus() when the last GetRho did not call FINUFFT. */
@@ -216,19 +225,40 @@ public:
 		return this->FinufftLastStatus;
 	}
 
+	/** \brief Return how the last ShiftedCCPotential::AllForce computed the forces.
+		FinufftType2 requires the FinufftType1 rho backend and an object of exact type ShiftedCCPotential;
+		Direct means the per-particle direct sum (selected, or a fallback). Force(i) is always direct and
+		does not update this value.
+		\return The force backend used by the most recent base-class AllForce (Direct before any call). */
+	ForceBackend GetLastForceBackendUsed(void) const
+	{
+		return this->ForceBackendLastUsed;
+	}
+
 protected:
 	RhoBackend RhoBackendSelected;	//< Backend requested by the user.
 	RhoBackend RhoBackendLastUsed;	//< Backend that produced the cached rho.
+	ForceBackend ForceBackendLastUsed;	//< Backend that produced the last AllForce result.
 	double FinufftTolerance;	//< FINUFFT requested tolerance.
 	std::int64_t FinufftMaxModes;	//< Cap on the FINUFFT mode-grid size.
 	int FinufftNumThreads;	//< FINUFFT opts.nthreads (default 1, independent of ParallelNumThread).
 	int FinufftLastStatus;	//< Last FINUFFT return code, or FinufftNotCalled.
 
 #ifdef CCPOTENTIAL_USE_FINUFFT
-	/** \brief Try to fill RhoReal/RhoImag with one FINUFFT Type 1 transform.
-		rho(k) = sum_j exp(+i k.r_j) with unit strengths and no normalization; since k = sum_d n_d b_d with
-		n_d = k.a_d/(2 pi), k.r_j = sum_d n_d (2 pi s_jd) for fractional coordinates s_j. The mapping from
-		constraints to integer modes is recomputed on every call because constraints is public and mutable.
+	/** \brief Constraint-to-mode mapping, particle angles and options shared by the FINUFFT transforms. */
+	struct FinufftModeMap
+	{
+		std::int64_t ms[3]={1, 1, 1};	//< Mode-grid size 2K_d+1 per dimension (1 beyond the dimension).
+		std::int64_t total=1;	//< Number of grid modes, the product of ms.
+		std::vector<size_t> index;	//< modeord=0 flat grid index of each constraint (first dimension fastest).
+		std::vector<double> angles[3];	//< Fractional coordinates of every particle as angles in [0, 2 pi].
+		finufft_opts opts;	//< FINUFFT defaults with modeord=0 and nthreads=FinufftNumThreads.
+	};
+
+	/** \brief Map every constraint to an integer reciprocal-lattice mode and fill the particle angles.
+		Since k = sum_d n_d b_d with n_d = k.a_d/(2 pi), k.r_j = sum_d n_d (2 pi s_jd) for fractional
+		coordinates s_j. The mapping from constraints to integer modes is recomputed on every call because
+		constraints is public and mutable.
 		Snapping n_d to the nearest integer changes each phase by at most 2 pi dim max_d|n_d-round(n_d)|,
 		so a mode is accepted only if the rounding residual |n_d-round(n_d)| is within
 		max(budget, roundoff), where budget = min(1e-8, eps)/(8 pi dim) keeps the snapping error below
@@ -240,11 +270,12 @@ protected:
 		Every eps below about 2e-14*dim (4*DBL_EPSILON > budget) is still rejected before FINUFFT is called.
 		Returns false, leaving the caller to use the direct sum, when: the dimension is not 1-3; there are
 		no constraints or no particles; eps is below that floor; some mode fails the residual test above;
-		|n_d| > 2^30; the mode grid exceeds
-		FinufftMaxModes or FinufftSparseGridFactor*(Nk+N); allocation fails; or FINUFFT returns nonzero.
-		All mapping checks run before the dense mode array is allocated.
-		\return true if RhoReal/RhoImag hold the FINUFFT result, false if a direct fallback is required. */
-	bool GetRho_FinufftType1(void)
+		|n_d| > 2^30; or the mode grid exceeds FinufftMaxModes or FinufftSparseGridFactor*(Nk+N).
+		All mapping checks run before the angles (and the callers' dense mode arrays) are allocated.
+		\param[out] map  Grid sizes, flat mode index of each constraint, particle angles and FINUFFT options.
+		\return true if map is ready for FINUFFT, false if a direct fallback is required.
+		\throw std::bad_alloc if an allocation fails. */
+	bool FinufftMapModes(FinufftModeMap & map) const
 	{
 		const DimensionType dim=this->Dimension;
 		const size_t nk=this->constraints.size();
@@ -259,98 +290,174 @@ protected:
 		const double budget=std::min(1e-8, this->FinufftTolerance)/(4.0*twopi*static_cast<double>(dim));
 		if(4.0*DBL_EPSILON>budget)
 			return false;	//eps below what double-precision phases resolve
+
+		GeometryVector basis[3];
+		for(DimensionType d=0; d<dim; d++)
+			basis[d]=this->pConfig->GetBasisVector(d);
+
+		//integer reciprocal-lattice indices of every constraint
+		std::vector<std::int64_t> modes(nk*dim);
+		std::int64_t K[3]={0, 0, 0};
+		for(size_t i=0; i<nk; i++)
+		{
+			const GeometryVector & k=this->constraints[i].k;
+			for(DimensionType d=0; d<dim; d++)
+			{
+				double dot=0.0, scale=0.0;
+				for(DimensionType c=0; c<dim; c++)
+				{
+					double t=k.x[c]*basis[d].x[c];
+					dot+=t;
+					scale+=std::abs(t);
+				}
+				double n=dot/twopi;
+				if(!std::isfinite(n) || std::abs(n)>maxIndex)
+					return false;
+				double nr=std::round(n);
+				double roundoff=4.0*DBL_EPSILON*(1.0+scale/twopi);
+				if(std::abs(n-nr)>std::max(budget, roundoff))
+					return false;
+				std::int64_t m=static_cast<std::int64_t>(nr);
+				modes[i*dim+d]=m;
+				K[d]=std::max(K[d], m<0 ? -m : m);
+			}
+		}
+
+		//grid sizes, guarded against overflow and unbounded allocation
+		for(DimensionType d=0; d<dim; d++)
+		{
+			map.ms[d]=2*K[d]+1;
+			if(map.ms[d]>this->FinufftMaxModes/map.total)
+				return false;
+			map.total*=map.ms[d];
+		}
+		if(static_cast<double>(map.total)>FinufftSparseGridFactor*(static_cast<double>(nk)+static_cast<double>(np)))
+			return false;
+
+		//modeord=0: mode n_d sits at n_d+K_d, first dimension fastest
+		map.index.resize(nk);
+		for(size_t i=0; i<nk; i++)
+		{
+			std::int64_t idx=0;
+			for(int d=static_cast<int>(dim)-1; d>=0; d--)
+				idx=idx*map.ms[d]+(modes[i*dim+d]+K[d]);
+			map.index[i]=static_cast<size_t>(idx);
+		}
+
+		//fractional coordinates as angles in [0, 2 pi]
+		for(DimensionType d=0; d<dim; d++)
+			map.angles[d].resize(np);
+		for(size_t j=0; j<np; j++)
+		{
+			const GeometryVector & s=this->pConfig->GetRelativeCoordinates(j);
+			for(DimensionType d=0; d<dim; d++)
+				map.angles[d][j]=twopi*(s.x[d]-std::floor(s.x[d]));
+		}
+
+		finufft_default_opts(&map.opts);
+		map.opts.modeord=0;
+		map.opts.nthreads=this->FinufftNumThreads;
+		return true;
+	}
+
+	/** \brief Try to fill RhoReal/RhoImag with one FINUFFT Type 1 transform.
+		rho(k) = sum_j exp(+i k.r_j) with unit strengths and no normalization, read at the modes mapped by
+		FinufftMapModes. Returns false, leaving the caller to use the direct sum, when FinufftMapModes rejects
+		the constraints, an allocation fails, or FINUFFT returns nonzero.
+		\return true if RhoReal/RhoImag hold the FINUFFT result, false if a direct fallback is required. */
+	bool GetRho_FinufftType1(void)
+	{
 		try
 		{
-			GeometryVector basis[3];
-			for(DimensionType d=0; d<dim; d++)
-				basis[d]=this->pConfig->GetBasisVector(d);
-
-			//integer reciprocal-lattice indices of every constraint
-			std::vector<std::int64_t> modes(nk*dim);
-			std::int64_t K[3]={0, 0, 0};
-			for(size_t i=0; i<nk; i++)
-			{
-				const GeometryVector & k=this->constraints[i].k;
-				for(DimensionType d=0; d<dim; d++)
-				{
-					double dot=0.0, scale=0.0;
-					for(DimensionType c=0; c<dim; c++)
-					{
-						double t=k.x[c]*basis[d].x[c];
-						dot+=t;
-						scale+=std::abs(t);
-					}
-					double n=dot/twopi;
-					if(!std::isfinite(n) || std::abs(n)>maxIndex)
-						return false;
-					double nr=std::round(n);
-					double roundoff=4.0*DBL_EPSILON*(1.0+scale/twopi);
-					if(std::abs(n-nr)>std::max(budget, roundoff))
-						return false;
-					std::int64_t m=static_cast<std::int64_t>(nr);
-					modes[i*dim+d]=m;
-					K[d]=std::max(K[d], m<0 ? -m : m);
-				}
-			}
-
-			//grid sizes, guarded against overflow and unbounded allocation
-			std::int64_t ms[3]={1, 1, 1};
-			std::int64_t total=1;
-			for(DimensionType d=0; d<dim; d++)
-			{
-				ms[d]=2*K[d]+1;
-				if(ms[d]>this->FinufftMaxModes/total)
-					return false;
-				total*=ms[d];
-			}
-			if(static_cast<double>(total)>FinufftSparseGridFactor*(static_cast<double>(nk)+static_cast<double>(np)))
+			FinufftModeMap map;
+			if(!this->FinufftMapModes(map))
 				return false;
-
-			//fractional coordinates as angles in [0, 2 pi]
-			std::vector<double> angles[3];
-			for(DimensionType d=0; d<dim; d++)
-				angles[d].resize(np);
-			for(size_t j=0; j<np; j++)
-			{
-				const GeometryVector & s=this->pConfig->GetRelativeCoordinates(j);
-				for(DimensionType d=0; d<dim; d++)
-					angles[d][j]=twopi*(s.x[d]-std::floor(s.x[d]));
-			}
+			const size_t nk=this->constraints.size();
+			const size_t np=this->pConfig->NumParticle();
 			std::vector<std::complex<double> > strengths(np, std::complex<double>(1.0, 0.0));
-			std::vector<std::complex<double> > f(static_cast<size_t>(total));
-
-			finufft_opts opts;
-			finufft_default_opts(&opts);
-			opts.modeord=0;
-			opts.nthreads=this->FinufftNumThreads;
+			std::vector<std::complex<double> > f(static_cast<size_t>(map.total));
 
 			const std::int64_t nj=static_cast<std::int64_t>(np);
 			int status;
-			if(dim==1)
-				status=finufft1d1(nj, angles[0].data(), strengths.data(), +1, this->FinufftTolerance, ms[0], f.data(), &opts);
-			else if(dim==2)
-				status=finufft2d1(nj, angles[0].data(), angles[1].data(), strengths.data(), +1, this->FinufftTolerance, ms[0], ms[1], f.data(), &opts);
+			if(this->Dimension==1)
+				status=finufft1d1(nj, map.angles[0].data(), strengths.data(), +1, this->FinufftTolerance, map.ms[0], f.data(), &map.opts);
+			else if(this->Dimension==2)
+				status=finufft2d1(nj, map.angles[0].data(), map.angles[1].data(), strengths.data(), +1, this->FinufftTolerance, map.ms[0], map.ms[1], f.data(), &map.opts);
 			else
-				status=finufft3d1(nj, angles[0].data(), angles[1].data(), angles[2].data(), strengths.data(), +1, this->FinufftTolerance, ms[0], ms[1], ms[2], f.data(), &opts);
+				status=finufft3d1(nj, map.angles[0].data(), map.angles[1].data(), map.angles[2].data(), strengths.data(), +1, this->FinufftTolerance, map.ms[0], map.ms[1], map.ms[2], f.data(), &map.opts);
 			this->FinufftLastStatus=status;
 			if(status!=0)
 				return false;
 
-			//modeord=0: mode n_d sits at n_d+K_d, first dimension fastest
 			this->RhoReal.resize(nk);
 			this->RhoImag.resize(nk);
 			for(size_t i=0; i<nk; i++)
 			{
-				std::int64_t idx=0;
-				for(int d=static_cast<int>(dim)-1; d>=0; d--)
-					idx=idx*ms[d]+(modes[i*dim+d]+K[d]);
-				double tr=f[static_cast<size_t>(idx)].real();
-				double ti=f[static_cast<size_t>(idx)].imag();
+				double tr=f[map.index[i]].real();
+				double ti=f[map.index[i]].imag();
 #ifdef HAVETWOFIXEDPARTICLES
 				tr+=2;
 #endif
 				this->RhoReal[i]=tr;
 				this->RhoImag[i]=ti;
+			}
+		}
+		catch(const std::bad_alloc &)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	/** \brief Try to compute every collective-coordinate force with one FINUFFT Type 2 call.
+		Force() sums F_j = -(2/V) sum_k V_k (Im rho_k cos(k.r_j) - Re rho_k sin(k.r_j)) k, which equals
+		F_{j,a} = (2/V) Im[ sum_k V_k k_a conj(rho_k) exp(+i k.r_j) ]. That is one Type 2 transform per
+		Cartesian component a (ntransf = dimension): coefficient V_k k_a conj(rho_k) at the mode of constraint
+		k (constraints sharing a mode add, in constraint order), isign=+1, eps=FinufftTolerance, and the
+		modeord=0, nthreads=FinufftNumThreads options of FinufftMapModes. Every constraint enters once, as
+		in Force(), so no half-space factor is added. Uses the cached rho, which the caller must have made
+		valid. Returns false, leaving the caller to use the direct sum for every particle, when
+		FinufftMapModes rejects the constraints, an allocation fails, or FINUFFT returns nonzero.
+		\param[out] results  Per-particle forces, already sized to the particle count; written only on success.
+		\return true if results holds the transform result, false if a direct fallback is required. */
+	bool AllForce_FinufftType2(std::vector<GeometryVector> & results)
+	{
+		try
+		{
+			FinufftModeMap map;
+			if(!this->FinufftMapModes(map))
+				return false;
+			const DimensionType dim=this->Dimension;
+			const size_t nk=this->constraints.size();
+			const size_t np=this->pConfig->NumParticle();
+			const size_t total=static_cast<size_t>(map.total);
+			std::vector<std::complex<double> > f(dim*total);
+			for(size_t i=0; i<nk; i++)
+			{
+				const std::complex<double> w=this->constraints[i].V*std::complex<double>(this->RhoReal[i], -this->RhoImag[i]);
+				for(DimensionType a=0; a<dim; a++)
+					f[a*total+map.index[i]]+=this->constraints[i].k.x[a]*w;
+			}
+			std::vector<std::complex<double> > c(dim*np);
+
+			const std::int64_t nj=static_cast<std::int64_t>(np);
+			const int ntransf=static_cast<int>(dim);
+			int status;
+			if(dim==1)
+				status=finufft1d2many(ntransf, nj, map.angles[0].data(), c.data(), +1, this->FinufftTolerance, map.ms[0], f.data(), &map.opts);
+			else if(dim==2)
+				status=finufft2d2many(ntransf, nj, map.angles[0].data(), map.angles[1].data(), c.data(), +1, this->FinufftTolerance, map.ms[0], map.ms[1], f.data(), &map.opts);
+			else
+				status=finufft3d2many(ntransf, nj, map.angles[0].data(), map.angles[1].data(), map.angles[2].data(), c.data(), +1, this->FinufftTolerance, map.ms[0], map.ms[1], map.ms[2], f.data(), &map.opts);
+			if(status!=0)
+				return false;
+
+			const double scale=2.0/this->Volume;
+			for(size_t j=0; j<np; j++)
+			{
+				results[j]=GeometryVector(dim);
+				for(DimensionType a=0; a<dim; a++)
+					results[j].x[a]=scale*c[a*np+j].imag();
 			}
 		}
 		catch(const std::bad_alloc &)
@@ -422,6 +529,7 @@ public:
 		this->Shift=0.0;
 		this->RhoBackendSelected=RhoBackend::Direct;
 		this->RhoBackendLastUsed=RhoBackend::Direct;
+		this->ForceBackendLastUsed=ForceBackend::Direct;
 		this->FinufftTolerance=1e-12;
 		this->FinufftMaxModes=std::int64_t(1)<<22;
 		this->FinufftNumThreads=1;
@@ -491,6 +599,10 @@ public:
 	}
 
 	/** \brief Compute the force on every particle.
+		With the FinufftType1 backend selected on an object of exact type ShiftedCCPotential, one FINUFFT
+		Type 2 transform gives all forces (AllForce_FinufftType2); otherwise, or if it falls back, every
+		particle uses the direct sum of Force(). The exact-type test keeps derived classes that override
+		Force or GetRho (S2, LogCC, MultiConfig, ...) on their own formulas. See GetLastForceBackendUsed.
 		\param[out] results  Resized list of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results)
 	{
@@ -498,6 +610,14 @@ public:
 			this->GetRho();
 		long end=this->pConfig->NumParticle();
 		results.resize(end);
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		if(this->RhoBackendSelected==RhoBackend::FinufftType1 && typeid(*this)==typeid(ShiftedCCPotential) && this->AllForce_FinufftType2(results))
+		{
+			this->ForceBackendLastUsed=ForceBackend::FinufftType2;
+			return;
+		}
+#endif
+		this->ForceBackendLastUsed=ForceBackend::Direct;
 		unsigned long tempNumThread = 1;
 		std::swap(tempNumThread, this->ParallelNumThread);
 #pragma omp parallel for num_threads(tempNumThread) default(shared)

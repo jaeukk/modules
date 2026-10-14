@@ -126,6 +126,10 @@ protected:
 	std::vector<spec_index> idx2species;
 	std::vector<Configuration> subc;
 
+	/** \brief Soft-core contact force on one particle.
+	 *  \param i  Particle index.
+	 *  \return   e0 times the contact force on particle i (zero when repulsion is off). */
+	GeometryVector ContactForce(size_t i) const;
 
 public :
 	double e0 = 1.0;	//< energy scale for contact potential

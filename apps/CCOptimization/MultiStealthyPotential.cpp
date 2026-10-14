@@ -419,6 +419,14 @@ void MultiStealthyPotential::Force(GeometryVector &force, size_t i)
 	// force_CC.MultiplyFrom(this->u0/this->Volume);
 
 	// contact potential contribution (CP)
+	force = this->ContactForce(i) + force_CC;
+}
+
+/** \brief Soft-core contact force on one particle.
+ *  \param i Particle index.
+ *  \return e0 times the contact force on particle i (zero when repulsion is off). */
+GeometryVector MultiStealthyPotential::ContactForce(size_t i) const
+{
 	GeometryVector force_CP(static_cast<int> (this->Dimension));
 	if (this->WithRepulsion){
 		pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc,
@@ -441,24 +449,49 @@ void MultiStealthyPotential::Force(GeometryVector &force, size_t i)
 		});
 	}
 	force_CP.MultiplyFrom(this->e0);
-
-	force = force_CP + force_CC;
+	return force_CP;
 }
 
 /** \brief Evaluate forces for all particles.
+ *  Species on the FINUFFT backend compute their collective-coordinate forces in bulk with
+ *  ShiftedCCPotential::AllForce (one Type 2 transform, or its direct fallback), which also fills the
+ *  rho cache when Energy was not called first; the forces are scaled by u0 N_s/N and stored at the
+ *  global indices idx, and each particle then adds its contact force. Particles of Direct species use
+ *  Force(i) as before, in one parallel loop. Either way the per-particle arithmetic matches Force().
  *  \param results Output vector of forces. */
 void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 {
 	this->UpdateSubconfigs();
-	// Fill each shared cache before the parallel force loop (also safe without prior Energy).
-	for (auto & species : this->species_constraints)
-		species.CCPotential->GetRho();
+	for (size_t i = 0; i < this->idx2species.size(); i++)
+		if (this->idx2species[i].species < 0)
+			throw std::runtime_error("MultiStealthyPotential::AllForce: particle has no assigned species; assign every particle before evaluating forces.");
 	long end = this->pConfig->NumParticle();
 	results.resize(end);
+	std::vector<char> bulk(this->species_constraints.size(), 0);
+	std::vector<GeometryVector> speciesForce;
+	for (size_t s = 0; s < this->species_constraints.size(); s++){
+		species_potential & species = this->species_constraints[s];
+		if (species.CCPotential->GetRhoBackend() != ShiftedCCPotential::RhoBackend::FinufftType1){
+			// Fill each shared cache before the parallel force loop (also safe without prior Energy).
+			species.CCPotential->GetRho();
+			continue;
+		}
+		bulk[s] = 1;
+		species.CCPotential->AllForce(speciesForce);
+		const double scale = this->u0 * (double)species.idx.size()/(double)this->pConfig->NumParticle();
+		for (size_t j = 0; j < species.idx.size(); j++){
+			speciesForce[j].MultiplyFrom(scale);
+			results[species.idx[j]] = speciesForce[j];
+		}
+	}
 	unsigned long tempNumThread = 1;
 	std::swap(tempNumThread, this->ParallelNumThread);
 #pragma omp parallel for num_threads(tempNumThread) default(shared)
-	for (long i = 0; i<end; i++)
-		this->Force(results[i], i);
+	for (long i = 0; i<end; i++){
+		if (bulk[this->idx2species[i].species])
+			results[i] = this->ContactForce(i) + results[i];
+		else
+			this->Force(results[i], i);
+	}
 	std::swap(tempNumThread, this->ParallelNumThread);
 }

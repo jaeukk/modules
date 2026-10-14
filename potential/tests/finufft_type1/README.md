@@ -6,7 +6,9 @@ rho(k) = sum_j exp(+i k . r_j)
 
 with one FINUFFT Type 1 transform (positive sign, unit strengths, no normalization) instead of the
 O(N * Nk) direct sum. The constraint weights `constraints[i].V` are not transform strengths.
-`Energy`, `Force`, and `AllForce` are unchanged and consume the cached rho.
+`Energy` and `Force` are unchanged and consume the cached rho. With the FINUFFT backend selected,
+`AllForce` of an object of exact type `ShiftedCCPotential` also uses one FINUFFT Type 2 transform
+(`GetLastForceBackendUsed`); derived classes keep the direct per-particle `Force` loop.
 
 ## API
 
