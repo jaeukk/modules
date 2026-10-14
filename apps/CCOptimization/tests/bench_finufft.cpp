@@ -1,7 +1,7 @@
 /** \file bench_finufft.cpp
  * \brief Benchmark of MultiStealthyPotential backends on the GetMultiCCO ground-state setup.
  *
- * Usage: bench_finufft.out eval|opt DIM N SPECIES CHI THREADS SEED [direct|finufft]
+ * Usage: bench_finufft.out eval|opt DIM N SPECIES CHI THREADS SEED [direct|finufft [HISTORY]]
  *   eval  per-evaluation timings (Configuration build, SetConfiguration, Energy, AllForce) for
  *         Direct and, when compiled in, FINUFFT, plus energy/force agreement with Direct; also
  *         SetConfiguration + Energy + AllForce against SetConfiguration + EnergyAndAllForce, interleaved
@@ -233,7 +233,8 @@ void Opt(const Setup & s, Backend b)
 	const double ed = direct->Energy();
 	std::cout << std::setprecision(6) << "{\"mode\":\"opt\",\"backend\":\"" << Name(b) << "\",\"dim\":" << s.dim
 		<< ",\"N\":" << s.n << ",\"species\":" << s.species << ",\"chi\":" << s.chi << ",\"modes\":" << modes
-		<< ",\"threads\":" << s.threads << ",\"seed\":" << s.seed << ",\"seconds\":" << seconds
+		<< ",\"threads\":" << s.threads << ",\"seed\":" << s.seed << ",\"history\":" << StructureOptimization_LBFGSHistory
+		<< ",\"seconds\":" << seconds
 		<< ",\"energy_calls\":" << calls << ",\"ms_per_call\":" << 1e3 * seconds / std::max<size_t>(calls, 1)
 		<< std::setprecision(17) << ",\"final_energy\":" << e << ",\"final_energy_direct\":" << ed
 		<< ",\"hash\":\"" << std::hex << Hash(c) << std::dec << "\"}\n";
@@ -261,6 +262,8 @@ try {
 		Eval(s);
 	else if (mode == "opt") {
 		const std::string backend = argc > 8 ? argv[8] : "direct";
+		if (argc > 9)
+			StructureOptimization_LBFGSHistory = std::stoul(argv[9]);  // L-BFGS correction pairs (default 100)
 		if (backend != "direct" && backend != "finufft")
 			throw std::invalid_argument("backend must be direct or finufft");
 		Opt(s, backend == "direct" ? Backend::Direct : Backend::FinufftType1);

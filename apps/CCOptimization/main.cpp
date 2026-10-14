@@ -1452,6 +1452,14 @@ int GetMultiCCO(int argc, char ** argv){
 					ofile << "\nCollective densities use the FINUFFT backend.\n";
 					potential->SetRhoBackend(ShiftedCCPotential::RhoBackend::FinufftType1);
 				}
+				else if (tempstring2 == "history"){
+					// L-BFGS correction pairs kept by RelaxStructure_NLOPT (default 100).
+					if (!(ifile >> StructureOptimization_LBFGSHistory) || StructureOptimization_LBFGSHistory < 1) {
+						ofile << "Expected: history N (N >= 1)\n";
+						return 1;
+					}
+					ofile << "\nL-BFGS history = " << StructureOptimization_LBFGSHistory << "\n";
+				}
 				else if (tempstring2 == "export") {
 					std::string format;
 					if (!(ifile >> format) || (format != "txt" && format != "binary" && format != "pack" && format != "off")) {

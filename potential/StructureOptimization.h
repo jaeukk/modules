@@ -30,6 +30,8 @@
 //and "StructureOptimization_Progress_b.configuration" alternate
 extern size_t StructureOptimization_SaveConfigurationInterval;
 extern bool StructureOptimization_SaveNumberedConfiguration;
+//number of correction pairs (s, y) that L-BFGS keeps in RelaxStructure_NLOPT and its variants (default 100)
+extern size_t StructureOptimization_LBFGSHistory;
 
 /** \brief Exception thrown when a NaN is encountered during structure optimization. */
 class NotANumberFound : public std::exception
