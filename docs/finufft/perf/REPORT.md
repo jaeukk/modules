@@ -121,6 +121,39 @@ the repeatability API tests and probe of `potential/tests/finufft_repeatability`
 AddressSanitizer build of the plan-cache test, and the default build with `tests/test_cli.py`.
 Direct-backend energies and forces are bitwise identical to dd2fb45 in 1–3D at 1, 4 and 8 threads.
 
+## Caveats found after the benchmarks
+
+**Build flags.** All repository code in these benchmarks was built with the `config.mk` defaults,
+`-std=c++17 -g -O3 -fopenmp`: no `-march=native` and no `-DNDEBUG`. Without `NDEBUG`,
+`GeometryVector` records its dimension and asserts in every operation, which the direct force loop
+executes once per particle-mode pair. The FINUFFT library is a native (AVX-512) build. The speedups
+therefore lean in FINUFFT's favor; base and new used the same flags, so the ranking holds, but the
+factors would shrink somewhat in a release build. The repository does not currently compile with
+`-DNDEBUG`: `core/PeriodicCellList.h` (two `displacement_periodic` overloads),
+`pairstat/NumberVariance.h` and `pairstat/VolumeFractionVariance.cpp` read `GeometryVector::Dimension`,
+which exists only in debug builds.
+
+**Ground states are not bit-identical to the old build.** Each run is deterministic for a fixed build,
+flags, CPU, settings and thread count, so endpoint hashes are a valid comparison. From the same initial
+state (seed 1, N=2000, five species, 2D/3D, chi_s 0.1/0.4):
+
+| Variant | Same endpoint as the base FINUFFT path |
+|---|---|
+| B (persistent plans), D (indexed views) | yes, bitwise, in all four cases |
+| A (Type 2 forces) | yes where the gate keeps the direct loop; no at 2D chi_s=0.4 |
+| C (species concurrency) | no in three cases (summation order of the species energy changed); yes at 3D chi_s=0.4 |
+| Integrated | no in all four cases |
+
+All endpoints are ground states (total energy 2e-20 to 4e-19 by Direct re-evaluation). The differences
+are not caused by the stopping tolerance: trajectories diverge early (call counts differ by tens to
+hundreds), because a last-bit change in the energy flips near-tie line-search decisions and the
+stealthy ground-state manifold is degenerate for chi < 0.5. Rerunning a seed from an existing dataset
+with the new build will not reproduce its configuration. Whether old and new produce statistically
+equivalent ensembles (g2, S(k) outside the constraints, nearest-neighbor distances over many seeds) is
+not yet checked.
+
+A visual explainer of the algorithmic changes is in [explainer.html](explainer.html).
+
 ## Open items
 
 1. The Type 2 gate constants are machine-specific (Ryzen 5 7500F, WSL2, FINUFFT 2.5.1). Refit them
