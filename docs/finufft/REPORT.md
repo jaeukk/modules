@@ -1,5 +1,9 @@
 # FINUFFT integration: consolidated findings and release decision
 
+> October 14, 2026: forces now also use FINUFFT (Type 2), plans persist, species run concurrently,
+> and the CCOptimization app can enable the backend. See [perf/REPORT.md](perf/REPORT.md); the
+> statements below that force evaluation remains direct describe the September release.
+
 September 28, 2026. This document supersedes earlier reports for current implementation status. Historical report snapshots are preserved in [reports/manifest.json](reports/manifest.json), including source paths and hashes. Their relative links refer to original evidence folders and may not resolve within these snapshots. Dates, "running," "uncommitted," and incomplete-audit statements in old reports describe their original snapshots, not current status.
 
 ## Release decision
