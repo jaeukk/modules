@@ -154,6 +154,41 @@ not yet checked.
 
 A visual explainer of the algorithmic changes is in [explainer.html](explainer.html).
 
+## Follow-up: fused contact pass and L-BFGS history
+
+An independent Codex review of the result proposed two more improvements
+([reviews/codex-next-improvements.md](reviews/codex-next-improvements.md)).
+
+**Fused contact energy and force (landed).** A gradient evaluation now walks each particle's
+neighbor list once for both its contact-energy slot and its contact force, and the species' Type 2
+work overlaps the contact walk instead of running in its own phase. The combined call lives on a
+separate interface, `potential/CombinedEnergyForce.h`, which `MultiStealthyPotential` implements and
+`Objective` finds with `dynamic_cast`. `Potential`'s vtable is unchanged, so applications whose
+objects predate the change keep working after an incremental build (the first audit round caught a
+crash from an earlier version that added a virtual to `Potential`). Results are bitwise identical to
+calling `Energy()` then `AllForce()`, and full optimizations end at the same coordinates as before.
+One evaluation got 26–54% faster with FINUFFT (2D N=2000: 1.13 to 0.64 ms median at chi_s=0.4,
+T=4; N=10000: 17.6 to 8.5 ms) and 3–13% faster with Direct. Two Codex rounds: one blocking finding
+(the vtable change), fixed; round 2 clean.
+
+**Configurable L-BFGS history (landed, default unchanged).** A time split of whole optimizations
+showed L-BFGS's own work at 24–38% of the time in the FINUFFT cases (configuration rebuild and
+gradient conversion only 2–3%); with the fused evaluator, L-BFGS at history 100 costs more per call
+than the potential (1.09 against 0.61 ms at 2D chi_s=0.4). `StructureOptimization_LBFGSHistory`
+(default 100) and the `history N` keyword in the `ground` block make it adjustable. Minimum of three
+interleaved full optimizations (seed 1, 4 threads, fused build):
+
+| Case | history 100 | history 40 | history 20 |
+|---|---|---|---|
+| 2D chi_s=0.1 | 1.52 s | 0.98 s (0.64x) | 0.82 s (0.54x) |
+| 2D chi_s=0.4 | 6.59 s | 4.94 s (0.75x) | 5.46 s (0.83x) |
+| 3D chi_s=0.4 | 5.55 s | 4.20 s (0.76x) | 4.46 s (0.80x) |
+
+A shorter history needs more evaluations (three seeds, history 40 against 100: +0% to +25%; history
+20 at 2D chi_s=0.4: +61%). Every history from 10 to 100 reached valid ground states in all 12 runs
+and repeated bitwise. A shorter history changes trajectories and endpoints for both backends, so the
+default stays 100; `history 40` is the measured best general setting.
+
 ## Open items
 
 1. The Type 2 gate constants are machine-specific (Ryzen 5 7500F, WSL2, FINUFFT 2.5.1). Refit them
