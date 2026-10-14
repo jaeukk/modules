@@ -12,8 +12,8 @@
  *  - every FINUFFT species used the backend FinufftEligible predicts; species forced to fall back
  *    (grid cap, or a sheared cell tripping the sparse-grid guard) report Direct, and when all fall back
  *    the results equal the Direct backend bitwise; mixed eligible/fallback cases stay repeatable;
- *  - the sampled peak OS thread count never exceeds the largest team (no oversized outer team, no
- *    persistent oversubscription).
+ *  - while the potentials of one thread count run, the sampled peak OS thread count never exceeds that
+ *    team (no oversized outer team, no nested team, no extra library thread).
  * The makefile target runs it with default waiting, OMP_WAIT_POLICY=passive and nesting enabled.
  * Build and run: make test-species-concurrent */
 
@@ -22,6 +22,7 @@
 #include <etc.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -71,7 +72,7 @@ struct Result {
 	std::vector<GeometryVector> force;
 };
 
-int failures = 0, checks = 0;
+int failures = 0, checks = 0, maxPeak = 0;
 
 /** \brief Record a failed check without stopping the suite.
  *  \param ok    Check result.
@@ -191,14 +192,28 @@ int OsThreads()
 	return 0;
 }
 
-/** \brief Run work while a helper thread samples the OS thread count (libgomp releases surplus
- *  threads, so a count taken afterwards misses an oversized team). Sampling can miss very short
- *  teams but never reports more threads than existed.
+/** \brief Run work at one team size while a helper thread samples the OS thread count (libgomp releases
+ *  surplus threads, so a count taken afterwards misses an oversized team). When a smaller team follows a
+ *  larger one, libgomp destroys the surplus pool threads, and when a larger one follows it creates new ones;
+ *  the exiting and the new threads can coexist for a moment, so a process-wide peak over work with
+ *  alternating team sizes can exceed the largest team without any oversubscription. So the pool is first set
+ *  to the team size and allowed to settle (up to 2 s), and the peak is compared with that team only.
+ *  Sampling can miss very short teams but never reports more threads than existed.
+ *  \param team  Team size of every parallel region of work (regions of one thread add none).
  *  \param work  Work to observe.
- *  \return      Peak thread count seen, excluding the sampler. */
+ *  \return      Peak thread count seen during work, excluding the sampler. */
 template <class F>
-int PeakThreads(F work)
+int PeakThreads(int team, F work)
 {
+	int size = 0;	// a region with a side effect: an empty one may be compiled away
+#pragma omp parallel num_threads(team)
+	{
+#pragma omp single
+		size = omp_get_num_threads();
+	}
+	Check(size == team, "settling team has " + std::to_string(size) + " threads, not " + std::to_string(team));
+	for (int wait = 0; wait < 2000 && OsThreads() > team; wait++)
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	std::atomic<bool> done{false};
 	int peak = 0;
 	std::thread sampler([&] { while (!done) peak = std::max(peak, OsThreads() - 1); });
@@ -226,6 +241,7 @@ void Run(const Case & tc)
 		Result firstT;
 		for (int threads : {4, 8}) {
 			const std::string label = name.str() + (fast ? " finufft" : " direct") + " T=" + std::to_string(threads);
+			const int peak = PeakThreads(threads, [&] {
 			auto p = Make(c, tc, backend, threads);
 			const Result cold = Evaluate(*p, c, true), warm = Evaluate(*p, c, false);
 			Check(Same(cold, warm, tc.dim), label + ": MD-order (cold AllForce) result differs from warm result");
@@ -256,6 +272,9 @@ void Run(const Case & tc)
 				else if (fallbacks == 0 && threads == 4) firstT = warm;
 				else if (fallbacks == 0) Check(Same(warm, firstT, tc.dim), label + ": FINUFFT result depends on the thread count");
 			}
+			});
+			Check(peak <= threads, label + ": peak of " + std::to_string(peak) + " OS threads exceeds the team");
+			maxPeak = std::max(maxPeak, peak);
 		}
 	}
 }
@@ -287,9 +306,9 @@ int main()
 		{2, true, {300, 500}, 0.25, 1.0, 0x2},
 		{3, true, {90, 100, 110, 120, 130}, 0.2, 1.0, 0xa},
 	};
-	const int peak = PeakThreads([&] { for (const auto & tc : cases) Run(tc); });
-	Check(peak <= 8, "peak of " + std::to_string(peak) + " OS threads exceeds the 8-thread team");
-	std::cout << "peak OS threads (excluding sampler): " << peak << '\n';
+	for (const auto & tc : cases)
+		Run(tc);
+	std::cout << "peak OS threads (excluding sampler, largest team 8): " << maxPeak << '\n';
 	std::cout << (failures ? "FAILED: " + std::to_string(failures) + " of " : std::string("All ")) << checks << " species-concurrent checks" << (failures ? " failed\n" : " passed\n");
 	return failures ? 1 : 0;
 }
