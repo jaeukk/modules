@@ -45,7 +45,9 @@ different thread counts in other potential terms. Force formulas are unchanged.
 `run_finufft_threads.py --fixed-results EVIDENCE_DIR/fixed --output NEW_DIR`
 relinks the preserved five-component fixed-build objects with the diagnostic
 `finufft_threads.cpp` wrapper. The wrapper copies the supplied FINUFFT options and
-changes only `opts.nthreads` to 1. All other OpenMP work and the runtime thread limit
+changes only `opts.nthreads` to 1. It covers both `finufft2d1` (the preserved objects) and the
+persistent-plan path of current builds (`finufft_makeplan`, then one `finufft_execute` per
+transform). All other OpenMP work and the runtime thread limit
 remain at four threads. Production defaults and the shared library are not changed.
 
 The driver performs 100 fixed-point evaluations per backend, finite differences,
