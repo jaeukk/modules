@@ -274,8 +274,11 @@ Errors CompareBackends(Checker & ck, const ShiftedCCPotential & proto, const Con
 	for(size_t j=0; j<ff.size() && j<fd.size(); j++)
 		for(DimensionType d=0; d<config.GetDimension(); d++)
 			e.force=std::max(e.force, ck.Close(ff[j].x[d], fd[j].x[d], s.force, r, a, label+": AllForce", j));
+	//the FINUFFT rho backend also selects Type 2 forces when the cost gate predicts a win (UseFinufftForces)
+	const bool type2=fast.GetLastForceBackendUsed()==ShiftedCCPotential::ForceBackend::FinufftType2;
+	ck.Check(type2==(usedFinufft && fast.UseFinufftForces()), label+": AllForce used Type 2 exactly when rho used FINUFFT and the gate accepted");
 
-	//single-particle Force must agree bitwise with AllForce of the same object
+	//single-particle Force is always direct: bitwise equal to a direct AllForce, within tolerance of Type 2
 	const size_t np=config.NumParticle();
 	std::vector<size_t> picks;
 	if(np>0)
@@ -285,7 +288,7 @@ Errors CompareBackends(Checker & ck, const ShiftedCCPotential & proto, const Con
 		GeometryVector f;
 		fast.Force(f, j);
 		for(DimensionType d=0; d<config.GetDimension(); d++)
-			ck.Close(f.x[d], ff[j].x[d], s.force, 0.0, 0.0, label+": Force vs AllForce", j);
+			ck.Close(f.x[d], ff[j].x[d], s.force, type2 ? r : 0.0, type2 ? a : 0.0, label+": Force vs AllForce", j);
 	}
 	return e;
 }

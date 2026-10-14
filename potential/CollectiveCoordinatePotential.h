@@ -119,11 +119,21 @@ public:
 	 *  Scope: only ShiftedCCPotential::GetRho honors the selection, so classes that inherit it
 	 *  (LogCCPotential, ShiftedCCPotential_S2, the _varBox variants, ShiftedCCPotential_ForMC) use it.
 	 *  ShiftedCCPotential_withWeight and ShiftedCCPotential_S2_MultiConfig override GetRho and always
-	 *  use their own direct sums; the inherited setting is ignored there. */
+	 *  use their own direct sums; the inherited setting is ignored there.
+	 *  FinufftType1 also makes ShiftedCCPotential::AllForce use a FINUFFT Type 2 transform (see
+	 *  FinufftType2Forces), but only on objects whose dynamic type is exactly ShiftedCCPotential and only
+	 *  when a cost gate predicts a clear win over the direct loop (see UseFinufftForces). */
 	enum class RhoBackend
 	{
 		Direct,		//< Direct O(N*Nk) summation (default, always available).
 		FinufftType1	//< FINUFFT Type 1 on the reciprocal-lattice mode grid (needs -DCCPOTENTIAL_USE_FINUFFT).
+	};
+
+	/** \brief How ShiftedCCPotential::AllForce computed the collective-coordinate forces. */
+	enum class ForceBackend
+	{
+		Direct,		//< Per-particle direct O(Nk) sums (Force).
+		FinufftType2	//< One FINUFFT Type 2 execution with ntransf = dimension.
 	};
 
 	/** \brief Value of GetLastFinufftStatus() when the last GetRho did not call FINUFFT. */
@@ -241,6 +251,16 @@ public:
 		return this->FinufftLastStatus;
 	}
 
+	/** \brief Return how the last ShiftedCCPotential::AllForce computed the forces.
+		FinufftType2 requires UseFinufftForces() to hold; Direct means the per-particle direct sum (selected,
+		declined by the cost gate, or a fallback). Force(i) is always direct and does not update this value.
+		In MultiStealthyPotential it describes each species' share of the last AllForce.
+		\return The force backend used by the most recent base-class AllForce (Direct before any call). */
+	ForceBackend GetLastForceBackendUsed(void) const
+	{
+		return this->ForceBackendLastUsed;
+	}
+
 	/** \brief Report whether ShiftedCCPotential::GetRho will run FINUFFT Type 1 for the bound configuration.
 		Reads the eligibility of the persistent FINUFFT cache when it is current, and otherwise runs only the mode
 		mapping of GetRho_FinufftType1 (MapFinufftModes), without a plan or transform, so the answer depends only
@@ -251,46 +271,64 @@ public:
 	bool FinufftEligible(void) const
 	{
 #ifdef CCPOTENTIAL_USE_FINUFFT
-		GeometryVector basis[3];
-		size_t np=0;
-		if(this->RhoBackendSelected!=RhoBackend::FinufftType1 || !this->FinufftInputs(basis, np))
+		return this->FinufftGridModes()>0;
+#else
+		return false;
+#endif
+	}
+
+	/** \brief Report whether AllForce takes the FINUFFT Type 2 path for the bound configuration.
+		True only when built with CCPOTENTIAL_USE_FINUFFT, the object has exact type ShiftedCCPotential (derived
+		classes may override Force or GetRho), FinufftEligible() holds, and FinufftForcesPay predicts a clear win
+		over the direct loop on ParallelNumThread threads. The answer depends only on the configuration size,
+		constraints, cell and settings, never on measured time. AllForce still falls back if an allocation or
+		FINUFFT fails, or if rho fell back to the direct sum.
+		\return true if AllForce will attempt the Type 2 transform. */
+	bool UseFinufftForces(void) const
+	{
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		if(typeid(*this)!=typeid(ShiftedCCPotential))
 			return false;
-		if(this->FinufftCacheIsCurrent(basis, np))
-			return this->FinufftCache.eligible;
-		try
-		{
-			std::int64_t ms[3]={1, 1, 1};
-			std::vector<std::int64_t> slot;
-			return this->MapFinufftModes(basis, np, ms, slot);
-		}
-		catch(const std::bad_alloc &)
-		{
-			return false;
-		}
+		const std::int64_t grid=this->FinufftGridModes();
+		return grid>0 && this->FinufftForcesPay(static_cast<double>(grid));
 #else
 		return false;
 #endif
 	}
 
 	/** \brief Refresh the persistent FINUFFT state serially and report whether GetRho will run FINUFFT.
-		Rebuilds the mode map and makes the Type 1 plan if an input changed, exactly as GetRho would, so that
-		a following GetRho only executes the plan. Call it before running GetRho of several objects
-		concurrently, so that plans are never made inside a parallel region. Does not touch the cached rho.
+		Rebuilds the mode map and the Type 1 plan if an input changed, exactly as GetRho would, so that a
+		following GetRho or TryFinufftAllForce only executes plans. With forces it also decides the force
+		backend: GetLastForceBackendUsed is reset to Direct, and the Type 2 plan is made when UseFinufftForces()
+		holds and none exists (a failed makeplan is not retried until an input changes), or destroyed when it
+		does not, so TryFinufftAllForce runs Type 2 exactly when the gate accepted. Call it before running
+		several objects concurrently: plans are then never made inside a parallel region. The cached rho is
+		not touched.
+		\param forces  Also prepare the Type 2 force transform (AllForce); false prepares rho only (Energy).
 		\return FinufftEligible() after the refresh: true if GetRho will run FINUFFT unless it fails at run time. */
-	bool PrepareFinufft(void)
+	bool PrepareFinufft(bool forces)
 	{
+		if(forces)
+			this->ForceBackendLastUsed=ForceBackend::Direct;
 #ifdef CCPOTENTIAL_USE_FINUFFT
-		if(this->RhoBackendSelected!=RhoBackend::FinufftType1)
-			return false;
+		FinufftPlanCache & c=this->FinufftCache;
 		try
 		{
 			size_t np=0;
-			return this->RefreshFinufftCache(np) && this->FinufftCache.eligible;
+			if(this->RhoBackendSelected!=RhoBackend::FinufftType1 || !this->RefreshFinufftCache(np) || !c.eligible)
+				return false;
+			if(!forces)
+				return true;
+			if(!this->UseFinufftForces())
+				FinufftPlanCache::Destroy(c.plan2);
+			else if(c.plan2==nullptr && c.status2==FinufftNotCalled)
+				c.status2=this->MakeFinufftPlan(2, c.plan2);
 		}
 		catch(const std::bad_alloc &)
 		{
 			return false;
 		}
+		return true;
 #else
 		return false;
 #endif
@@ -299,19 +337,23 @@ public:
 protected:
 	RhoBackend RhoBackendSelected;	//< Backend requested by the user.
 	RhoBackend RhoBackendLastUsed;	//< Backend that produced the cached rho.
+	ForceBackend ForceBackendLastUsed;	//< Backend that produced the last AllForce result.
 	double FinufftTolerance;	//< FINUFFT requested tolerance.
 	std::int64_t FinufftMaxModes;	//< Cap on the FINUFFT mode-grid size.
 	int FinufftNumThreads;	//< FINUFFT opts.nthreads (default 1, independent of ParallelNumThread).
 	int FinufftLastStatus;	//< Last FINUFFT return code, or FinufftNotCalled.
 
 #ifdef CCPOTENTIAL_USE_FINUFFT
-	/** \brief Persistent FINUFFT Type 1 state of one potential: the constraint-to-mode map, one guru plan and work buffers.
-		GetRho_FinufftType1 rebuilds it lazily whenever an input it depends on changes (see FinufftCacheIsCurrent);
+	/** \brief Persistent FINUFFT state of one potential: the constraint-to-mode map, the guru plans and work buffers.
+		RefreshFinufftCache rebuilds it lazily whenever an input it depends on changes (see FinufftCacheIsCurrent);
 		an ineligible result is cached too, so a direct fallback costs only that check until an input changes.
-		A copy or assignment starts empty and is rebuilt on first use, so a plan handle is never shared or destroyed
-		twice; the destructor destroys the plan. Invariant: a non-null plan was made with the stored dim, ms, tol
-		and nthreads. The plan is not thread-safe: GetRho must not run concurrently on one object. */
-	struct FinufftType1Cache
+		The Type 1 plan (rho) is made with the map; the Type 2 plan (forces, ntransf = dim) only by
+		PrepareFinufft(true) when the force gate accepts. Both read the same angles, which only GetRho_FinufftType1
+		fills, so Type 2 always sees the configuration of the cached rho. A copy or assignment starts empty and is
+		rebuilt on first use, so a plan handle is never shared or destroyed twice; the destructor destroys both
+		plans. Invariant: a non-null plan was made with the stored dim, ms, tol and nthreads. The plans are not
+		thread-safe: one object must not run GetRho or TryFinufftAllForce concurrently. */
+	struct FinufftPlanCache
 	{
 		bool built=false;	//< the members below describe the current inputs
 		DimensionType dim=0;	//< fingerprint: Dimension
@@ -321,45 +363,51 @@ protected:
 		int nthreads=0;	//< fingerprint: FinufftNumThreads
 		std::vector<double> key;	//< fingerprint: basis vectors, then constraint wavevectors (dim doubles each)
 		bool eligible=false;	//< false: the direct sum is used until an input changes
-		int status=FinufftNotCalled;	//< finufft_makeplan code if that made the inputs ineligible
+		int status=FinufftNotCalled;	//< Type 1 finufft_makeplan code if that made the inputs ineligible
+		int status2=FinufftNotCalled;	//< Type 2 finufft_makeplan code if it failed (not retried until a rebuild)
 		std::int64_t ms[3]={1, 1, 1};	//< mode-grid sizes 2K_d+1 (1 for unused dimensions)
 		std::vector<std::int64_t> slot;	//< position of each constraint's mode in f
-		finufft_plan plan=nullptr;	//< owned guru Type 1 plan
-		std::vector<double> angles[3];	//< nonuniform points 2 pi s_jd, refilled on every call
-		std::vector<std::complex<double> > strengths, f;	//< unit strengths and output modes
+		finufft_plan plan=nullptr;	//< owned guru Type 1 plan (rho)
+		finufft_plan plan2=nullptr;	//< owned guru Type 2 plan (forces), present only while the force gate accepts
+		std::vector<double> angles[3];	//< nonuniform points 2 pi s_jd of the cached rho's configuration
+		std::vector<std::complex<double> > strengths, f;	//< Type 1 unit strengths and output modes
+		std::vector<std::complex<double> > coef, out;	//< Type 2 input modes (dim grids) and output (dim x np)
 
 		/** \brief Construct an empty cache. */
-		FinufftType1Cache()=default;
+		FinufftPlanCache()=default;
 
-		/** \brief Copy-construct as an empty cache; the source's plan is never shared. */
-		FinufftType1Cache(const FinufftType1Cache &)
+		/** \brief Copy-construct as an empty cache; the source's plans are never shared. */
+		FinufftPlanCache(const FinufftPlanCache &)
 		{
 		}
 
-		/** \brief Assign as an empty cache: destroy this object's plan and never share the source's.
+		/** \brief Assign as an empty cache: destroy this object's plans and never share the source's.
 			\return *this. */
-		FinufftType1Cache & operator=(const FinufftType1Cache &)
+		FinufftPlanCache & operator=(const FinufftPlanCache &)
 		{
-			this->DestroyPlan();
+			Destroy(this->plan);
+			Destroy(this->plan2);
 			this->built=false;
 			return *this;
 		}
 
-		/** \brief Destroy the owned plan. */
-		~FinufftType1Cache()
+		/** \brief Destroy the owned plans. */
+		~FinufftPlanCache()
 		{
-			this->DestroyPlan();
+			Destroy(this->plan);
+			Destroy(this->plan2);
 		}
 
-		/** \brief Destroy the owned plan, if any, and clear the handle. */
-		void DestroyPlan()
+		/** \brief Destroy one owned plan, if any, and clear its handle.
+			\param handle  plan or plan2 of a cache. */
+		static void Destroy(finufft_plan & handle)
 		{
-			if(this->plan!=nullptr)
-				finufft_destroy(this->plan);
-			this->plan=nullptr;
+			if(handle!=nullptr)
+				finufft_destroy(handle);
+			handle=nullptr;
 		}
 	};
-	FinufftType1Cache FinufftCache;	//< Persistent Type 1 state; copies start empty (see FinufftType1Cache).
+	FinufftPlanCache FinufftCache;	//< Persistent FINUFFT state; copies start empty (see FinufftPlanCache).
 
 	/** \brief Read the inputs the FINUFFT path needs from the bound configuration.
 		\param[out] basis  Receives the first Dimension cell basis vectors.
@@ -379,6 +427,31 @@ protected:
 		return true;
 	}
 
+	/** \brief Mode-grid size of the FINUFFT transforms for the bound configuration, without changing any state.
+		Uses the persistent cache when it is current (including a cached makeplan failure) and otherwise runs
+		only MapFinufftModes.
+		\return The grid size G = prod_d (2K_d+1) if FinufftType1 is selected and FINUFFT is eligible, else 0. */
+	std::int64_t FinufftGridModes(void) const
+	{
+		GeometryVector basis[3];
+		size_t np=0;
+		if(this->RhoBackendSelected!=RhoBackend::FinufftType1 || !this->FinufftInputs(basis, np))
+			return 0;
+		const FinufftPlanCache & c=this->FinufftCache;
+		if(this->FinufftCacheIsCurrent(basis, np))
+			return c.eligible ? c.ms[0]*c.ms[1]*c.ms[2] : 0;
+		try
+		{
+			std::int64_t ms[3]={1, 1, 1};
+			std::vector<std::int64_t> slot;
+			return this->MapFinufftModes(basis, np, ms, slot) ? ms[0]*ms[1]*ms[2] : 0;
+		}
+		catch(const std::bad_alloc &)
+		{
+			return 0;
+		}
+	}
+
 	/** \brief Report whether FinufftCache was built from the current inputs.
 		Compares bit for bit everything the mode map, its eligibility and the plan depend on: Dimension, the
 		particle count, FinufftTolerance, FinufftMaxModes, FinufftNumThreads, the cell basis vectors (SetConfiguration
@@ -389,7 +462,7 @@ protected:
 		\return true if the cached map, eligibility and plan can be reused. */
 	bool FinufftCacheIsCurrent(const GeometryVector * basis, size_t np) const
 	{
-		const FinufftType1Cache & c=this->FinufftCache;
+		const FinufftPlanCache & c=this->FinufftCache;
 		const DimensionType dim=this->Dimension;
 		const size_t nk=this->constraints.size();
 		const size_t bytes=dim*sizeof(double);
@@ -405,32 +478,56 @@ protected:
 		return true;
 	}
 
-	/** \brief Rebuild FinufftCache for the current inputs: mode map, eligibility, work buffers and plan.
-		The plan is kept when the grid sizes, tolerance and thread count are unchanged (for example after a
-		particle-count change, or a rescaled cell whose constraints keep their integer modes) and is otherwise
-		made with finufft_makeplan(type 1, iflag +1, one transform). Options: finufft_default_opts, then
-		modeord=0, nthreads=FinufftNumThreads, upsampfac=2.0 and spread_sort=1. The last two are fixed instead
-		of left to FINUFFT's density heuristics, so the transform never depends on point density. At the default
-		eps=1e-12 they are also what those heuristics pick (FINUFFT 2.5.1; 1D skips sorting only beyond 1000
-		points per fine-grid cell), so there rho is bitwise identical to the simple interface finufft{1,2,3}d1
-		with default options, which earlier builds called. A nonzero makeplan status makes the inputs
-		ineligible and is kept in the cache.
+	/** \brief Make one guru plan on the cached mode grid (FinufftCache.ms) with the fixed options of both transforms:
+		finufft_default_opts, then modeord=0, nthreads=FinufftNumThreads, upsampfac=2.0 and spread_sort=1, iflag +1
+		and eps=FinufftTolerance. upsampfac and spread_sort are fixed instead of left to FINUFFT's density
+		heuristics, so a transform never depends on point density. At the default eps=1e-12 they are also what
+		those heuristics pick (FINUFFT 2.5.1; 1D skips sorting only beyond 1000 points per fine-grid cell), so there
+		rho is bitwise identical to the simple interface finufft{1,2,3}d1 with default options, which earlier
+		builds called.
+		\param type         1 for rho (one transform), 2 for forces (Dimension transforms, one per component).
+		\param[out] handle  Receives the plan, or nullptr if makeplan failed.
+		\return The finufft_makeplan status; nonzero leaves no plan (a warning code may still return one). */
+	int MakeFinufftPlan(int type, finufft_plan & handle)
+	{
+		finufft_opts opts;
+		finufft_default_opts(&opts);
+		opts.modeord=0;
+		opts.nthreads=this->FinufftNumThreads;
+		opts.upsampfac=2.0;
+		opts.spread_sort=1;
+		const int ntransf=type==1 ? 1 : static_cast<int>(this->Dimension);
+		const int status=finufft_makeplan(type, static_cast<int>(this->Dimension), this->FinufftCache.ms, +1, ntransf, this->FinufftTolerance, &handle, &opts);
+		if(status!=0)
+			FinufftPlanCache::Destroy(handle);
+		return status;
+	}
+
+	/** \brief Rebuild FinufftCache for the current inputs: mode map, eligibility, work buffers and Type 1 plan.
+		Both plans are kept when the grid sizes, tolerance and thread count are unchanged (for example after a
+		particle-count change, or a rescaled cell whose constraints keep their integer modes) and are otherwise
+		destroyed; a missing Type 1 plan is then made with MakeFinufftPlan (the Type 2 plan only by
+		PrepareFinufft(true)). A nonzero Type 1 makeplan status makes the inputs ineligible and is kept in
+		the cache; a cached Type 2 makeplan failure is cleared, so the next PrepareFinufft(true) retries once.
 		\param basis  Basis vectors of the bound configuration.
 		\param np     Particle count of the bound configuration.
 		\throw std::bad_alloc if a buffer cannot be allocated; the cache is then left unbuilt. */
 	void RebuildFinufftCache(const GeometryVector * basis, size_t np)
 	{
-		FinufftType1Cache & c=this->FinufftCache;
+		FinufftPlanCache & c=this->FinufftCache;
 		const DimensionType dim=this->Dimension;
 		const size_t nk=this->constraints.size();
 		c.built=false;
 		std::int64_t ms[3]={1, 1, 1};
 		const bool eligible=this->MapFinufftModes(basis, np, ms, c.slot);
 
-		//keep the plan only if it was made for the same grid, tolerance and threads (preserves the invariant)
+		//keep the plans only if they were made for the same grid, tolerance and threads (preserves the invariant)
 		if(!eligible || c.dim!=dim || c.tol!=this->FinufftTolerance || c.nthreads!=this->FinufftNumThreads
 			|| c.ms[0]!=ms[0] || c.ms[1]!=ms[1] || c.ms[2]!=ms[2])
-			c.DestroyPlan();
+		{
+			FinufftPlanCache::Destroy(c.plan);
+			FinufftPlanCache::Destroy(c.plan2);
+		}
 		c.dim=dim;
 		c.np=np;
 		c.tol=this->FinufftTolerance;
@@ -445,6 +542,7 @@ protected:
 			std::memcpy(&c.key[(dim+i)*dim], this->constraints[i].k.x, dim*sizeof(double));
 		c.eligible=false;
 		c.status=FinufftNotCalled;
+		c.status2=FinufftNotCalled;
 
 		if(eligible)
 		{
@@ -453,17 +551,7 @@ protected:
 			c.strengths.assign(np, std::complex<double>(1.0, 0.0));
 			c.f.resize(static_cast<size_t>(ms[0]*ms[1]*ms[2]));
 			if(c.plan==nullptr)
-			{
-				finufft_opts opts;
-				finufft_default_opts(&opts);
-				opts.modeord=0;
-				opts.nthreads=this->FinufftNumThreads;
-				opts.upsampfac=2.0;
-				opts.spread_sort=1;
-				c.status=finufft_makeplan(1, static_cast<int>(dim), ms, +1, 1, this->FinufftTolerance, &c.plan, &opts);
-				if(c.status!=0)
-					c.DestroyPlan();	//a warning code may still return a plan
-			}
+				c.status=this->MakeFinufftPlan(1, c.plan);
 			c.eligible=(c.plan!=nullptr);
 		}
 		c.built=true;
@@ -580,7 +668,7 @@ protected:
 	{
 		const DimensionType dim=this->Dimension;
 		const size_t nk=this->constraints.size();
-		FinufftType1Cache & c=this->FinufftCache;
+		FinufftPlanCache & c=this->FinufftCache;
 		const double twopi=2.0*::pi;
 		size_t np=0;
 		try
@@ -623,6 +711,86 @@ protected:
 #endif
 				this->RhoReal[i]=tr;
 				this->RhoImag[i]=ti;
+			}
+		}
+		catch(const std::bad_alloc &)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	// ponytail: machine-specific cost constants [microseconds], see FinufftForcesPay. They only choose the faster
+	// path, never the result's accuracy. Ceiling: another CPU, compiler or FINUFFT version moves the crossover.
+	// Upgrade: refit them with a calibration run on the production node (never from timings taken during a run).
+	static constexpr double FinufftCostCall[3]={123.0, 165.0, 320.0};	//< Type 2 fixed cost per call, by dimension.
+	static constexpr double FinufftCostParticle[3]={0.0135, 0.092, 1.90};	//< Type 2 cost per particle (all d transforms) at kernel width 13.
+	static constexpr double FinufftCostMode[3]={0.021, 0.018, 0.033};	//< Type 2 cost per mode-grid point.
+	static constexpr double FinufftCostPair[3]={0.0147, 0.0219, 0.0241};	//< Direct Force() cost per particle-constraint pair.
+	static constexpr double FinufftForceMargin=1.3;	//< Required predicted speedup before Type 2 replaces the direct loop.
+
+	/** \brief Cost gate: predict whether one Type 2 execution clearly beats the direct force loop it replaces.
+		direct = FinufftCostPair * N * Nk / ParallelNumThread (ideal parallel speedup, which favors direct);
+		type2 = FinufftCostCall + FinufftCostParticle * (w/13)^d * N + FinufftCostMode * G on one thread, with
+		G the mode-grid size and w = ceil(-log10(eps/10)) in [2, 16] the estimated kernel width. Type 2 is
+		chosen only if direct >= FinufftForceMargin * type2. A deterministic function of N, Nk, the grid, eps,
+		the dimension and the thread count, so runs with the same settings stay bitwise repeatable.
+		\param gridModes  Mode-grid size G.
+		\return true if the transform is predicted to win by the margin (false outside dimensions 1-3). */
+	bool FinufftForcesPay(double gridModes) const
+	{
+		if(this->Dimension<1 || this->Dimension>3)
+			return false;
+		const int d=static_cast<int>(this->Dimension)-1;
+		const double np=static_cast<double>(this->NumBoundParticle());
+		const double nk=static_cast<double>(this->constraints.size());
+		const double threads=static_cast<double>(std::max<unsigned long>(this->ParallelNumThread, 1));
+		const double w=std::min(16.0, std::max(2.0, std::ceil(-std::log10(this->FinufftTolerance/10.0))));
+		const double direct=FinufftCostPair[d]*np*nk/threads;
+		const double type2=FinufftCostCall[d]+FinufftCostParticle[d]*std::pow(w/13.0, d+1)*np+FinufftCostMode[d]*gridModes;
+		return direct>=FinufftForceMargin*type2;
+	}
+
+	/** \brief Compute every collective-coordinate force with the persistent Type 2 plan.
+		Force() sums F_j = -(2/V) sum_k V_k (Im rho_k cos(k.r_j) - Re rho_k sin(k.r_j)) k, which equals
+		F_{j,a} = (2/V) Im[ sum_k V_k k_a conj(rho_k) exp(+i k.r_j) ]. That is one Type 2 transform per
+		Cartesian component a (ntransf = dimension): coefficient V_k k_a conj(rho_k) at the mode of constraint
+		k (constraints sharing a mode add, in constraint order), isign=+1. Every constraint enters once, as in
+		Force(), so no half-space factor is added. Requires plan2 and a cached rho produced by
+		GetRho_FinufftType1 from the current cache: the points passed to finufft_setpts are that call's angles,
+		which stay unchanged until execute, so the forces and rho describe the same configuration.
+		\param[out] results  Per-particle forces; resized and written only on success.
+		\return true on success, false if an allocation or FINUFFT fails (the caller then uses the direct sum). */
+	bool FinufftType2Forces(std::vector<GeometryVector> & results)
+	{
+		FinufftPlanCache & c=this->FinufftCache;
+		const DimensionType dim=this->Dimension;
+		const size_t nk=this->constraints.size();
+		const size_t np=c.np;
+		try
+		{
+			const size_t total=static_cast<size_t>(c.ms[0]*c.ms[1]*c.ms[2]);
+			c.coef.assign(dim*total, std::complex<double>(0.0, 0.0));
+			for(size_t i=0; i<nk; i++)
+			{
+				const std::complex<double> w=this->constraints[i].V*std::complex<double>(this->RhoReal[i], -this->RhoImag[i]);
+				for(DimensionType a=0; a<dim; a++)
+					c.coef[a*total+static_cast<size_t>(c.slot[i])]+=this->constraints[i].k.x[a]*w;
+			}
+			c.out.resize(dim*np);
+			int status=finufft_setpts(c.plan2, static_cast<std::int64_t>(np), c.angles[0].data(), c.angles[1].data(), c.angles[2].data(), 0, nullptr, nullptr, nullptr);
+			if(status==0)
+				status=finufft_execute(c.plan2, c.out.data(), c.coef.data());
+			if(status!=0)
+				return false;
+
+			const double scale=2.0/this->Volume;
+			results.resize(np);
+			for(size_t j=0; j<np; j++)
+			{
+				results[j]=GeometryVector(dim);
+				for(DimensionType a=0; a<dim; a++)
+					results[j].x[a]=scale*c.out[a*np+j].imag();
 			}
 		}
 		catch(const std::bad_alloc &)
@@ -703,6 +871,7 @@ public:
 		this->Shift=0.0;
 		this->RhoBackendSelected=RhoBackend::Direct;
 		this->RhoBackendLastUsed=RhoBackend::Direct;
+		this->ForceBackendLastUsed=ForceBackend::Direct;
 		this->FinufftTolerance=1e-12;
 		this->FinufftMaxModes=std::int64_t(1)<<22;
 		this->FinufftNumThreads=1;
@@ -771,12 +940,37 @@ public:
 		result.MultiplyFrom(1.0/Volume);
 	}
 
+	/** \brief Make rho valid, then compute every force with the persistent FINUFFT Type 2 plan if the last
+		PrepareFinufft(true) accepted it (UseFinufftForces) and rho came from FINUFFT Type 1. Never makes a plan,
+		so after PrepareFinufft(true) it may run on one thread of a parallel region (one object per thread).
+		Records the outcome for GetLastForceBackendUsed: FinufftType2 on success, otherwise Direct, in which
+		case the caller must compute the forces with the direct sum of Force() (as AllForce does).
+		\param[out] results  Holds the forces (resized to the particle count) only when true is returned.
+		\return true if results holds the Type 2 forces, false if the direct sum is required. */
+	bool TryFinufftAllForce(std::vector<GeometryVector> & results)
+	{
+		this->ForceBackendLastUsed=ForceBackend::Direct;
+		if(this->RhoValid==false)
+			this->GetRho();
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		if(this->FinufftCache.plan2!=nullptr && this->RhoBackendLastUsed==RhoBackend::FinufftType1 && this->FinufftType2Forces(results))
+			this->ForceBackendLastUsed=ForceBackend::FinufftType2;
+#endif
+		return this->ForceBackendLastUsed==ForceBackend::FinufftType2;
+	}
+
 	/** \brief Compute the force on every particle.
+		When UseFinufftForces() holds (FinufftType1 backend, exact type ShiftedCCPotential, and a predicted
+		win of the cost gate), one FINUFFT Type 2 execution gives all forces (PrepareFinufft(true), then
+		TryFinufftAllForce); otherwise, or if it falls back, every particle uses the direct sum of Force().
+		The exact-type test keeps derived classes that override Force or GetRho (S2, LogCC, MultiConfig, ...)
+		on their own formulas. See GetLastForceBackendUsed.
 		\param[out] results  Resized list of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results)
 	{
-		if(this->RhoValid==false)
-			this->GetRho();
+		this->PrepareFinufft(true);
+		if(this->TryFinufftAllForce(results))
+			return;
 		long end=this->NumBoundParticle();
 		results.resize(end);
 		unsigned long tempNumThread = 1;

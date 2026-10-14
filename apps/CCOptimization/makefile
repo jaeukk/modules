@@ -61,7 +61,8 @@ $(ODIR):
 	mkdir -p $(ODIR)
 
 clean:
-	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out test_indexed_view.out test_finufft_plan_cache.out test_species_concurrent.out
+	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out test_indexed_view.out \
+	      test_finufft_plan_cache.out test_species_concurrent.out test_finufft_forces.out
 
 # Offline archive management and multicomponent analysis stay local to this app.
 mspb_pack.out: $(ODIR)mspb_pack_main.o $(ODIR)MSPB_Pack.o $(ODIR)MultiStealthyPotential.o $(ODIR)MultiComponentPairStat.o deps
@@ -130,6 +131,18 @@ test-species-concurrent:
 	./test_species_concurrent.out
 	OMP_WAIT_POLICY=passive ./test_species_concurrent.out
 	OMP_MAX_ACTIVE_LEVELS=4 ./test_species_concurrent.out
+
+# FINUFFT Type 2 force checks (single potential, fallback, derived classes, multi-species AllForce).
+test_finufft_forces.out: $(ODIR)test_finufft_forces.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_finufft_forces.o: tests/test_finufft_forces.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-finufft-forces
+test-finufft-forces:
+	$(MAKE) USE_FINUFFT=1 test_finufft_forces.out
+	./test_finufft_forces.out
 
 # Header dependencies (CollectiveCoordinatePotential.h changes must rebuild every object).
 -include $(wildcard $(ODIR)*.d)
