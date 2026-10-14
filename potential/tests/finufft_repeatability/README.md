@@ -16,7 +16,7 @@ the FINUFFT and Direct backends end at the same particle positions.
 | File | Purpose |
 |---|---|
 | `run_repeatability.py` | Driver: fresh build, API tests, probe, 12 optimizations, checks, report |
-| `finufft_observer.cpp/.h` | Link wrapper for `finufft2d1` (`-Wl,--wrap=finufft2d1`) that only observes. It passes every argument, including the options pointer, through unchanged. It records the call count, each call's `opts->nthreads`, null options, and nonzero statuses, then prints one `FINUFFT_OBSERVER ...` line to stderr at exit |
+| `finufft_observer.cpp/.h` | Link wrapper for the FINUFFT guru calls (`-Wl,--wrap=finufft_makeplan,--wrap=finufft_setpts,--wrap=finufft_execute`) that only observes. It passes every argument, including the options pointer, through unchanged. A call is one `finufft_execute` (one transform of a persistent plan). It records the call count, the `opts->nthreads` each call's plan was made with, null options, and nonzero statuses, then prints one `FINUFFT_OBSERVER ...` line to stderr at exit |
 | `api_test.cpp` | Small API test, built with and without `-DCCPOTENTIAL_USE_FINUFFT` |
 
 The optimizations reuse `../contact_reproducibility/experiment.cpp` unchanged. That file
@@ -50,7 +50,7 @@ arguments. The driver never changes existing results or restarts any sweep.
 2. **Fresh build.** `run_comparison.build` compiles every current source with
    `-DCCPOTENTIAL_USE_FINUFFT`, including `CollectiveCoordinatePotential.h` as it is now
    and the fixed-order contact sum in `MultiStealthyPotential.cpp`. The link is then
-   rerun with `finufft_observer.o` and `-Wl,--wrap=finufft2d1`. Nothing wraps or changes
+   rerun with `finufft_observer.o` and `-Wl,--wrap=finufft_makeplan,--wrap=finufft_setpts,--wrap=finufft_execute`. Nothing wraps or changes
    options: the harness never calls `SetFinufftNumThreads`, so it exercises the
    production default.
 3. **API tests** (`api/`). The macro-enabled variant links the fresh core,
@@ -121,7 +121,7 @@ Results: `summary.json` (all checks with details), `REPORT.md`, and the director
 - Direct-reference acceptance and the absence of time-budget truncation are required.
   A timed-out run depends on wall-clock time, so comparing its repeats would be
   meaningless. Optimizer codes are recorded, not required.
-- Only `finufft2d1` is observed, since the harness is two-dimensional.
+- Only the guru calls are observed. `ShiftedCCPotential` makes no simple-interface calls such as `finufft2d1`.
 - A passing run supports repeatability for these 12 cases on this machine and build.
   It says nothing about other thread counts, sizes, platforms, or the FINUFFT/Direct
   agreement of endpoints.

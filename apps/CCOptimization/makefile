@@ -15,13 +15,26 @@
 #==============================================================================
 include ../../config.mk
 
-ODIR   := obj/
+# USE_FINUFFT=1 compiles the optional FINUFFT backend (select it at run time with the
+# `finufft` keyword). CCPOTENTIAL_USE_FINUFFT must match in every object of one program (ODR),
+# so FINUFFT builds keep their objects in a separate directory.
+USE_FINUFFT ?= 0
+ifeq ($(USE_FINUFFT),1)
+  ifeq ($(FINUFFT_PREFIX),)
+    $(error USE_FINUFFT=1 but finufft.h was not found; set FINUFFT_PREFIX=/path)
+  endif
+  ODIR    := obj_finufft/
+  FINUFFT := -DCCPOTENTIAL_USE_FINUFFT $(FINUFFT_INC)
+  LIBS_FINUFFT := $(FINUFFT_LIB)
+else
+  ODIR    := obj/
+endif
 TARGET := soft_core_stealthy.out
 
 SRCS := main.cpp MultiStealthyPotential.cpp MultiComponentPairStat.cpp MSPB_Pack.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
-INC := -I$(core) -I$(pairstat) -I$(potential) -I. $(NLOPT_INC)
+INC := -I$(core) -I$(pairstat) -I$(potential) -I. $(NLOPT_INC) $(FINUFFT)
 
 CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
@@ -39,22 +52,145 @@ deps:
 	$(MAKE) -C $(potential) objs
 
 $(TARGET): $(OBJS) deps
-	$(CC) -o $@ $(OBJS) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB)
+	$(CC) -o $@ $(OBJS) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
 
 $(ODIR)%.o: %.cpp | $(ODIR)
-	$(CC) $(CFLAGS) $(INC) -o $@ $<
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
 
 $(ODIR):
 	mkdir -p $(ODIR)
 
 clean:
-	rm -f $(ODIR)*.o $(TARGET) mspb_pack.out
+	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out test_indexed_view.out \
+	      test_finufft_plan_cache.out test_species_concurrent.out test_finufft_forces.out test_fused_contact.out test_finufft_blocks.out \
+	      calibrate_gate.out check_gate.out
 
 # Offline archive management and multicomponent analysis stay local to this app.
 mspb_pack.out: $(ODIR)mspb_pack_main.o $(ODIR)MSPB_Pack.o $(ODIR)MultiStealthyPotential.o $(ODIR)MultiComponentPairStat.o deps
-	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB)
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
 
 .PHONY: test-mspb-pack
 test-mspb-pack: all
 	bash tests/run_mspb_pack_test.sh
 	python3 tests/test_mspb_pack_cli.py
+
+# Per-evaluation timing, backend agreement and optimization benchmark (see tests/bench_finufft.py).
+bench_finufft.out: $(ODIR)bench_finufft.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)bench_finufft.o: tests/bench_finufft.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+# Shared FINUFFT correctness oracle (Direct vs FINUFFT, repeatability, cache invalidation).
+test_finufft_multi.out: $(ODIR)test_finufft_multi.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_finufft_multi.o: tests/test_finufft_multi.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-finufft
+test-finufft:
+	$(MAKE) USE_FINUFFT=1 test_finufft_multi.out test_finufft_plan_cache.out
+	./test_finufft_multi.out
+	./test_finufft_plan_cache.out
+
+# Persistent Type 1/Type 2 plan and mode-map checks; the wraps let the test observe every plan.
+test_finufft_plan_cache.out: $(ODIR)test_finufft_plan_cache.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT) \
+	  -Wl,--wrap=finufft_makeplan,--wrap=finufft_destroy,--wrap=finufft_setpts
+
+$(ODIR)test_finufft_plan_cache.o: tests/test_finufft_plan_cache.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-finufft-plan
+test-finufft-plan:
+	$(MAKE) USE_FINUFFT=1 test_finufft_plan_cache.out
+	./test_finufft_plan_cache.out
+
+# Particle-block split of the FINUFFT transforms; the wraps let the test observe every plan and execution.
+test_finufft_blocks.out: $(ODIR)test_finufft_blocks.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT) \
+	  -Wl,--wrap=finufft_makeplan,--wrap=finufft_destroy,--wrap=finufft_setpts,--wrap=finufft_execute
+
+$(ODIR)test_finufft_blocks.o: tests/test_finufft_blocks.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-finufft-blocks
+test-finufft-blocks:
+	$(MAKE) USE_FINUFFT=1 test_finufft_blocks.out
+	./test_finufft_blocks.out
+	OMP_WAIT_POLICY=passive ./test_finufft_blocks.out
+
+# Indexed species views versus the former per-species sub-Configurations (bitwise; Direct and FINUFFT).
+test_indexed_view.out: $(ODIR)test_indexed_view.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_indexed_view.o: tests/test_indexed_view.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-indexed-view
+test-indexed-view:
+	$(MAKE) USE_FINUFFT=1 test_indexed_view.out
+	./test_indexed_view.out
+
+# Species-concurrent evaluation: repeatability, MD order, thread count, under each OpenMP wait/nesting mode.
+test_species_concurrent.out: $(ODIR)test_species_concurrent.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_species_concurrent.o: tests/test_species_concurrent.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-species-concurrent
+test-species-concurrent:
+	$(MAKE) USE_FINUFFT=1 test_species_concurrent.out
+	./test_species_concurrent.out
+	OMP_WAIT_POLICY=passive ./test_species_concurrent.out
+	OMP_MAX_ACTIVE_LEVELS=4 ./test_species_concurrent.out
+
+# FINUFFT Type 2 force checks (single potential, fallback, derived classes, multi-species AllForce, and the
+# combined check of views, persistent plans, species concurrency and the joint gate) under each OpenMP mode.
+test_finufft_forces.out: $(ODIR)test_finufft_forces.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_finufft_forces.o: tests/test_finufft_forces.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-finufft-forces
+test-finufft-forces:
+	$(MAKE) USE_FINUFFT=1 test_finufft_forces.out
+	./test_finufft_forces.out
+	OMP_WAIT_POLICY=passive ./test_finufft_forces.out
+	OMP_MAX_ACTIVE_LEVELS=4 ./test_finufft_forces.out
+
+# EnergyAndAllForce against Energy + AllForce, bitwise, and the optimizer end point, under each OpenMP wait mode.
+test_fused_contact.out: $(ODIR)test_fused_contact.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_fused_contact.o: tests/test_fused_contact.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-fused-contact
+test-fused-contact:
+	$(MAKE) USE_FINUFFT=1 test_fused_contact.out
+	./test_fused_contact.out
+	OMP_WAIT_POLICY=passive ./test_fused_contact.out
+
+# Type 2 force-gate calibration and end-to-end check (tests/finufft_gate/README.md); both print to stdout only.
+calibrate_gate.out: $(ODIR)calibrate_gate.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)calibrate_gate.o: tests/finufft_gate/calibrate.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+check_gate.out: $(ODIR)check_gate.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)check_gate.o: tests/finufft_gate/check_gate.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: finufft-gate
+finufft-gate:
+	$(MAKE) USE_FINUFFT=1 calibrate_gate.out check_gate.out
+
+# Header dependencies (CollectiveCoordinatePotential.h changes must rebuild every object).
+-include $(wildcard $(ODIR)*.d)

@@ -14,6 +14,7 @@
 #include <PeriodicCellList.h>
 /* in $(pot) */
 #include <Potential.h>
+#include <CombinedEnergyForce.h>
 #include <CollectiveCoordinatePotential.h>
 
 #include <algorithm>
@@ -113,7 +114,7 @@ struct spec_index{
 	spec_index(int s, size_t idx): species(s), index(idx){}
 };
 
-class MultiStealthyPotential : public Potential
+class MultiStealthyPotential : public Potential, public CombinedEnergyForce
 {
 protected:
 	std::unique_ptr<Configuration> pConfig;	//< packing of interest
@@ -124,8 +125,96 @@ protected:
 	//	bool RhoValid;
 	//	double Volume;
 	std::vector<spec_index> idx2species;
-	std::vector<Configuration> subc;
 
+	/** \brief Work of one evaluation's concurrent FINUFFT path, prepared serially by PrepareSpecies. */
+	struct SpeciesWork
+	{
+		/** \brief One FINUFFT particle block of one species. */
+		struct Task
+		{
+			long species;	//< species index
+			size_t block;	//< block index, or NoBlock for a species whose rho is already valid
+			double cost;	//< predicted time (ShiftedCCPotential::FinufftBlockTime), only for the order
+		};
+		static constexpr size_t NoBlock = static_cast<size_t>(-1);	//< Task::block of a task without a Type 1 block
+		std::vector<char> concurrent;	//< one flag per species, nonzero for the concurrent path
+		std::vector<Task> rho;	//< Type 1 tasks: blocks (or NoBlock), largest predicted time first
+		std::vector<Task> force;	//< Type 2 tasks: blocks of the species with several, largest first
+		std::vector<size_t> forceBlocks;	//< per species: Type 2 blocks (PrepareFinufftForces)
+		std::vector<long> rhoLeft, forceLeft;	//< per species: Type 1 and Type 2 tasks not yet finished (shared)
+		std::vector<int> state;	//< per species with several Type 2 blocks: 0 pending, 1 released, 2 no Type 2 (shared)
+		long nextChunk = 0;	//< next contact chunk to take (shared by the team)
+	};
+
+	// ponytail: single-thread cost of the contact walk per particle [microseconds], by dimension, measured on 2026-10-14 on
+	// the development machine (fused walk, bench_finufft setup: packing fraction 0.2, cells of the cutoff). It only tells
+	// the force gate how much other work fills idle threads (FinufftForceGate's otherWork); denser packings walk more
+	// neighbors. Ceiling: another machine or packing fraction; upgrade: time ContactEnergyAndForce there.
+	static constexpr double ContactCostParticle[3] = {0.05, 0.2, 1.1};
+
+	/** \brief Prepare every species' FINUFFT plans (ShiftedCCPotential::PrepareFinufft and, with forces,
+	 *  PrepareFinufftForces; serially, so no plan is made inside a parallel region), mark the species evaluated on
+	 *  the concurrent path and list their block tasks. A species qualifies when its GetRho will run FINUFFT
+	 *  (FinufftEligible): its rho is then split into Type 1 particle blocks (StartRho, block count from the inputs
+	 *  only), and with forces its Type 2 forces into Type 2 blocks when the joint cost gate
+	 *  (ShiftedCCPotential::FinufftForceGate over the concurrent species, with the contact walk as other work)
+	 *  accepted them; each Type 1 block runs as one
+	 *  task on one thread, and so does each Type 2 block of a species with several (RunSpeciesWork). Every other species (Direct, or FINUFFT falling back to the direct sum) keeps
+	 *  its own evaluation, parallel over wavevectors with the full team. The marks and tasks depend only on
+	 *  constraints, cells, particle numbers, settings and the team size, never on timing.
+	 *  \param forces  Also decide and prepare the Type 2 force transforms (AllForce); false for Energy.
+	 *  \return The flags and tasks; the rho of a concurrent species is started (StartRho(forces)). */
+	SpeciesWork PrepareSpecies(bool forces);
+
+	/** \brief The concurrent FINUFFT species of one evaluation; every thread of a parallel region of the team calls it.
+	 *  One dynamic loop over the Type 1 block tasks (largest first), then the Type 2 block tasks of the species with
+	 *  several. The thread that finishes a species' last Type 1 block continues with that species on one thread
+	 *  (OnOneThread): FinishRho (rho is the sum of the blocks in block order, or the direct fallback), the species
+	 *  energy if wanted, StartForces if forces, and then either its single Type 2 block with FinishForces, or the
+	 *  release of its several Type 2 blocks; a thread holding one of those before the release takes contact chunks
+	 *  meanwhile, and the thread finishing a species' last Type 2 block runs FinishForces. Then every remaining contact
+	 *  chunk and one barrier, as in the unsplit schedule. Every result has its own slot and species state is handed
+	 *  over by seq_cst countdowns and releases, so nothing depends on the schedule.
+	 *  \param work                PrepareSpecies result (its shared counters are used).
+	 *  \param speciesEnergy       Energy slot of each species to fill, or nullptr.
+	 *  \param speciesForce        Type 2 force buffer of each species, or nullptr for no forces.
+	 *  \param[out] bulk           Per species: nonzero if its Type 2 forces succeeded (set only with forces).
+	 *  \param items               Number of contact items.
+	 *  \param chunk               Contact items per chunk.
+	 *  \param contact             Callable taking an item index (long), run once per item. */
+	template <class Contact>
+	void RunSpeciesWork(SpeciesWork & work, std::vector<double> * speciesEnergy,
+		std::vector<std::vector<GeometryVector>> * speciesForce, std::vector<char> & bulk, long items, long chunk,
+		const Contact & contact);
+
+	/** \brief Add particle i's collective-coordinate force, scaled by u0 N_s/N, to its contact force, with the
+	 *  arithmetic of Force(i): from its species' Type 2 forces when bulk, else from the species' direct sum.
+	 *  \param i             Particle index.
+	 *  \param contactForce  e0 times the contact force on particle i (ContactForce).
+	 *  \param bulk          Per species: nonzero if speciesForce holds its forces.
+	 *  \param speciesForce  Type 2 forces per species.
+	 *  \return              The total force on particle i. */
+	GeometryVector WithSpeciesForce(size_t i, const GeometryVector & contactForce, const std::vector<char> & bulk,
+		const std::vector<std::vector<GeometryVector>> & speciesForce);
+
+	/** \brief Soft-core contact force on one particle.
+	 *  \param i  Particle index.
+	 *  \return   e0 times the contact force on particle i (zero when repulsion is off). */
+	GeometryVector ContactForce(size_t i) const;
+
+	/** \brief Contact energy slot and contact force of one particle from one neighbor traversal: the same
+	 *  neighbors, order and expressions as the contact sum of Energy (pairs with i < SourceParticle) and as
+	 *  ContactForce (every SourceParticle != i), so both results are bitwise those of the separate walks.
+	 *  \param i           Particle index.
+	 *  \param[out] force  e0 times the contact force on particle i, as ContactForce(i).
+	 *  \return            Contact energy of the pairs (i, j > i), before the factor e0 (zero when repulsion is off). */
+	double ContactEnergyAndForce(size_t i, GeometryVector & force) const;
+
+	/** \brief Total energy from per-species and per-particle slots, summed in index order.
+	 *  \param speciesEnergy  Energy of each species potential.
+	 *  \param contactEnergy  Contact energy slot of each particle (empty when repulsion is off).
+	 *  \return               u0 times the sum of N_s/N times the species energies, plus e0 times the contact sum. */
+	double TotalEnergy(const std::vector<double> & speciesEnergy, const std::vector<double> & contactEnergy) const;
 
 public :
 	double e0 = 1.0;	//< energy scale for contact potential
@@ -191,6 +280,14 @@ public :
 	 *  \param V        Constraint coefficients (energy weights). */
 	void AddConstraint(size_t species, const GeometryVector & k, const std::vector<double> V);
 
+	/** \brief Select the collective-density backend of every species defined so far.
+	 *  \param backend  Backend passed to ShiftedCCPotential::SetRhoBackend.
+	 *  \throw std::invalid_argument if the backend is not compiled in (see USE_FINUFFT in the makefile). */
+	void SetRhoBackend(ShiftedCCPotential::RhoBackend backend){
+		for (auto & species : this->species_constraints)
+			species.CCPotential->SetRhoBackend(backend);
+	}
+
 	/** \brief Update rho values for selected species.
 	 *  \param species  Species id to evaluate. */
 	void GetRho(size_t species);
@@ -230,11 +327,14 @@ public :
 	 *  \param radii  Radii list matching the particles. */
 	void SetSecureRadii(const std::vector<double> & radii);
 
+	/** \brief Size the contact cell list to the contact cutoff and prepare the neighbor search. */
+	void PrepareContactCells();
+
 	/** \brief Set the configuration from a sphere packing.
 	 *  \param pck  Input sphere packing. */
 	void SetPacking(const SpherePacking & pck);
 
-	/** \brief Rebuild species sub-configurations. */
+	/** \brief Rebind every species potential, if stale, to an indexed view of *pConfig in species idx order. */
 	void UpdateSubconfigs();
 
 	/** \brief Get the contact cutoff radius.
@@ -246,6 +346,10 @@ public :
 	 * -------------------------------------*/
 
 	/** \brief Compute total potential energy.
+	 *  Species that run FINUFFT (see PrepareSpecies) are evaluated inside one parallel region as Type 1 block tasks
+	 *  while free threads take the contact sum (RunSpeciesWork); other species are evaluated first, one by one, with
+	 *  the full team. Species and particles own result slots that are summed in index order, so the result
+	 *  does not depend on thread scheduling.
 	 *  \return  The total potential energy. */
 	virtual double Energy();
 
@@ -255,8 +359,23 @@ public :
 	virtual void Force(GeometryVector & result, size_t i);
 
 	/** \brief Compute forces on all particles.
+	 *  Fills every species' rho first, so it is valid without a prior Energy call (MD order); species that
+	 *  run FINUFFT are filled inside the same parallel region as the force loop, as block tasks, together with
+	 *  their Type 2 forces where the joint cost gate accepted them (ShiftedCCPotential::FinufftForceGate), while
+	 *  free threads take the contact forces (RunSpeciesWork); every other particle gets Force(i) arithmetic. See
+	 *  GetLastForceBackendUsed of each species potential.
 	 *  \param results  Output vector of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results);
+
+	/** \brief Compute the total energy and every force in one evaluation, bitwise equal to Energy() followed
+	 *  by AllForce(results) (the optimizer's gradient callback, see CombinedEnergyForce). The species calls are
+	 *  those of the two (FINUFFT species as block tasks, the others with the full team); the contact part walks each
+	 *  particle's neighbors once (ContactEnergyAndForce) instead of twice. With FINUFFT species, threads free
+	 *  from block tasks take the contact walk (RunSpeciesWork), and after the barrier each particle adds its species
+	 *  force as AllForce does. Keeps no state beyond the call.
+	 *  \param results  Output vector of per-particle forces.
+	 *  \return         The total potential energy. */
+	double EnergyAndAllForce(std::vector<GeometryVector> & results) override;
 	//virtual void EnergyDerivativeToBasisVectors(double * grad, double Pressure);
 
 };

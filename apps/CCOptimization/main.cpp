@@ -229,7 +229,16 @@ int GetCCO(int argc, char ** argv){
 			ofile << tempstring << " is undefined \n";
 			return 1;
 		}
-		
+		/* Size the cells for the soft-core contact search to max(sigma, (V/N)^(1/d)): random packings from
+		   GetUnitCubicBox(dim, 0.1) keep 10 cells per side after Rescale, which makes every contact query scan
+		   about 0.09 N particles (an O(N^2) contact sum). The optimizer's and MD's working copies inherit these cells. */
+		GetInitConfigs = [get = GetInitConfigs, &sigma](size_t i) -> Configuration {
+			Configuration c = get(i);
+			const double n = std::max<double>(1.0, double(c.NumParticle()));
+			c.SetCellSize(std::max(sigma, std::pow(c.PeriodicVolume() / n, 1.0 / c.GetDimension())));
+			return c;
+		};
+
 		ofile << "Save as "; ifile >> savename;
 		ofile << std::endl;
 		ofile << "NumParticle = "<<num<<std::endl;
@@ -1312,6 +1321,10 @@ int GetMultiCCO(int argc, char ** argv){
 					ofile << "\nSave and load the progress of MD simulations.\n";
 					MDAllowRestore = true;
 				}
+				else if (tempstring2 == "finufft"){
+					ofile << "\nCollective densities use the FINUFFT backend.\n";
+					potential->SetRhoBackend(ShiftedCCPotential::RhoBackend::FinufftType1);
+				}
 				else {
 					ofile << tempstring2 << " is an undefined command\n";
 				}
@@ -1443,6 +1456,18 @@ int GetMultiCCO(int argc, char ** argv){
 				else if (tempstring2.compare("combined") == 0){
 				ofile << "\nWrite the configurations of all species\n";
 					split_species = false;
+				}
+				else if (tempstring2 == "finufft"){
+					ofile << "\nCollective densities use the FINUFFT backend.\n";
+					potential->SetRhoBackend(ShiftedCCPotential::RhoBackend::FinufftType1);
+				}
+				else if (tempstring2 == "history"){
+					// L-BFGS correction pairs kept by RelaxStructure_NLOPT (default 100).
+					if (!(ifile >> StructureOptimization_LBFGSHistory) || StructureOptimization_LBFGSHistory < 1) {
+						ofile << "Expected: history N (N >= 1)\n";
+						return 1;
+					}
+					ofile << "\nL-BFGS history = " << StructureOptimization_LBFGSHistory << "\n";
 				}
 				else if (tempstring2 == "export") {
 					std::string format;

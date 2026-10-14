@@ -1,4 +1,5 @@
 #include "StructureOptimization.h"
+#include "CombinedEnergyForce.h"
 
 #define GSL_RANGE_CHECK_OFF
 
@@ -9,6 +10,7 @@ const double MaxLength2=4000000;
 const double MinVolumeCoeff = 0.0;//structure is invalid if Volume < MinVolumeCoeff*|a1|*|a2|*...*|ad|
 size_t StructureOptimization_SaveConfigurationInterval=std::numeric_limits<size_t>::max();
 bool StructureOptimization_SaveNumberedConfiguration = false;
+size_t StructureOptimization_LBFGSHistory = 100;
 
 //codes related to elastic constants
 //\epsilon_{ij}=C_{ijkl}*e_{kl}
@@ -415,6 +417,9 @@ namespace
 	}
 
 	/** \brief Optimizer objective: the enthalpy (energy + pressure*volume) of the configuration encoded by x, with optional gradient.
+		For a gradient in the particle coordinates (Switch 0 or 2), a potential that also derives from
+		CombinedEnergyForce gives the energy and forces in one EnergyAndAllForce call; any other potential gets
+		Energy() and then AllForce(), as before.
 		\param n     Number of optimization variables.
 		\param x     Optimization parameter vector.
 		\param grad  If non-null, filled with the gradient of the objective.
@@ -452,7 +457,10 @@ namespace
 			double Pressure = (*pAux->pPressure);
 
 			pAux->pPot->SetConfiguration(list);
-			double result=pAux->pPot->Energy()+ Pressure*Volume;
+			//a gradient in the particle coordinates (Switch 0 or 2) needs the forces as well: one call if the potential offers it
+			CombinedEnergyForce * combined = (grad != nullptr && (pAux->Switch==0 || pAux->Switch==2)) ? dynamic_cast<CombinedEnergyForce *>(pAux->pPot) : nullptr;
+			std::vector<GeometryVector> forces;
+			double result=(combined != nullptr ? combined->EnergyAndAllForce(forces) : pAux->pPot->Energy())+ Pressure*Volume;
 
 			if(Verbosity>=5 ||  (Verbosity==4&&pAux->NumEvaluation%1000==999) )
 			{
@@ -467,8 +475,8 @@ namespace
 
 				if(pAux->Switch==2)
 				{
-					std::vector<GeometryVector> forces;
-					pAux->pPot->AllForce(forces);
+					if(combined == nullptr)
+						pAux->pPot->AllForce(forces);
 					for(size_t i=0; i<list.NumParticle(); i++)
 					{
 						//Configuration::particle * pA=list.GetParticle(i);
@@ -483,8 +491,8 @@ namespace
 				}
 				else if(pAux->Switch==0)
 				{
-					std::vector<GeometryVector> forces;
-					pAux->pPot->AllForce(forces);
+					if(combined == nullptr)
+						pAux->pPot->AllForce(forces);
 					for(size_t i=0; i<list.NumParticle(); i++)
 					{
 						GeometryVector & Force=forces[i];
@@ -866,7 +874,7 @@ void RelaxStructure_NLOPT_inner(Configuration & List, Potential & pot, double Pr
 		return;
 
 	opt = nlopt_create(NLOPT_LD_LBFGS, NumParam);
-	nlopt_set_vector_storage(opt, 100);
+	nlopt_set_vector_storage(opt, StructureOptimization_LBFGSHistory);
 	//nlopt_set_lower_bounds(opt, LBounds);
 	//nlopt_set_upper_bounds(opt, UBounds);
 	//nlopt_set_initial_step(opt, StepSizes);

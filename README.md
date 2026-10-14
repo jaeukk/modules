@@ -53,7 +53,7 @@ See `PROGRESS.md` for the full per-app status.
 
 | App | Purpose |
 |-----|---------|
-| [CCOptimization](apps/CCOptimization/) | Collective-coordinate optimization of stealthy / soft-core hyperuniform ground states (`soft_core_stealthy.out`), including multi-species stealthy potentials with per-species constraints. |
+| [CCOptimization](apps/CCOptimization/) | Collective-coordinate optimization of stealthy / soft-core hyperuniform ground states (`soft_core_stealthy.out`), including multi-species stealthy potentials with per-species constraints; optional FINUFFT backend (`USE_FINUFFT=1`, `finufft` keyword). |
 | [CHI](apps/CHI/) | Interactive CLI for ensemble-averaged **two-phase-media descriptors** of sphere packings: spectral density χ_V(k), lineal-path function, and related statistics. |
 | [CPmanager](apps/CPmanager/) | Utility to **manage ConfigPack files** (core's `ConfigurationPack` binary ensembles) — convert to/from per-configuration text files. |
 | [CollectiveCoordinateCLI](apps/CollectiveCoordinateCLI/) | **Ge Zhang's** driver for generating and analyzing **stealthy hyperuniform** collective-coordinate ground states (MD/MC/annealing + optimizers); used for Sci. Rep. **6**, 36963 (2016), PRE **92**, 022120 (2015), PRE **92**, 022119 (2015), PRX **5**, 021020 (2015). |
