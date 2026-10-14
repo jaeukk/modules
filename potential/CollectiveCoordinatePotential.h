@@ -29,6 +29,7 @@
 // See tests/finufft_type1/README.md for compile and run commands.
 #ifdef CCPOTENTIAL_USE_FINUFFT
 #include <complex>
+#include <cstring>
 #include <finufft.h>
 #endif
 
@@ -225,10 +226,154 @@ protected:
 	int FinufftLastStatus;	//< Last FINUFFT return code, or FinufftNotCalled.
 
 #ifdef CCPOTENTIAL_USE_FINUFFT
-	/** \brief Try to fill RhoReal/RhoImag with one FINUFFT Type 1 transform.
-		rho(k) = sum_j exp(+i k.r_j) with unit strengths and no normalization; since k = sum_d n_d b_d with
-		n_d = k.a_d/(2 pi), k.r_j = sum_d n_d (2 pi s_jd) for fractional coordinates s_j. The mapping from
-		constraints to integer modes is recomputed on every call because constraints is public and mutable.
+	/** \brief Persistent FINUFFT Type 1 state of one potential: the constraint-to-mode map, one guru plan and work buffers.
+		GetRho_FinufftType1 rebuilds it lazily whenever an input it depends on changes (see FinufftCacheIsCurrent);
+		an ineligible result is cached too, so a direct fallback costs only that check until an input changes.
+		A copy or assignment starts empty and is rebuilt on first use, so a plan handle is never shared or destroyed
+		twice; the destructor destroys the plan. Invariant: a non-null plan was made with the stored dim, ms, tol
+		and nthreads. The plan is not thread-safe: GetRho must not run concurrently on one object. */
+	struct FinufftType1Cache
+	{
+		bool built=false;	//< the members below describe the current inputs
+		DimensionType dim=0;	//< fingerprint: Dimension
+		size_t np=0;	//< fingerprint: particle count
+		double tol=0.0;	//< fingerprint: FinufftTolerance
+		std::int64_t maxModes=0;	//< fingerprint: FinufftMaxModes
+		int nthreads=0;	//< fingerprint: FinufftNumThreads
+		std::vector<double> key;	//< fingerprint: basis vectors, then constraint wavevectors (dim doubles each)
+		bool eligible=false;	//< false: the direct sum is used until an input changes
+		int status=FinufftNotCalled;	//< finufft_makeplan code if that made the inputs ineligible
+		std::int64_t ms[3]={1, 1, 1};	//< mode-grid sizes 2K_d+1 (1 for unused dimensions)
+		std::vector<std::int64_t> slot;	//< position of each constraint's mode in f
+		finufft_plan plan=nullptr;	//< owned guru Type 1 plan
+		std::vector<double> angles[3];	//< nonuniform points 2 pi s_jd, refilled on every call
+		std::vector<std::complex<double> > strengths, f;	//< unit strengths and output modes
+
+		/** \brief Construct an empty cache. */
+		FinufftType1Cache()=default;
+
+		/** \brief Copy-construct as an empty cache; the source's plan is never shared. */
+		FinufftType1Cache(const FinufftType1Cache &)
+		{
+		}
+
+		/** \brief Assign as an empty cache: destroy this object's plan and never share the source's.
+			\return *this. */
+		FinufftType1Cache & operator=(const FinufftType1Cache &)
+		{
+			this->DestroyPlan();
+			this->built=false;
+			return *this;
+		}
+
+		/** \brief Destroy the owned plan. */
+		~FinufftType1Cache()
+		{
+			this->DestroyPlan();
+		}
+
+		/** \brief Destroy the owned plan, if any, and clear the handle. */
+		void DestroyPlan()
+		{
+			if(this->plan!=nullptr)
+				finufft_destroy(this->plan);
+			this->plan=nullptr;
+		}
+	};
+	FinufftType1Cache FinufftCache;	//< Persistent Type 1 state; copies start empty (see FinufftType1Cache).
+
+	/** \brief Report whether FinufftCache was built from the current inputs.
+		Compares bit for bit everything the mode map, its eligibility and the plan depend on: Dimension, the
+		particle count, FinufftTolerance, FinufftMaxModes, FinufftNumThreads, the cell basis vectors (SetConfiguration
+		may bind a different cell) and every constraint wavevector (constraints is public and may be edited in
+		place between calls, so it is compared on every call rather than trusted).
+		\param basis  Basis vectors of the bound configuration (first Dimension entries are used).
+		\param np     Particle count of the bound configuration.
+		\return true if the cached map, eligibility and plan can be reused. */
+	bool FinufftCacheIsCurrent(const GeometryVector * basis, size_t np) const
+	{
+		const FinufftType1Cache & c=this->FinufftCache;
+		const DimensionType dim=this->Dimension;
+		const size_t nk=this->constraints.size();
+		const size_t bytes=dim*sizeof(double);
+		if(!c.built || c.dim!=dim || c.np!=np || c.tol!=this->FinufftTolerance || c.maxModes!=this->FinufftMaxModes
+			|| c.nthreads!=this->FinufftNumThreads || c.key.size()!=(dim+nk)*dim)
+			return false;
+		for(DimensionType d=0; d<dim; d++)
+			if(std::memcmp(&c.key[d*dim], basis[d].x, bytes)!=0)
+				return false;
+		for(size_t i=0; i<nk; i++)
+			if(std::memcmp(&c.key[(dim+i)*dim], this->constraints[i].k.x, bytes)!=0)
+				return false;
+		return true;
+	}
+
+	/** \brief Rebuild FinufftCache for the current inputs: mode map, eligibility, work buffers and plan.
+		The plan is kept when the grid sizes, tolerance and thread count are unchanged (for example after a
+		particle-count change, or a rescaled cell whose constraints keep their integer modes) and is otherwise
+		made with finufft_makeplan(type 1, iflag +1, one transform). Options: finufft_default_opts, then
+		modeord=0, nthreads=FinufftNumThreads, upsampfac=2.0 and spread_sort=1. The last two are fixed instead
+		of left to FINUFFT's density heuristics, so the transform never depends on point density. At the default
+		eps=1e-12 they are also what those heuristics pick (FINUFFT 2.5.1; 1D skips sorting only beyond 1000
+		points per fine-grid cell), so there rho is bitwise identical to the simple interface finufft{1,2,3}d1
+		with default options, which earlier builds called. A nonzero makeplan status makes the inputs
+		ineligible and is kept in the cache.
+		\param basis  Basis vectors of the bound configuration.
+		\param np     Particle count of the bound configuration.
+		\throw std::bad_alloc if a buffer cannot be allocated; the cache is then left unbuilt. */
+	void RebuildFinufftCache(const GeometryVector * basis, size_t np)
+	{
+		FinufftType1Cache & c=this->FinufftCache;
+		const DimensionType dim=this->Dimension;
+		const size_t nk=this->constraints.size();
+		c.built=false;
+		std::int64_t ms[3]={1, 1, 1};
+		const bool eligible=this->MapFinufftModes(basis, np, ms, c.slot);
+
+		//keep the plan only if it was made for the same grid, tolerance and threads (preserves the invariant)
+		if(!eligible || c.dim!=dim || c.tol!=this->FinufftTolerance || c.nthreads!=this->FinufftNumThreads
+			|| c.ms[0]!=ms[0] || c.ms[1]!=ms[1] || c.ms[2]!=ms[2])
+			c.DestroyPlan();
+		c.dim=dim;
+		c.np=np;
+		c.tol=this->FinufftTolerance;
+		c.maxModes=this->FinufftMaxModes;
+		c.nthreads=this->FinufftNumThreads;
+		for(int d=0; d<3; d++)
+			c.ms[d]=ms[d];
+		c.key.resize((dim+nk)*dim);
+		for(DimensionType d=0; d<dim; d++)
+			std::memcpy(&c.key[d*dim], basis[d].x, dim*sizeof(double));
+		for(size_t i=0; i<nk; i++)
+			std::memcpy(&c.key[(dim+i)*dim], this->constraints[i].k.x, dim*sizeof(double));
+		c.eligible=false;
+		c.status=FinufftNotCalled;
+
+		if(eligible)
+		{
+			for(DimensionType d=0; d<3; d++)
+				c.angles[d].resize(d<dim ? np : 0);
+			c.strengths.assign(np, std::complex<double>(1.0, 0.0));
+			c.f.resize(static_cast<size_t>(ms[0]*ms[1]*ms[2]));
+			if(c.plan==nullptr)
+			{
+				finufft_opts opts;
+				finufft_default_opts(&opts);
+				opts.modeord=0;
+				opts.nthreads=this->FinufftNumThreads;
+				opts.upsampfac=2.0;
+				opts.spread_sort=1;
+				c.status=finufft_makeplan(1, static_cast<int>(dim), ms, +1, 1, this->FinufftTolerance, &c.plan, &opts);
+				if(c.status!=0)
+					c.DestroyPlan();	//a warning code may still return a plan
+			}
+			c.eligible=(c.plan!=nullptr);
+		}
+		c.built=true;
+	}
+
+	/** \brief Map every constraint to its position in the FINUFFT mode grid and check eligibility.
+		Since k = sum_d n_d b_d with n_d = k.a_d/(2 pi), k.r_j = sum_d n_d (2 pi s_jd) for fractional coordinates s_j.
 		Snapping n_d to the nearest integer changes each phase by at most 2 pi dim max_d|n_d-round(n_d)|,
 		so a mode is accepted only if the rounding residual |n_d-round(n_d)| is within
 		max(budget, roundoff), where budget = min(1e-8, eps)/(8 pi dim) keeps the snapping error below
@@ -238,11 +383,85 @@ protected:
 		of the same order, so large indices are accepted (earlier builds rejected every mode with
 		roundoff > budget, i.e. indices above about 43/dim at eps=1e-12, silently falling back for large N).
 		Every eps below about 2e-14*dim (4*DBL_EPSILON > budget) is still rejected before FINUFFT is called.
+		Returns false when eps is below that floor, some mode fails the residual test above, |n_d| > 2^30,
+		or the mode grid exceeds FinufftMaxModes or FinufftSparseGridFactor*(Nk+N).
+		\param basis      Basis vectors of the bound configuration.
+		\param np         Particle count of the bound configuration.
+		\param[out] ms    Mode-grid sizes 2K_d+1 (left at 1 for unused dimensions).
+		\param[out] slot  Position of each constraint's mode in the modeord=0 output (valid only on true).
+		\return true if the constraints can use FINUFFT.
+		\throw std::bad_alloc if the temporary mode list cannot be allocated. */
+	bool MapFinufftModes(const GeometryVector * basis, size_t np, std::int64_t ms[3], std::vector<std::int64_t> & slot) const
+	{
+		const DimensionType dim=this->Dimension;
+		const size_t nk=this->constraints.size();
+		const double twopi=2.0*::pi;
+		const double maxIndex=static_cast<double>(std::int64_t(1)<<30);
+		const double budget=std::min(1e-8, this->FinufftTolerance)/(4.0*twopi*static_cast<double>(dim));
+		if(4.0*DBL_EPSILON>budget)
+			return false;	//eps below what double-precision phases resolve
+
+		//integer reciprocal-lattice indices of every constraint
+		std::vector<std::int64_t> modes(nk*dim);
+		std::int64_t K[3]={0, 0, 0};
+		for(size_t i=0; i<nk; i++)
+		{
+			const GeometryVector & k=this->constraints[i].k;
+			for(DimensionType d=0; d<dim; d++)
+			{
+				double dot=0.0, scale=0.0;
+				for(DimensionType c=0; c<dim; c++)
+				{
+					double t=k.x[c]*basis[d].x[c];
+					dot+=t;
+					scale+=std::abs(t);
+				}
+				double n=dot/twopi;
+				if(!std::isfinite(n) || std::abs(n)>maxIndex)
+					return false;
+				double nr=std::round(n);
+				double roundoff=4.0*DBL_EPSILON*(1.0+scale/twopi);
+				if(std::abs(n-nr)>std::max(budget, roundoff))
+					return false;
+				std::int64_t m=static_cast<std::int64_t>(nr);
+				modes[i*dim+d]=m;
+				K[d]=std::max(K[d], m<0 ? -m : m);
+			}
+		}
+
+		//grid sizes, guarded against overflow and unbounded allocation
+		std::int64_t total=1;
+		for(DimensionType d=0; d<dim; d++)
+		{
+			ms[d]=2*K[d]+1;
+			if(ms[d]>this->FinufftMaxModes/total)
+				return false;
+			total*=ms[d];
+		}
+		if(static_cast<double>(total)>FinufftSparseGridFactor*(static_cast<double>(nk)+static_cast<double>(np)))
+			return false;
+
+		//modeord=0: mode n_d sits at n_d+K_d, first dimension fastest
+		slot.resize(nk);
+		for(size_t i=0; i<nk; i++)
+		{
+			std::int64_t idx=0;
+			for(int d=static_cast<int>(dim)-1; d>=0; d--)
+				idx=idx*ms[d]+(modes[i*dim+d]+K[d]);
+			slot[i]=idx;
+		}
+		return true;
+	}
+
+	/** \brief Try to fill RhoReal/RhoImag with one FINUFFT Type 1 transform.
+		rho(k) = sum_j exp(+i k.r_j) with unit strengths and no normalization. The constraint-to-mode map and
+		the guru plan persist in FinufftCache and are rebuilt only when an input changes (FinufftCacheIsCurrent);
+		each call only passes the current points to finufft_setpts and runs finufft_execute.
 		Returns false, leaving the caller to use the direct sum, when: the dimension is not 1-3; there are
-		no constraints or no particles; eps is below that floor; some mode fails the residual test above;
-		|n_d| > 2^30; the mode grid exceeds
-		FinufftMaxModes or FinufftSparseGridFactor*(Nk+N); allocation fails; or FINUFFT returns nonzero.
-		All mapping checks run before the dense mode array is allocated.
+		no constraints or no particles; MapFinufftModes rejects the constraints; finufft_makeplan failed for
+		these inputs (its code is reported again on every call until an input changes); a fractional coordinate
+		is not finite; allocation fails; or finufft_setpts or finufft_execute returns nonzero.
+		Not thread-safe: the cached plan of one object must not be executed concurrently.
 		\return true if RhoReal/RhoImag hold the FINUFFT result, false if a direct fallback is required. */
 	bool GetRho_FinufftType1(void)
 	{
@@ -254,98 +473,46 @@ protected:
 		if(np>static_cast<size_t>(std::numeric_limits<std::int64_t>::max()))
 			return false;
 
+		FinufftType1Cache & c=this->FinufftCache;
 		const double twopi=2.0*::pi;
-		const double maxIndex=static_cast<double>(std::int64_t(1)<<30);
-		const double budget=std::min(1e-8, this->FinufftTolerance)/(4.0*twopi*static_cast<double>(dim));
-		if(4.0*DBL_EPSILON>budget)
-			return false;	//eps below what double-precision phases resolve
 		try
 		{
 			GeometryVector basis[3];
 			for(DimensionType d=0; d<dim; d++)
 				basis[d]=this->pConfig->GetBasisVector(d);
-
-			//integer reciprocal-lattice indices of every constraint
-			std::vector<std::int64_t> modes(nk*dim);
-			std::int64_t K[3]={0, 0, 0};
-			for(size_t i=0; i<nk; i++)
+			if(!this->FinufftCacheIsCurrent(basis, np))
+				this->RebuildFinufftCache(basis, np);
+			if(!c.eligible)
 			{
-				const GeometryVector & k=this->constraints[i].k;
-				for(DimensionType d=0; d<dim; d++)
-				{
-					double dot=0.0, scale=0.0;
-					for(DimensionType c=0; c<dim; c++)
-					{
-						double t=k.x[c]*basis[d].x[c];
-						dot+=t;
-						scale+=std::abs(t);
-					}
-					double n=dot/twopi;
-					if(!std::isfinite(n) || std::abs(n)>maxIndex)
-						return false;
-					double nr=std::round(n);
-					double roundoff=4.0*DBL_EPSILON*(1.0+scale/twopi);
-					if(std::abs(n-nr)>std::max(budget, roundoff))
-						return false;
-					std::int64_t m=static_cast<std::int64_t>(nr);
-					modes[i*dim+d]=m;
-					K[d]=std::max(K[d], m<0 ? -m : m);
-				}
-			}
-
-			//grid sizes, guarded against overflow and unbounded allocation
-			std::int64_t ms[3]={1, 1, 1};
-			std::int64_t total=1;
-			for(DimensionType d=0; d<dim; d++)
-			{
-				ms[d]=2*K[d]+1;
-				if(ms[d]>this->FinufftMaxModes/total)
-					return false;
-				total*=ms[d];
-			}
-			if(static_cast<double>(total)>FinufftSparseGridFactor*(static_cast<double>(nk)+static_cast<double>(np)))
+				this->FinufftLastStatus=c.status;
 				return false;
+			}
 
 			//fractional coordinates as angles in [0, 2 pi]
-			std::vector<double> angles[3];
-			for(DimensionType d=0; d<dim; d++)
-				angles[d].resize(np);
 			for(size_t j=0; j<np; j++)
 			{
 				const GeometryVector & s=this->pConfig->GetRelativeCoordinates(j);
 				for(DimensionType d=0; d<dim; d++)
-					angles[d][j]=twopi*(s.x[d]-std::floor(s.x[d]));
+				{
+					if(!std::isfinite(s.x[d]))
+						return false;
+					c.angles[d][j]=twopi*(s.x[d]-std::floor(s.x[d]));
+				}
 			}
-			std::vector<std::complex<double> > strengths(np, std::complex<double>(1.0, 0.0));
-			std::vector<std::complex<double> > f(static_cast<size_t>(total));
 
-			finufft_opts opts;
-			finufft_default_opts(&opts);
-			opts.modeord=0;
-			opts.nthreads=this->FinufftNumThreads;
-
-			const std::int64_t nj=static_cast<std::int64_t>(np);
-			int status;
-			if(dim==1)
-				status=finufft1d1(nj, angles[0].data(), strengths.data(), +1, this->FinufftTolerance, ms[0], f.data(), &opts);
-			else if(dim==2)
-				status=finufft2d1(nj, angles[0].data(), angles[1].data(), strengths.data(), +1, this->FinufftTolerance, ms[0], ms[1], f.data(), &opts);
-			else
-				status=finufft3d1(nj, angles[0].data(), angles[1].data(), angles[2].data(), strengths.data(), +1, this->FinufftTolerance, ms[0], ms[1], ms[2], f.data(), &opts);
+			int status=finufft_setpts(c.plan, static_cast<std::int64_t>(np), c.angles[0].data(), c.angles[1].data(), c.angles[2].data(), 0, nullptr, nullptr, nullptr);
+			if(status==0)
+				status=finufft_execute(c.plan, c.strengths.data(), c.f.data());
 			this->FinufftLastStatus=status;
 			if(status!=0)
 				return false;
 
-			//modeord=0: mode n_d sits at n_d+K_d, first dimension fastest
 			this->RhoReal.resize(nk);
 			this->RhoImag.resize(nk);
 			for(size_t i=0; i<nk; i++)
 			{
-				std::int64_t idx=0;
-				for(int d=static_cast<int>(dim)-1; d>=0; d--)
-					idx=idx*ms[d]+(modes[i*dim+d]+K[d]);
-				double tr=f[static_cast<size_t>(idx)].real();
-				double ti=f[static_cast<size_t>(idx)].imag();
+				double tr=c.f[static_cast<size_t>(c.slot[i])].real();
+				double ti=c.f[static_cast<size_t>(c.slot[i])].imag();
 #ifdef HAVETWOFIXEDPARTICLES
 				tr+=2;
 #endif
@@ -367,7 +534,9 @@ public:
 	bool RhoValid;
 	/** \brief Compute and cache the complex collective density rho(k) at every constraint.
 		Uses the backend chosen with SetRhoBackend. When FinufftType1 is selected but cannot be used
-		(see GetRho_FinufftType1), this falls back to the direct sum, so rho is always valid on return. */
+		(see GetRho_FinufftType1), this falls back to the direct sum, so rho is always valid on return.
+		Call it from one thread at a time per object (before any parallel force loop): it writes the cached rho
+		and, for FinufftType1, executes this object's persistent FINUFFT plan. */
 	virtual void GetRho(void)
 	{
 		assert(this->pConfig!=nullptr);
