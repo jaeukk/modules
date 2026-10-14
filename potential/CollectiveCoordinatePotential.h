@@ -366,8 +366,9 @@ public:
 
 	/** \brief Set up the force path of the next TryFinufftAllForce, serially, after PrepareFinufft: reset
 		GetLastForceBackendUsed to Direct, then make the Type 2 plan if accept and none exists (a failed makeplan
-		is not retried until an input changes), or destroy it otherwise. accept is the decision of FinufftForceGate
-		(UseFinufftForces for a lone object); it has no effect unless FINUFFT is eligible.
+		is not retried until an input changes), or destroy it otherwise (then a later accept makes it again). accept
+		is the decision of FinufftForceGate (UseFinufftForces for a lone object); it has no effect unless FINUFFT
+		is eligible.
 		\param accept  Compute the forces with one Type 2 execution.
 		\return true if TryFinufftAllForce will run Type 2, unless it fails at run time or rho falls back. */
 	bool PrepareFinufftForces(bool accept)
@@ -376,7 +377,11 @@ public:
 #ifdef CCPOTENTIAL_USE_FINUFFT
 		FinufftPlanCache & c=this->FinufftCache;
 		if(!accept || !c.built || !c.eligible)
+		{
+			if(c.plan2!=nullptr)
+				c.status2=FinufftNotCalled;	//a deliberate destroy, not a failure: allow the plan again
 			FinufftPlanCache::Destroy(c.plan2);
+		}
 		else if(c.plan2==nullptr && c.status2==FinufftNotCalled)
 			c.status2=this->MakeFinufftPlan(2, c.plan2);
 		return c.plan2!=nullptr;
@@ -416,6 +421,7 @@ protected:
 		bool eligible=false;	//< false: the direct sum is used until an input changes
 		int status=FinufftNotCalled;	//< Type 1 finufft_makeplan code if that made the inputs ineligible
 		int status2=FinufftNotCalled;	//< Type 2 finufft_makeplan code if it failed (not retried until a rebuild)
+		bool anglesOfRho=false;	//< angles hold the configuration of the cached rho (set only by GetRho_FinufftType1)
 		std::int64_t ms[3]={1, 1, 1};	//< mode-grid sizes 2K_d+1 (1 for unused dimensions)
 		std::vector<std::int64_t> slot;	//< position of each constraint's mode in f
 		finufft_plan plan=nullptr;	//< owned guru Type 1 plan (rho)
@@ -439,6 +445,7 @@ protected:
 			Destroy(this->plan);
 			Destroy(this->plan2);
 			this->built=false;
+			this->anglesOfRho=false;
 			return *this;
 		}
 
@@ -594,6 +601,7 @@ protected:
 		c.eligible=false;
 		c.status=FinufftNotCalled;
 		c.status2=FinufftNotCalled;
+		c.anglesOfRho=false;
 
 		if(eligible)
 		{
@@ -733,6 +741,7 @@ protected:
 			}
 
 			//fractional coordinates as angles in [0, 2 pi]
+			c.anglesOfRho=false;
 			for(size_t j=0; j<np; j++)
 			{
 				const GeometryVector & s=this->BoundConfig().GetRelativeCoordinates(this->BoundIndex(j));
@@ -763,6 +772,7 @@ protected:
 				this->RhoReal[i]=tr;
 				this->RhoImag[i]=ti;
 			}
+			c.anglesOfRho=true;
 		}
 		catch(const std::bad_alloc &)
 		{
@@ -809,8 +819,9 @@ protected:
 		Cartesian component a (ntransf = dimension): coefficient V_k k_a conj(rho_k) at the mode of constraint
 		k (constraints sharing a mode add, in constraint order), isign=+1. Every constraint enters once, as in
 		Force(), so no half-space factor is added. Requires plan2 and a cached rho produced by
-		GetRho_FinufftType1 from the current cache: the points passed to finufft_setpts are that call's angles,
-		which stay unchanged until execute, so the forces and rho describe the same configuration.
+		GetRho_FinufftType1 from the current cache (FinufftCache.anglesOfRho): the points passed to
+		finufft_setpts are that call's angles, which stay unchanged until execute, so the forces and rho
+		describe the same configuration.
 		\param[out] results  Per-particle forces; resized and written only on success.
 		\return true on success, false if an allocation or FINUFFT fails (the caller then uses the direct sum). */
 	bool FinufftType2Forces(std::vector<GeometryVector> & results)
@@ -993,7 +1004,9 @@ public:
 	}
 
 	/** \brief Make rho valid, then compute every force with the persistent FINUFFT Type 2 plan if the last
-		PrepareFinufftForces accepted it and rho came from FINUFFT Type 1. Never makes a plan, so after
+		PrepareFinufftForces accepted it and rho came from FINUFFT Type 1. A valid FINUFFT rho whose angles the
+		cache no longer holds (a copied or assigned object, whose cache starts empty, or a rebuilt cache) is
+		recomputed first; Type 1 is deterministic, so rho keeps its bits. Never makes a plan, so after
 		PrepareFinufft and PrepareFinufftForces it may run on one thread of a parallel region (one object per thread).
 		Records the outcome for GetLastForceBackendUsed: FinufftType2 on success, otherwise Direct, in which
 		case the caller must compute the forces with the direct sum of Force() (as AllForce does).
@@ -1005,7 +1018,13 @@ public:
 		if(this->RhoValid==false)
 			this->GetRho();
 #ifdef CCPOTENTIAL_USE_FINUFFT
-		if(this->FinufftCache.plan2!=nullptr && this->RhoBackendLastUsed==RhoBackend::FinufftType1 && this->FinufftType2Forces(results))
+		const FinufftPlanCache & c=this->FinufftCache;
+		if(c.plan2!=nullptr && this->RhoBackendLastUsed==RhoBackend::FinufftType1 && !c.anglesOfRho)
+		{
+			this->RhoValid=false;
+			this->GetRho();
+		}
+		if(c.plan2!=nullptr && this->RhoBackendLastUsed==RhoBackend::FinufftType1 && c.anglesOfRho && this->FinufftType2Forces(results))
 			this->ForceBackendLastUsed=ForceBackend::FinufftType2;
 #endif
 		return this->ForceBackendLastUsed==ForceBackend::FinufftType2;

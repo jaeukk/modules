@@ -11,8 +11,9 @@
  *    and rho always matches a fresh Direct evaluation;
  *  - an ineligible (fallback) result and a failed makeplan are cached and re-checked when an input changes;
  *  - no plan is ever made inside an OpenMP parallel region (MultiStealthyPotential prepares them serially);
- *  - the Type 2 force plan: copies start without it, assignment, a declining gate and destruction release it,
- *    and a failed Type 2 setpts falls back to the direct forces for that call only;
+ *  - the Type 2 force plan: an evaluated object copied, cloned or assigned gets the same Type 2 forces from its own
+ *    plans; assignment, a declining gate and destruction release the plan; a FINUFFT -> Direct -> FINUFFT toggle
+ *    brings it back; a failed Type 2 setpts falls back to the direct forces for that call only;
  *  - copies (copy constructor, clone, derived converting constructors) start empty, assignment drops the
  *    target's plan, and every plan is destroyed exactly once whatever the destruction order (no leak, no
  *    double destroy); MultiStealthyPotential makes one Type 1 plan per species, one Type 2 plan per species whose
@@ -496,10 +497,12 @@ void TestCopies()
 	Check(obs::live.size() == live0, "copies: every plan destroyed at scope exit");
 }
 
-/** \brief The Type 2 plan: copies start without it, assignment, a declining gate and destruction release it, and a
- *  failed Type 2 setpts falls back to the direct forces for that call only. */
+/** \brief The Type 2 plan: an evaluated object copied, cloned or assigned (valid rho, empty cache) gets its own plans
+ *  and the same Type 2 forces from AllForce; assignment, a declining gate and destruction release the plan; a
+ *  FINUFFT -> Direct -> FINUFFT toggle brings Type 2 back; a failed Type 2 setpts falls back for that call only. */
 void TestType2Plan()
 {
+	using Force = ShiftedCCPotential::ForceBackend;
 	std::mt19937_64 rng(123);
 	Configuration c = MakeConfig({{14.0, 0.0}, {3.0, 13.0}}, 500, rng);
 	const size_t live0 = obs::live.size();
@@ -510,9 +513,8 @@ void TestType2Plan()
 		direct.SetConfiguration(c);
 		std::vector<GeometryVector> fa, fb, fd;
 		direct.AllForce(fd);
-		a.PrepareFinufft();
-		Check(a.PrepareFinufftForces(true) && obs::live.size() == live0 + 2, "type 2: both plans live");
-		Check(a.TryFinufftAllForce(fa) && a.GetLastForceBackendUsed() == ShiftedCCPotential::ForceBackend::FinufftType2, "type 2: forces");
+		a.AllForce(fa);
+		Check(a.GetLastForceBackendUsed() == Force::FinufftType2 && obs::live.size() == live0 + 2, "type 2: AllForce made both plans and used Type 2");
 		double diff = 0, scale = 0;
 		for (size_t j = 0; j < fd.size(); j++)
 			for (DimensionType d = 0; d < 2; d++) {
@@ -520,25 +522,47 @@ void TestType2Plan()
 				scale = std::max(scale, std::abs(fd[j].x[d]));
 			}
 		Check(fa.size() == fd.size() && diff <= 1e-10 * std::max(1.0, scale), "type 2: forces differ from Direct by " + std::to_string(diff));
-		ShiftedCCPotential b(a);	// copy of an object holding both plans
+		auto same = [](const std::vector<GeometryVector> & x, const std::vector<GeometryVector> & y) {
+			bool equal = x.size() == y.size();
+			for (size_t j = 0; equal && j < x.size(); j++)
+				equal = std::memcmp(x[j].x, y[j].x, 2 * sizeof(double)) == 0;
+			return equal;
+		};
+		// copies of the evaluated object keep its valid rho but start without plans or angles
+		ShiftedCCPotential b(a);
 		Check(obs::live.size() == live0 + 2, "type 2 copy: shares no plan");
-		b.RhoValid = false;
-		b.PrepareFinufft();
-		b.PrepareFinufftForces(true);
-		Check(b.TryFinufftAllForce(fb) && obs::live.size() == live0 + 4, "type 2 copy: own plans");
-		bool same = fb.size() == fa.size();
-		for (size_t j = 0; same && j < fa.size(); j++)
-			same = std::memcmp(fa[j].x, fb[j].x, 2 * sizeof(double)) == 0;
-		Check(same, "type 2 copy: forces not bitwise repeatable");
+		b.AllForce(fb);
+		Check(b.GetLastForceBackendUsed() == Force::FinufftType2 && same(fa, fb) && obs::live.size() == live0 + 4, "type 2 copy: own plans, same forces");
+		std::unique_ptr<ShiftedCCPotential> cl(a.clone());
+		cl->AllForce(fb);
+		Check(cl->GetLastForceBackendUsed() == Force::FinufftType2 && same(fa, fb), "type 2 clone: same forces");
+		cl.reset();
+		Configuration other = MakeConfig({{14.0, 0.0}, {3.0, 13.0}}, 500, rng);	// e's stale angles must not be reused
+		ShiftedCCPotential e = MakePot(other, Modes(2, 3));
+		e.AllForce(fb);
+		Check(e.GetLastForceBackendUsed() == Force::FinufftType2 && obs::live.size() == live0 + 6, "type 2: second object has its plans");
+		e = a;	// assignment releases both of e's plans
+		Check(obs::live.size() == live0 + 4, "type 2 assignment released both plans");
+		e.AllForce(fb);
+		Check(e.GetLastForceBackendUsed() == Force::FinufftType2 && same(fa, fb) && obs::live.size() == live0 + 6, "type 2 assignment: own plans, same forces");
+		e = direct;
 		// a failed Type 2 setpts (rho is valid, so the next setpts is the Type 2 one) falls back for that call only
 		const size_t made = obs::makeplans;
 		obs::injectSetpts = 5;
-		Check(!b.TryFinufftAllForce(fb) && b.GetLastForceBackendUsed() == ShiftedCCPotential::ForceBackend::Direct, "type 2 setpts failure: direct fallback");
+		Check(!b.TryFinufftAllForce(fb) && b.GetLastForceBackendUsed() == Force::Direct, "type 2 setpts failure: direct fallback");
 		Check(b.TryFinufftAllForce(fb) && obs::makeplans == made, "type 2 setpts failure: plan kept and reused");
-		b = a;	// assignment releases both of b's plans
-		Check(obs::live.size() == live0 + 2, "type 2 assignment released both plans");
+		b = a;
+		Check(obs::live.size() == live0 + 2, "type 2: only a's plans left");
+		// FINUFFT -> Direct -> FINUFFT with unchanged inputs: Type 2 comes back
+		a.SetRhoBackend(Backend::Direct);
+		a.AllForce(fb);
+		Check(a.GetLastForceBackendUsed() == Force::Direct && same(fd, fb) && obs::live.size() == live0 + 1, "type 2 toggle: Direct releases the Type 2 plan");
+		a.SetRhoBackend(Backend::FinufftType1);
+		a.AllForce(fb);
+		Check(a.GetLastForceBackendUsed() == Force::FinufftType2 && same(fa, fb) && obs::live.size() == live0 + 2, "type 2 toggle: Type 2 comes back");
 		a.PrepareFinufftForces(false);	// the gate declined: the Type 2 plan goes, the Type 1 plan stays
 		Check(obs::live.size() == live0 + 1 && !a.TryFinufftAllForce(fb), "declined gate releases only the Type 2 plan");
+		Check(a.PrepareFinufftForces(true) && obs::live.size() == live0 + 2, "accepted again: the Type 2 plan is made again");
 	}
 	Check(obs::live.size() == live0, "type 2: every plan destroyed at scope exit");
 }
