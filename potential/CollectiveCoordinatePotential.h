@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <limits>
 #include <new>
+#include <algorithm>
 
 #include "Potential.h"
 
@@ -122,7 +123,7 @@ public:
 	 *  use their own direct sums; the inherited setting is ignored there.
 	 *  FinufftType1 also makes ShiftedCCPotential::AllForce use a FINUFFT Type 2 transform (see
 	 *  FinufftType2Forces), but only on objects whose dynamic type is exactly ShiftedCCPotential and only
-	 *  when a cost gate predicts a clear win over the direct loop (see UseFinufftForces). */
+	 *  when a cost gate predicts a clear win over the direct loop (see FinufftForceGate). */
 	enum class RhoBackend
 	{
 		Direct,		//< Direct O(N*Nk) summation (default, always available).
@@ -252,9 +253,10 @@ public:
 	}
 
 	/** \brief Return how the last ShiftedCCPotential::AllForce computed the forces.
-		FinufftType2 requires UseFinufftForces() to hold; Direct means the per-particle direct sum (selected,
-		declined by the cost gate, or a fallback). Force(i) is always direct and does not update this value.
-		In MultiStealthyPotential it describes each species' share of the last AllForce.
+		FinufftType2 requires the cost gate to accept (UseFinufftForces; for MultiStealthyPotential species the
+		joint FinufftForceGate); Direct means the per-particle direct sum (selected, declined by the cost gate, or
+		a fallback). Force(i) is always direct and does not update this value. In MultiStealthyPotential it
+		describes each species' share of the last AllForce.
 		\return The force backend used by the most recent base-class AllForce (Direct before any call). */
 	ForceBackend GetLastForceBackendUsed(void) const
 	{
@@ -277,58 +279,107 @@ public:
 #endif
 	}
 
-	/** \brief Report whether AllForce takes the FINUFFT Type 2 path for the bound configuration.
-		True only when built with CCPOTENTIAL_USE_FINUFFT, the object has exact type ShiftedCCPotential (derived
-		classes may override Force or GetRho), FinufftEligible() holds, and FinufftForcesPay predicts a clear win
-		over the direct loop on ParallelNumThread threads. The answer depends only on the configuration size,
-		constraints, cell and settings, never on measured time. AllForce still falls back if an allocation or
-		FINUFFT fails, or if rho fell back to the direct sum.
+	/** \brief Report whether ShiftedCCPotential::AllForce takes the FINUFFT Type 2 path for the bound configuration.
+		FinufftForceGate for this object alone with a team of ParallelNumThread: true only when built with
+		CCPOTENTIAL_USE_FINUFFT, the object has exact type ShiftedCCPotential (derived classes may override Force
+		or GetRho), FinufftEligible() holds, and the cost model predicts a clear win over the direct loop. The answer
+		depends only on the configuration size, constraints, cell and settings, never on measured time. AllForce
+		still falls back if an allocation or FINUFFT fails, or if rho fell back to the direct sum.
+		MultiStealthyPotential decides its species jointly (FinufftForceGate over the concurrent species).
 		\return true if AllForce will attempt the Type 2 transform. */
 	bool UseFinufftForces(void) const
 	{
+		return FinufftForceGate({this}, this->ParallelNumThread)[0]!=0;
+	}
+
+	/** \brief Cost gate: choose which of the objects evaluated in one parallel region compute their forces with one
+		Type 2 execution instead of the direct loop. Each object runs its rho (and an accepted Type 2) on one thread
+		of a team of `threads`; the forces of the others are computed by the direct loop over the whole team (the
+		model of MultiStealthyPotential::AllForce; a single object is ShiftedCCPotential::AllForce). Per object the
+		cost model (FinufftForceCosts) predicts direct, its share of the direct loop over the team, and type2, its
+		Type 2 time on one thread. With F objects, candidates are the FINUFFT-eligible objects of exact type
+		ShiftedCCPotential with direct >= FinufftForceMargin * type2 / min(F, threads). Taking candidates in order
+		of increasing type2, the longest prefix A is accepted whose summed savings are at least FinufftForceMargin
+		times the wall time A adds to the region, estimated as min(sum_A type2, ceil(F/threads) max_A type2): with
+		F <= threads every object has its own thread, so A adds at most its largest Type 2 time. For one object this
+		is direct >= FinufftForceMargin * type2. Never measures time, so runs with the same inputs and settings
+		decide alike and stay bitwise repeatable.
+		\param pots     Objects evaluated concurrently, one thread each.
+		\param threads  Team size of the region and of the direct loop.
+		\return One flag per object, nonzero if its forces should use Type 2 (all zero without FINUFFT). */
+	static std::vector<char> FinufftForceGate(const std::vector<const ShiftedCCPotential *> & pots, unsigned long threads)
+	{
+		std::vector<char> accept(pots.size(), 0);
 #ifdef CCPOTENTIAL_USE_FINUFFT
-		if(typeid(*this)!=typeid(ShiftedCCPotential))
-			return false;
-		const std::int64_t grid=this->FinufftGridModes();
-		return grid>0 && this->FinufftForcesPay(static_cast<double>(grid));
-#else
-		return false;
+		const double count=static_cast<double>(pots.size());
+		const double team=static_cast<double>(std::max<unsigned long>(threads, 1));
+		std::vector<double> direct(pots.size(), 0.0), type2(pots.size(), 0.0);
+		std::vector<size_t> order;
+		for(size_t s=0; s<pots.size(); s++)
+		{
+			const ShiftedCCPotential & pot=*pots[s];
+			const std::int64_t grid=typeid(pot)==typeid(ShiftedCCPotential) ? pot.FinufftGridModes() : 0;
+			if(grid==0)
+				continue;
+			pot.FinufftForceCosts(static_cast<double>(grid), team, direct[s], type2[s]);
+			if(direct[s]>=FinufftForceMargin*type2[s]/std::min(count, team))
+				order.push_back(s);
+		}
+		std::stable_sort(order.begin(), order.end(), [&type2](size_t a, size_t b) { return type2[a]<type2[b]; });
+		const double rounds=std::ceil(count/team);
+		double saved=0.0, added=0.0;
+		size_t take=0;
+		for(size_t j=0; j<order.size(); j++)
+		{
+			saved+=direct[order[j]];
+			added+=type2[order[j]];
+			if(saved>=FinufftForceMargin*std::min(added, rounds*type2[order[j]]))
+				take=j+1;
+		}
+		for(size_t j=0; j<take; j++)
+			accept[order[j]]=1;
 #endif
+		return accept;
 	}
 
 	/** \brief Refresh the persistent FINUFFT state serially and report whether GetRho will run FINUFFT.
 		Rebuilds the mode map and the Type 1 plan if an input changed, exactly as GetRho would, so that a
-		following GetRho or TryFinufftAllForce only executes plans. With forces it also decides the force
-		backend: GetLastForceBackendUsed is reset to Direct, and the Type 2 plan is made when UseFinufftForces()
-		holds and none exists (a failed makeplan is not retried until an input changes), or destroyed when it
-		does not, so TryFinufftAllForce runs Type 2 exactly when the gate accepted. Call it before running
-		several objects concurrently: plans are then never made inside a parallel region. The cached rho is
-		not touched.
-		\param forces  Also prepare the Type 2 force transform (AllForce); false prepares rho only (Energy).
+		following GetRho only executes the plan. Call it before running several objects concurrently: plans are
+		then never made inside a parallel region. The cached rho is not touched.
 		\return FinufftEligible() after the refresh: true if GetRho will run FINUFFT unless it fails at run time. */
-	bool PrepareFinufft(bool forces)
+	bool PrepareFinufft(void)
 	{
-		if(forces)
-			this->ForceBackendLastUsed=ForceBackend::Direct;
 #ifdef CCPOTENTIAL_USE_FINUFFT
-		FinufftPlanCache & c=this->FinufftCache;
 		try
 		{
 			size_t np=0;
-			if(this->RhoBackendSelected!=RhoBackend::FinufftType1 || !this->RefreshFinufftCache(np) || !c.eligible)
-				return false;
-			if(!forces)
-				return true;
-			if(!this->UseFinufftForces())
-				FinufftPlanCache::Destroy(c.plan2);
-			else if(c.plan2==nullptr && c.status2==FinufftNotCalled)
-				c.status2=this->MakeFinufftPlan(2, c.plan2);
+			return this->RhoBackendSelected==RhoBackend::FinufftType1 && this->RefreshFinufftCache(np) && this->FinufftCache.eligible;
 		}
 		catch(const std::bad_alloc &)
 		{
 			return false;
 		}
-		return true;
+#else
+		return false;
+#endif
+	}
+
+	/** \brief Set up the force path of the next TryFinufftAllForce, serially, after PrepareFinufft: reset
+		GetLastForceBackendUsed to Direct, then make the Type 2 plan if accept and none exists (a failed makeplan
+		is not retried until an input changes), or destroy it otherwise. accept is the decision of FinufftForceGate
+		(UseFinufftForces for a lone object); it has no effect unless FINUFFT is eligible.
+		\param accept  Compute the forces with one Type 2 execution.
+		\return true if TryFinufftAllForce will run Type 2, unless it fails at run time or rho falls back. */
+	bool PrepareFinufftForces(bool accept)
+	{
+		this->ForceBackendLastUsed=ForceBackend::Direct;
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		FinufftPlanCache & c=this->FinufftCache;
+		if(!accept || !c.built || !c.eligible)
+			FinufftPlanCache::Destroy(c.plan2);
+		else if(c.plan2==nullptr && c.status2==FinufftNotCalled)
+			c.status2=this->MakeFinufftPlan(2, c.plan2);
+		return c.plan2!=nullptr;
 #else
 		return false;
 #endif
@@ -348,7 +399,7 @@ protected:
 		RefreshFinufftCache rebuilds it lazily whenever an input it depends on changes (see FinufftCacheIsCurrent);
 		an ineligible result is cached too, so a direct fallback costs only that check until an input changes.
 		The Type 1 plan (rho) is made with the map; the Type 2 plan (forces, ntransf = dim) only by
-		PrepareFinufft(true) when the force gate accepts. Both read the same angles, which only GetRho_FinufftType1
+		PrepareFinufftForces when the force gate accepts. Both read the same angles, which only GetRho_FinufftType1
 		fills, so Type 2 always sees the configuration of the cached rho. A copy or assignment starts empty and is
 		rebuilt on first use, so a plan handle is never shared or destroyed twice; the destructor destroys both
 		plans. Invariant: a non-null plan was made with the stored dim, ms, tol and nthreads. The plans are not
@@ -507,8 +558,8 @@ protected:
 		Both plans are kept when the grid sizes, tolerance and thread count are unchanged (for example after a
 		particle-count change, or a rescaled cell whose constraints keep their integer modes) and are otherwise
 		destroyed; a missing Type 1 plan is then made with MakeFinufftPlan (the Type 2 plan only by
-		PrepareFinufft(true)). A nonzero Type 1 makeplan status makes the inputs ineligible and is kept in
-		the cache; a cached Type 2 makeplan failure is cleared, so the next PrepareFinufft(true) retries once.
+		PrepareFinufftForces). A nonzero Type 1 makeplan status makes the inputs ineligible and is kept in
+		the cache; a cached Type 2 makeplan failure is cleared, so the next PrepareFinufftForces retries once.
 		\param basis  Basis vectors of the bound configuration.
 		\param np     Particle count of the bound configuration.
 		\throw std::bad_alloc if a buffer cannot be allocated; the cache is then left unbuilt. */
@@ -720,35 +771,36 @@ protected:
 		return true;
 	}
 
-	// ponytail: machine-specific cost constants [microseconds], see FinufftForcesPay. They only choose the faster
-	// path, never the result's accuracy. Ceiling: another CPU, compiler or FINUFFT version moves the crossover.
-	// Upgrade: refit them with a calibration run on the production node (never from timings taken during a run).
-	static constexpr double FinufftCostCall[3]={123.0, 165.0, 320.0};	//< Type 2 fixed cost per call, by dimension.
-	static constexpr double FinufftCostParticle[3]={0.0135, 0.092, 1.90};	//< Type 2 cost per particle (all d transforms) at kernel width 13.
-	static constexpr double FinufftCostMode[3]={0.021, 0.018, 0.033};	//< Type 2 cost per mode-grid point.
-	static constexpr double FinufftCostPair[3]={0.0147, 0.0219, 0.0241};	//< Direct Force() cost per particle-constraint pair.
+	// ponytail: machine-specific cost constants [microseconds], fitted on 2026-10-14 on the 8-thread (4-core SMT) WSL
+	// development machine while another job loaded it: FINUFFT 2.5.1 persistent plans (setpts + execute plus the
+	// coefficient and output copies of FinufftType2Forces), one thread, eps=1e-12, g++ -O3. The Type 2 constants are
+	// the tightest linear upper envelope of 136 cases (1-3D, N=100-10000, chi 0.02-0.8, orthogonal and skew cells);
+	// the pair cost is the smallest single-thread rate of the long direct loops. They only choose the faster path,
+	// never the result's accuracy. Ceiling: another CPU, compiler or FINUFFT version moves the crossover. Upgrade:
+	// refit them with a calibration run on the production node (never from timings taken during a run).
+	static constexpr double FinufftCostCall[3]={1.8, 8.3, 129.5};	//< Type 2 fixed cost per execution, by dimension.
+	static constexpr double FinufftCostParticle[3]={0.0150, 0.134, 1.95};	//< Type 2 cost per particle (all d transforms) at kernel width 13.
+	static constexpr double FinufftCostMode[3]={0.0361, 0.0128, 0.0569};	//< Type 2 cost per mode-grid point.
+	static constexpr double FinufftCostPair[3]={0.0126, 0.0189, 0.0212};	//< Direct Force() cost per particle-constraint pair.
 	static constexpr double FinufftForceMargin=1.3;	//< Required predicted speedup before Type 2 replaces the direct loop.
 
-	/** \brief Cost gate: predict whether one Type 2 execution clearly beats the direct force loop it replaces.
-		direct = FinufftCostPair * N * Nk / ParallelNumThread (ideal parallel speedup, which favors direct);
-		type2 = FinufftCostCall + FinufftCostParticle * (w/13)^d * N + FinufftCostMode * G on one thread, with
-		G the mode-grid size and w = ceil(-log10(eps/10)) in [2, 16] the estimated kernel width. Type 2 is
-		chosen only if direct >= FinufftForceMargin * type2. A deterministic function of N, Nk, the grid, eps,
-		the dimension and the thread count, so runs with the same settings stay bitwise repeatable.
-		\param gridModes  Mode-grid size G.
-		\return true if the transform is predicted to win by the margin (false outside dimensions 1-3). */
-	bool FinufftForcesPay(double gridModes) const
+	/** \brief Cost model of the two force paths of one object, in microseconds (see FinufftForceGate).
+		direct = FinufftCostPair * N * Nk / threads, the object's share of the direct force loop with ideal parallel
+		speedup (which favors the direct loop); type2 = FinufftCostCall + FinufftCostParticle * (w/13)^d * N +
+		FinufftCostMode * G for one Type 2 execution on one thread with the persistent plan (no plan is made per
+		call), with w = ceil(-log10(eps/10)) in [2, 16] the estimated kernel width and G the mode-grid size.
+		\param gridModes    Mode-grid size G (> 0, so the dimension is 1-3).
+		\param threads      Team size of the direct loop.
+		\param[out] direct  Predicted direct-loop time.
+		\param[out] type2   Predicted Type 2 time. */
+	void FinufftForceCosts(double gridModes, double threads, double & direct, double & type2) const
 	{
-		if(this->Dimension<1 || this->Dimension>3)
-			return false;
 		const int d=static_cast<int>(this->Dimension)-1;
 		const double np=static_cast<double>(this->NumBoundParticle());
 		const double nk=static_cast<double>(this->constraints.size());
-		const double threads=static_cast<double>(std::max<unsigned long>(this->ParallelNumThread, 1));
 		const double w=std::min(16.0, std::max(2.0, std::ceil(-std::log10(this->FinufftTolerance/10.0))));
-		const double direct=FinufftCostPair[d]*np*nk/threads;
-		const double type2=FinufftCostCall[d]+FinufftCostParticle[d]*std::pow(w/13.0, d+1)*np+FinufftCostMode[d]*gridModes;
-		return direct>=FinufftForceMargin*type2;
+		direct=FinufftCostPair[d]*np*nk/threads;
+		type2=FinufftCostCall[d]+FinufftCostParticle[d]*std::pow(w/13.0, d+1)*np+FinufftCostMode[d]*gridModes;
 	}
 
 	/** \brief Compute every collective-coordinate force with the persistent Type 2 plan.
@@ -941,8 +993,8 @@ public:
 	}
 
 	/** \brief Make rho valid, then compute every force with the persistent FINUFFT Type 2 plan if the last
-		PrepareFinufft(true) accepted it (UseFinufftForces) and rho came from FINUFFT Type 1. Never makes a plan,
-		so after PrepareFinufft(true) it may run on one thread of a parallel region (one object per thread).
+		PrepareFinufftForces accepted it and rho came from FINUFFT Type 1. Never makes a plan, so after
+		PrepareFinufft and PrepareFinufftForces it may run on one thread of a parallel region (one object per thread).
 		Records the outcome for GetLastForceBackendUsed: FinufftType2 on success, otherwise Direct, in which
 		case the caller must compute the forces with the direct sum of Force() (as AllForce does).
 		\param[out] results  Holds the forces (resized to the particle count) only when true is returned.
@@ -961,14 +1013,16 @@ public:
 
 	/** \brief Compute the force on every particle.
 		When UseFinufftForces() holds (FinufftType1 backend, exact type ShiftedCCPotential, and a predicted
-		win of the cost gate), one FINUFFT Type 2 execution gives all forces (PrepareFinufft(true), then
-		TryFinufftAllForce); otherwise, or if it falls back, every particle uses the direct sum of Force().
+		win of the cost gate), one FINUFFT Type 2 execution gives all forces (PrepareFinufft,
+		PrepareFinufftForces, then TryFinufftAllForce); otherwise, or if it falls back, every particle uses the
+		direct sum of Force().
 		The exact-type test keeps derived classes that override Force or GetRho (S2, LogCC, MultiConfig, ...)
 		on their own formulas. See GetLastForceBackendUsed.
 		\param[out] results  Resized list of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results)
 	{
-		this->PrepareFinufft(true);
+		this->PrepareFinufft();
+		this->PrepareFinufftForces(this->UseFinufftForces());
 		if(this->TryFinufftAllForce(results))
 			return;
 		long end=this->NumBoundParticle();

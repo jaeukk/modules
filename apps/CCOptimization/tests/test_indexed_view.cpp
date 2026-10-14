@@ -173,6 +173,8 @@ void CompareWithOldBinding(MultiStealthyPotential & p, const Configuration & c, 
 	for (size_t s = 0; s < p.species_constraints.size(); s++) {
 		const std::string tag = label + " species " + std::to_string(s);
 		ShiftedCCPotential & view = *p.species_constraints[s].CCPotential;
+		// MultiStealthyPotential decides Type 2 forces jointly over its species; record its choice first.
+		const bool type2 = view.GetLastForceBackendUsed() == ShiftedCCPotential::ForceBackend::FinufftType2;
 		const std::vector<size_t> & idx = p.species_constraints[s].idx;
 		const Configuration sub = OldSubconfig(c, idx);
 		ShiftedCCPotential ref(view);	// same constraints, backend, thread count
@@ -186,6 +188,10 @@ void CompareWithOldBinding(MultiStealthyPotential & p, const Configuration & c, 
 		ref.AllForce(fr);
 		view.AllForce(fv);
 		Check(fr.size() == idx.size() && Same(fr, fv, dim), tag + ": species forces differ");
+		if (type2) {	// the reference on the force path MultiStealthyPotential chose
+			ref.PrepareFinufftForces(true);
+			Check(ref.TryFinufftAllForce(fr), tag + ": reference Type 2 forces failed");
+		}
 		// Assemble the totals exactly as MultiStealthyPotential does (valid when contact is off); a species that
 		// runs FINUFFT sums its energy on one thread there (species-concurrent evaluation).
 		if (view.FinufftEligible()) ref.ParallelNumThread = 1;

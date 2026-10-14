@@ -10,9 +10,12 @@
  *    and changes of FinufftTolerance, FinufftMaxModes and FinufftNumThreads rebuild the map or plan as needed,
  *    and rho always matches a fresh Direct evaluation;
  *  - an ineligible (fallback) result and a failed makeplan are cached and re-checked when an input changes;
+ *  - the Type 2 force plan: copies start without it, assignment, a declining gate and destruction release it,
+ *    and a failed Type 2 setpts falls back to the direct forces for that call only;
  *  - copies (copy constructor, clone, derived converting constructors) start empty, assignment drops the
  *    target's plan, and every plan is destroyed exactly once whatever the destruction order (no leak, no
- *    double destroy); MultiStealthyPotential makes one plan per species and no more on later callbacks.
+ *    double destroy); MultiStealthyPotential makes one Type 1 plan per species, one Type 2 plan per species whose
+ *    forces use Type 2, and no more on later callbacks.
  * Build and run: make test-finufft-plan. AddressSanitizer run (from apps/CCOptimization, after make deps):
  *   g++ -std=c++17 -g -O1 -fopenmp -fsanitize=address -DCCPOTENTIAL_USE_FINUFFT -I../../core -I../../pairstat
  *     -I../../potential -I. -I$HOME/install/include tests/test_finufft_plan_cache.cpp MultiStealthyPotential.cpp
@@ -41,6 +44,7 @@ int __real_finufft_setpts(finufft_plan plan, int64_t M, const double * x, const 
 
 namespace obs {
 size_t makeplans = 0;            //< finufft_makeplan calls
+size_t makeplans2 = 0;           //< finufft_makeplan calls of Type 2 (force) plans
 size_t setpts = 0;               //< finufft_setpts calls
 size_t badDestroys = 0;          //< finufft_destroy of a handle that is not live (double destroy)
 int lastNthreads = -1;           //< opts->nthreads of the last makeplan
@@ -57,6 +61,7 @@ extern "C" int __wrap_finufft_makeplan(int type, int dim, const int64_t * n_mode
                                        finufft_plan * plan, const finufft_opts * opts)
 {
 	obs::makeplans++;
+	obs::makeplans2 += type == 2;
 	obs::lastNthreads = opts->nthreads;
 	obs::lastUpsampfac = opts->upsampfac;
 	obs::lastSort = opts->spread_sort;
@@ -488,6 +493,53 @@ void TestCopies()
 	Check(obs::live.size() == live0, "copies: every plan destroyed at scope exit");
 }
 
+/** \brief The Type 2 plan: copies start without it, assignment, a declining gate and destruction release it, and a
+ *  failed Type 2 setpts falls back to the direct forces for that call only. */
+void TestType2Plan()
+{
+	std::mt19937_64 rng(123);
+	Configuration c = MakeConfig({{14.0, 0.0}, {3.0, 13.0}}, 500, rng);
+	const size_t live0 = obs::live.size();
+	{
+		ShiftedCCPotential a = MakePot(c, Modes(2, 8));
+		ShiftedCCPotential direct(a);
+		direct.SetRhoBackend(Backend::Direct);
+		direct.SetConfiguration(c);
+		std::vector<GeometryVector> fa, fb, fd;
+		direct.AllForce(fd);
+		a.PrepareFinufft();
+		Check(a.PrepareFinufftForces(true) && obs::live.size() == live0 + 2, "type 2: both plans live");
+		Check(a.TryFinufftAllForce(fa) && a.GetLastForceBackendUsed() == ShiftedCCPotential::ForceBackend::FinufftType2, "type 2: forces");
+		double diff = 0, scale = 0;
+		for (size_t j = 0; j < fd.size(); j++)
+			for (DimensionType d = 0; d < 2; d++) {
+				diff = std::max(diff, std::abs(fa[j].x[d] - fd[j].x[d]));
+				scale = std::max(scale, std::abs(fd[j].x[d]));
+			}
+		Check(fa.size() == fd.size() && diff <= 1e-10 * std::max(1.0, scale), "type 2: forces differ from Direct by " + std::to_string(diff));
+		ShiftedCCPotential b(a);	// copy of an object holding both plans
+		Check(obs::live.size() == live0 + 2, "type 2 copy: shares no plan");
+		b.RhoValid = false;
+		b.PrepareFinufft();
+		b.PrepareFinufftForces(true);
+		Check(b.TryFinufftAllForce(fb) && obs::live.size() == live0 + 4, "type 2 copy: own plans");
+		bool same = fb.size() == fa.size();
+		for (size_t j = 0; same && j < fa.size(); j++)
+			same = std::memcmp(fa[j].x, fb[j].x, 2 * sizeof(double)) == 0;
+		Check(same, "type 2 copy: forces not bitwise repeatable");
+		// a failed Type 2 setpts (rho is valid, so the next setpts is the Type 2 one) falls back for that call only
+		const size_t made = obs::makeplans;
+		obs::injectSetpts = 5;
+		Check(!b.TryFinufftAllForce(fb) && b.GetLastForceBackendUsed() == ShiftedCCPotential::ForceBackend::Direct, "type 2 setpts failure: direct fallback");
+		Check(b.TryFinufftAllForce(fb) && obs::makeplans == made, "type 2 setpts failure: plan kept and reused");
+		b = a;	// assignment releases both of b's plans
+		Check(obs::live.size() == live0 + 2, "type 2 assignment released both plans");
+		a.PrepareFinufftForces(false);	// the gate declined: the Type 2 plan goes, the Type 1 plan stays
+		Check(obs::live.size() == live0 + 1 && !a.TryFinufftAllForce(fb), "declined gate releases only the Type 2 plan");
+	}
+	Check(obs::live.size() == live0, "type 2: every plan destroyed at scope exit");
+}
+
 /** \brief MultiStealthyPotential: one plan per species, none on later optimizer-style callbacks. */
 void TestMulti()
 {
@@ -510,7 +562,7 @@ void TestMulti()
 	}
 	std::cout.rdbuf(old);
 	fast.SetRhoBackend(Backend::FinufftType1);
-	const size_t made = obs::makeplans;
+	const size_t made = obs::makeplans, made2 = obs::makeplans2;
 	for (int step = 0; step < 5; step++) {
 		Configuration moved(c);
 		for (size_t j = 0; j < n; j++) {
@@ -533,7 +585,12 @@ void TestMulti()
 			}
 		Check(std::abs(ef - ed) <= 1e-10 * std::abs(ed) && df <= 1e-10 * std::max(1.0, scale), "multi: matches Direct at step " + std::to_string(step));
 	}
-	Check(obs::makeplans == made + S, "multi: one plan per species over five callbacks (made " + std::to_string(obs::makeplans - made) + ")");
+	// AllForce adds one persistent Type 2 plan per species whose forces the gate sent to Type 2.
+	size_t type2 = 0;
+	for (const auto & sp : fast.species_constraints)
+		type2 += sp.CCPotential->GetLastForceBackendUsed() == ShiftedCCPotential::ForceBackend::FinufftType2;
+	Check(obs::makeplans - made - (obs::makeplans2 - made2) == S, "multi: one Type 1 plan per species over five callbacks (made " + std::to_string(obs::makeplans - made) + ")");
+	Check(obs::makeplans2 - made2 == type2, "multi: one Type 2 plan per Type 2 species over five callbacks");
 }
 
 }  // namespace
@@ -552,6 +609,7 @@ int main()
 	TestAgreement({{6.0, 0.0, 0.0}, {1.0, 6.5, 0.0}, {-0.7, 0.9, 5.8}}, 300, 4, "3D skew");
 	TestInvalidation();
 	TestCopies();
+	TestType2Plan();
 	TestMulti();
 	Check(obs::live.empty(), "plans still live at exit: " + std::to_string(obs::live.size()));
 	Check(obs::badDestroys == 0, "double or unknown destroys: " + std::to_string(obs::badDestroys));

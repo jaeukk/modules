@@ -8,8 +8,8 @@
  * ShiftedCCPotential_S2 and LogCCPotential keep their own per-particle Force loop. Cost gate: a tiny 3D
  * system stays on the direct loop (bitwise equal to per-particle Force), and a mid-size one switches to
  * Type 2 with one thread but not with eight. MultiStealthyPotential with one heavy and two light species:
- * only the heavy one uses Type 2, and AllForce agrees with per-particle Force within the same tolerance;
- * with Direct it equals Force bitwise.
+ * the heavy one uses Type 2, every species uses the backend of the joint gate (FinufftForceGate), and AllForce
+ * agrees with per-particle Force within the same tolerance; with Direct it equals Force bitwise.
  * Build and run: make USE_FINUFFT=1 test_finufft_forces.out && ./test_finufft_forces.out */
 
 #include "MultiStealthyPotential.h"
@@ -146,7 +146,7 @@ void Single(DimensionType d, bool skew, bool duplicate, int threads)
 	const std::string label = name.str();
 	const size_t n = d == 1 ? 400 : (d == 2 ? 600 : 500);
 	const Configuration c = RandomCell(d, n, skew);
-	// chi large enough for a clear predicted Type 2 win at 8 threads (see ShiftedCCPotential::FinufftForcesPay)
+	// chi large enough for a clear predicted Type 2 win at 8 threads (see ShiftedCCPotential::FinufftForceGate)
 	const std::vector<GeometryVector> ks = Modes(c, d == 1 ? 0.6 : (d == 2 ? 0.3 : 1.0));
 
 	ShiftedCCPotential direct(d), fast(d), again(d);
@@ -232,10 +232,16 @@ void Multi(DimensionType d, Backend backend, int threads)
 
 	std::vector<GeometryVector> all;
 	p.AllForce(all);  // cold: MD order, no prior Energy
+	// Species run concurrently, so the gate decides them jointly; the heavy species alone must already pay.
+	std::vector<const ShiftedCCPotential *> pots;
+	for (const auto & sp : p.species_constraints)
+		pots.push_back(sp.CCPotential.get());
+	const std::vector<char> gate = ShiftedCCPotential::FinufftForceGate(pots, threads);
+	Check(!finufft || (gate[1] && p.species_constraints[1].CCPotential->UseFinufftForces()), label + ": heavy species declined");
 	for (size_t s = 0; s < species; s++) {
 		const ShiftedCCPotential & cc = *p.species_constraints[s].CCPotential;
-		const bool type2 = finufft && s == 1;
-		Check(cc.UseFinufftForces() == type2 && cc.GetLastForceBackendUsed() == (type2 ? ForceBackend::FinufftType2 : ForceBackend::Direct),
+		const bool type2 = finufft && gate[s];
+		Check(cc.GetLastForceBackendUsed() == (type2 ? ForceBackend::FinufftType2 : ForceBackend::Direct),
 		      label + ": unexpected force backend of species " + std::to_string(s));
 	}
 	const std::vector<GeometryVector> each = PerParticle(p, n);

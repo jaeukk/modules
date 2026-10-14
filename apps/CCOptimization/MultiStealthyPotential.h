@@ -125,15 +125,16 @@ protected:
 	//	double Volume;
 	std::vector<spec_index> idx2species;
 
-	/** \brief Prepare every species' FINUFFT plans (ShiftedCCPotential::PrepareFinufft, serially, so no plan is
-	 *  made inside a parallel region) and mark the species that Energy and AllForce run concurrently, one
-	 *  thread per species. A species qualifies when its GetRho will run FINUFFT (FinufftEligible): that call
-	 *  is single-threaded, so only running such species side by side uses the other threads; in AllForce the
-	 *  same thread also runs the species' Type 2 forces when the cost gate accepted them. Every other
+	/** \brief Prepare every species' FINUFFT plans (ShiftedCCPotential::PrepareFinufft and, for AllForce,
+	 *  PrepareFinufftForces; serially, so no plan is made inside a parallel region) and mark the species that
+	 *  Energy and AllForce run concurrently, one thread per species. A species qualifies when its GetRho will
+	 *  run FINUFFT (FinufftEligible): that call is single-threaded, so only running such species side by side
+	 *  uses the other threads. In AllForce the same thread also runs the species' Type 2 forces when the joint
+	 *  cost gate (ShiftedCCPotential::FinufftForceGate over the concurrent species) accepted them. Every other
 	 *  species (Direct, or FINUFFT falling back to the direct sum) keeps its own evaluation, parallel over
 	 *  wavevectors with the full team, which also balances better when S is not a multiple of the thread
 	 *  count. The marks depend only on constraints, cells, particle numbers and settings, never on timing.
-	 *  \param forces  Also prepare the Type 2 force transforms (AllForce); false for Energy.
+	 *  \param forces  Also decide and prepare the Type 2 force transforms (AllForce); false for Energy.
 	 *  \return One flag per species, nonzero for the concurrent path. */
 	std::vector<char> PrepareSpecies(bool forces);
 
@@ -284,7 +285,7 @@ public :
 	/** \brief Compute forces on all particles.
 	 *  Fills every species' rho first, so it is valid without a prior Energy call (MD order); species that
 	 *  run FINUFFT are filled concurrently inside the same parallel region as the force loop, together with
-	 *  their Type 2 forces where the cost gate accepted them (ShiftedCCPotential::UseFinufftForces); every
+	 *  their Type 2 forces where the joint cost gate accepted them (ShiftedCCPotential::FinufftForceGate); every
 	 *  other particle gets Force(i). See GetLastForceBackendUsed of each species potential.
 	 *  \param results  Output vector of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results);

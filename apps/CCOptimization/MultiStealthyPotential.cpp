@@ -319,13 +319,23 @@ void MultiStealthyPotential::UpdateSubconfigs()
 }
 
 /** \brief Prepare every species' FINUFFT plans serially and mark the species evaluated concurrently.
- *  \param forces Also prepare the Type 2 force transforms (AllForce).
+ *  \param forces Also decide the force paths (FinufftForceGate over the concurrent species) and prepare them.
  *  \return One flag per species, nonzero for the concurrent path. */
 std::vector<char> MultiStealthyPotential::PrepareSpecies(bool forces)
 {
-	std::vector<char> concurrent(this->species_constraints.size());
-	for (size_t s = 0; s < concurrent.size(); s++)
-		concurrent[s] = this->species_constraints[s].CCPotential->PrepareFinufft(forces);
+	const size_t numSpecies = this->species_constraints.size();
+	std::vector<char> concurrent(numSpecies);
+	std::vector<const ShiftedCCPotential *> pots;
+	for (size_t s = 0; s < numSpecies; s++) {
+		concurrent[s] = this->species_constraints[s].CCPotential->PrepareFinufft();
+		if (concurrent[s])
+			pots.push_back(this->species_constraints[s].CCPotential.get());
+	}
+	if (forces) {
+		const std::vector<char> type2 = ShiftedCCPotential::FinufftForceGate(pots, this->ParallelNumThread);
+		for (size_t s = 0, j = 0; s < numSpecies; s++)
+			this->species_constraints[s].CCPotential->PrepareFinufftForces(concurrent[s] && type2[j++]);
+	}
 	return concurrent;
 }
 
