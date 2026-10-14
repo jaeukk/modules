@@ -8,7 +8,8 @@ with one FINUFFT Type 1 transform (positive sign, unit strengths, no normalizati
 O(N * Nk) direct sum. The constraint weights `constraints[i].V` are not transform strengths.
 `Energy` and `Force` are unchanged and consume the cached rho. With the FINUFFT backend selected,
 `AllForce` of an object of exact type `ShiftedCCPotential` also uses one FINUFFT Type 2 transform
-(`GetLastForceBackendUsed`); derived classes keep the direct per-particle `Force` loop.
+when a deterministic cost gate predicts a clear win over the direct loop (`UseFinufftForces`,
+`GetLastForceBackendUsed`); derived classes keep the direct per-particle `Force` loop.
 
 ## API
 

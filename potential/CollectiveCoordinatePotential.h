@@ -96,7 +96,8 @@ public:
 	 *  ShiftedCCPotential_withWeight and ShiftedCCPotential_S2_MultiConfig override GetRho and always
 	 *  use their own direct sums; the inherited setting is ignored there.
 	 *  FinufftType1 also makes ShiftedCCPotential::AllForce use a FINUFFT Type 2 transform (see
-	 *  AllForce_FinufftType2), but only on objects whose dynamic type is exactly ShiftedCCPotential. */
+	 *  AllForce_FinufftType2), but only on objects whose dynamic type is exactly ShiftedCCPotential and only
+	 *  when a cost gate predicts a clear win over the direct loop (see UseFinufftForces). */
 	enum class RhoBackend
 	{
 		Direct,		//< Direct O(N*Nk) summation (default, always available).
@@ -226,13 +227,40 @@ public:
 	}
 
 	/** \brief Return how the last ShiftedCCPotential::AllForce computed the forces.
-		FinufftType2 requires the FinufftType1 rho backend and an object of exact type ShiftedCCPotential;
-		Direct means the per-particle direct sum (selected, or a fallback). Force(i) is always direct and
-		does not update this value.
+		FinufftType2 requires UseFinufftForces() to hold; Direct means the per-particle direct sum (selected,
+		declined by the cost gate, or a fallback). Force(i) is always direct and does not update this value.
 		\return The force backend used by the most recent base-class AllForce (Direct before any call). */
 	ForceBackend GetLastForceBackendUsed(void) const
 	{
 		return this->ForceBackendLastUsed;
+	}
+
+	/** \brief Report whether AllForce takes the FINUFFT Type 2 path for the bound configuration.
+		True only when built with CCPOTENTIAL_USE_FINUFFT, the FinufftType1 backend is selected, the object
+		has exact type ShiftedCCPotential (derived classes may override Force or GetRho), FinufftMapModes
+		accepts the constraints, and FinufftForcesPay predicts a clear win over the direct loop on
+		ParallelNumThread threads. The answer depends only on the configuration size, constraints, cell and
+		settings, never on measured time. AllForce still falls back if an allocation or FINUFFT fails.
+		\return true if AllForce will attempt the Type 2 transform. */
+	bool UseFinufftForces(void) const
+	{
+		assert(this->pConfig!=nullptr);
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		//a one-mode grid bounds the Type 2 cost from below, so small systems skip the mapping
+		if(this->RhoBackendSelected!=RhoBackend::FinufftType1 || typeid(*this)!=typeid(ShiftedCCPotential) || !this->FinufftForcesPay(1.0))
+			return false;
+		try
+		{
+			FinufftModeMap map;
+			return this->FinufftMapModes(map) && this->FinufftForcesPay(static_cast<double>(map.total));
+		}
+		catch(const std::bad_alloc &)
+		{
+			return false;
+		}
+#else
+		return false;
+#endif
 	}
 
 protected:
@@ -255,7 +283,7 @@ protected:
 		finufft_opts opts;	//< FINUFFT defaults with modeord=0 and nthreads=FinufftNumThreads.
 	};
 
-	/** \brief Map every constraint to an integer reciprocal-lattice mode and fill the particle angles.
+	/** \brief Map every constraint to an integer reciprocal-lattice mode and size the mode grid.
 		Since k = sum_d n_d b_d with n_d = k.a_d/(2 pi), k.r_j = sum_d n_d (2 pi s_jd) for fractional
 		coordinates s_j. The mapping from constraints to integer modes is recomputed on every call because
 		constraints is public and mutable.
@@ -271,9 +299,9 @@ protected:
 		Returns false, leaving the caller to use the direct sum, when: the dimension is not 1-3; there are
 		no constraints or no particles; eps is below that floor; some mode fails the residual test above;
 		|n_d| > 2^30; or the mode grid exceeds FinufftMaxModes or FinufftSparseGridFactor*(Nk+N).
-		All mapping checks run before the angles (and the callers' dense mode arrays) are allocated.
-		\param[out] map  Grid sizes, flat mode index of each constraint, particle angles and FINUFFT options.
-		\return true if map is ready for FINUFFT, false if a direct fallback is required.
+		Angles and options are filled separately by FinufftFillAngles.
+		\param[out] map  Grid sizes and flat mode index of each constraint.
+		\return true if FINUFFT can be used, false if a direct fallback is required.
 		\throw std::bad_alloc if an allocation fails. */
 	bool FinufftMapModes(FinufftModeMap & map) const
 	{
@@ -343,21 +371,62 @@ protected:
 				idx=idx*map.ms[d]+(modes[i*dim+d]+K[d]);
 			map.index[i]=static_cast<size_t>(idx);
 		}
+		return true;
+	}
 
-		//fractional coordinates as angles in [0, 2 pi]
-		for(DimensionType d=0; d<dim; d++)
+	/** \brief Fill the particle angles and FINUFFT options of a mode map accepted by FinufftMapModes.
+		\param[in,out] map  Receives fractional coordinates as angles in [0, 2 pi] and the options
+		                    (FINUFFT defaults with modeord=0 and nthreads=FinufftNumThreads).
+		\throw std::bad_alloc if an allocation fails. */
+	void FinufftFillAngles(FinufftModeMap & map) const
+	{
+		const double twopi=2.0*::pi;
+		const size_t np=this->pConfig->NumParticle();
+		for(DimensionType d=0; d<this->Dimension; d++)
 			map.angles[d].resize(np);
 		for(size_t j=0; j<np; j++)
 		{
 			const GeometryVector & s=this->pConfig->GetRelativeCoordinates(j);
-			for(DimensionType d=0; d<dim; d++)
+			for(DimensionType d=0; d<this->Dimension; d++)
 				map.angles[d][j]=twopi*(s.x[d]-std::floor(s.x[d]));
 		}
 
 		finufft_default_opts(&map.opts);
 		map.opts.modeord=0;
 		map.opts.nthreads=this->FinufftNumThreads;
-		return true;
+	}
+
+	// ponytail: machine-specific cost constants [microseconds], fitted (+-10%) on 2026-10-14 on the 8-thread
+	// WSL development machine: FINUFFT 2.5.1 simple interface, one thread, eps=1e-12, g++ -O3, timing the
+	// whole AllForce for N=32-10000 and grids up to 111^2 / 21^3. They only choose the faster path, never the
+	// result's accuracy. Ceiling: another CPU, compiler or FINUFFT version moves the crossover. Upgrade:
+	// refit these with a calibration run on the production node (never from timings taken during a run).
+	static constexpr double FinufftCostCall[3]={123.0, 165.0, 320.0};	//< Type 2 fixed cost per call (plan, FFT setup), by dimension.
+	static constexpr double FinufftCostParticle[3]={0.0135, 0.092, 1.90};	//< Type 2 cost per particle (all d transforms) at kernel width 13.
+	static constexpr double FinufftCostMode[3]={0.021, 0.018, 0.033};	//< Type 2 cost per mode-grid point.
+	static constexpr double FinufftCostPair[3]={0.0147, 0.0219, 0.0241};	//< Direct Force() cost per particle-constraint pair.
+	static constexpr double FinufftForceMargin=1.3;	//< Required predicted speedup before Type 2 replaces the direct loop.
+
+	/** \brief Cost gate: predict whether one Type 2 transform clearly beats the direct force loop it replaces.
+		direct = FinufftCostPair * N * Nk / ParallelNumThread (ideal parallel speedup, which favors direct);
+		type2 = FinufftCostCall + FinufftCostParticle * (w/13)^d * N + FinufftCostMode * G on one thread, with
+		G the mode-grid size and w = ceil(-log10(eps/10)) in [2, 16] the estimated kernel width. Type 2 is
+		chosen only if direct >= FinufftForceMargin * type2. A deterministic function of N, Nk, the grid, eps,
+		the dimension and the thread count, so runs with the same settings stay bitwise repeatable.
+		\param gridModes  Mode-grid size G (FinufftModeMap::total); 1 gives a lower bound of the Type 2 cost.
+		\return true if the transform is predicted to win by the margin (false outside dimensions 1-3). */
+	bool FinufftForcesPay(double gridModes) const
+	{
+		if(this->Dimension<1 || this->Dimension>3)
+			return false;
+		const int d=static_cast<int>(this->Dimension)-1;
+		const double np=static_cast<double>(this->pConfig->NumParticle());
+		const double nk=static_cast<double>(this->constraints.size());
+		const double threads=static_cast<double>(std::max<unsigned long>(this->ParallelNumThread, 1));
+		const double w=std::min(16.0, std::max(2.0, std::ceil(-std::log10(this->FinufftTolerance/10.0))));
+		const double direct=FinufftCostPair[d]*np*nk/threads;
+		const double type2=FinufftCostCall[d]+FinufftCostParticle[d]*std::pow(w/13.0, d+1)*np+FinufftCostMode[d]*gridModes;
+		return direct>=FinufftForceMargin*type2;
 	}
 
 	/** \brief Try to fill RhoReal/RhoImag with one FINUFFT Type 1 transform.
@@ -372,6 +441,7 @@ protected:
 			FinufftModeMap map;
 			if(!this->FinufftMapModes(map))
 				return false;
+			this->FinufftFillAngles(map);
 			const size_t nk=this->constraints.size();
 			const size_t np=this->pConfig->NumParticle();
 			std::vector<std::complex<double> > strengths(np, std::complex<double>(1.0, 0.0));
@@ -414,10 +484,11 @@ protected:
 		F_{j,a} = (2/V) Im[ sum_k V_k k_a conj(rho_k) exp(+i k.r_j) ]. That is one Type 2 transform per
 		Cartesian component a (ntransf = dimension): coefficient V_k k_a conj(rho_k) at the mode of constraint
 		k (constraints sharing a mode add, in constraint order), isign=+1, eps=FinufftTolerance, and the
-		modeord=0, nthreads=FinufftNumThreads options of FinufftMapModes. Every constraint enters once, as
+		modeord=0, nthreads=FinufftNumThreads options of FinufftFillAngles. Every constraint enters once, as
 		in Force(), so no half-space factor is added. Uses the cached rho, which the caller must have made
-		valid. Returns false, leaving the caller to use the direct sum for every particle, when
-		FinufftMapModes rejects the constraints, an allocation fails, or FINUFFT returns nonzero.
+		valid. TryFinufftAllForce calls it only when UseFinufftForces() holds. Returns false, leaving the caller to use
+		the direct sum for every particle, when FinufftMapModes rejects the constraints, an allocation fails,
+		or FINUFFT returns nonzero.
 		\param[out] results  Per-particle forces, already sized to the particle count; written only on success.
 		\return true if results holds the transform result, false if a direct fallback is required. */
 	bool AllForce_FinufftType2(std::vector<GeometryVector> & results)
@@ -427,6 +498,7 @@ protected:
 			FinufftModeMap map;
 			if(!this->FinufftMapModes(map))
 				return false;
+			this->FinufftFillAngles(map);
 			const DimensionType dim=this->Dimension;
 			const size_t nk=this->constraints.size();
 			const size_t np=this->pConfig->NumParticle();
@@ -598,26 +670,43 @@ public:
 		result.MultiplyFrom(1.0/Volume);
 	}
 
-	/** \brief Compute the force on every particle.
-		With the FinufftType1 backend selected on an object of exact type ShiftedCCPotential, one FINUFFT
-		Type 2 transform gives all forces (AllForce_FinufftType2); otherwise, or if it falls back, every
-		particle uses the direct sum of Force(). The exact-type test keeps derived classes that override
-		Force or GetRho (S2, LogCC, MultiConfig, ...) on their own formulas. See GetLastForceBackendUsed.
-		\param[out] results  Resized list of per-particle forces. */
-	virtual void AllForce(std::vector<GeometryVector> & results)
+	/** \brief Make rho valid and compute every force with one FINUFFT Type 2 transform if UseFinufftForces().
+		Records the outcome for GetLastForceBackendUsed: FinufftType2 on success, otherwise Direct, in which
+		case the caller must compute the forces with the direct sum of Force() (as AllForce does).
+		\param[out] results  Holds the forces (resized to the particle count) only when true is returned.
+		\return true if results holds the Type 2 forces, false if the direct sum is required. */
+	bool TryFinufftAllForce(std::vector<GeometryVector> & results)
 	{
 		if(this->RhoValid==false)
 			this->GetRho();
-		long end=this->pConfig->NumParticle();
-		results.resize(end);
 #ifdef CCPOTENTIAL_USE_FINUFFT
-		if(this->RhoBackendSelected==RhoBackend::FinufftType1 && typeid(*this)==typeid(ShiftedCCPotential) && this->AllForce_FinufftType2(results))
+		if(this->UseFinufftForces())
 		{
-			this->ForceBackendLastUsed=ForceBackend::FinufftType2;
-			return;
+			results.resize(this->pConfig->NumParticle());
+			if(this->AllForce_FinufftType2(results))
+			{
+				this->ForceBackendLastUsed=ForceBackend::FinufftType2;
+				return true;
+			}
 		}
 #endif
 		this->ForceBackendLastUsed=ForceBackend::Direct;
+		return false;
+	}
+
+	/** \brief Compute the force on every particle.
+		When UseFinufftForces() holds (FinufftType1 backend, exact type ShiftedCCPotential, and a predicted
+		win of the cost gate), one FINUFFT Type 2 transform gives all forces (TryFinufftAllForce);
+		otherwise, or if it falls back, every particle uses the direct sum of Force(). The exact-type test
+		keeps derived classes that override Force or GetRho (S2, LogCC, MultiConfig, ...) on their own
+		formulas. See GetLastForceBackendUsed.
+		\param[out] results  Resized list of per-particle forces. */
+	virtual void AllForce(std::vector<GeometryVector> & results)
+	{
+		if(this->TryFinufftAllForce(results))
+			return;
+		long end=this->pConfig->NumParticle();
+		results.resize(end);
 		unsigned long tempNumThread = 1;
 		std::swap(tempNumThread, this->ParallelNumThread);
 #pragma omp parallel for num_threads(tempNumThread) default(shared)

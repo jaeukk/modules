@@ -453,11 +453,12 @@ GeometryVector MultiStealthyPotential::ContactForce(size_t i) const
 }
 
 /** \brief Evaluate forces for all particles.
- *  Species on the FINUFFT backend compute their collective-coordinate forces in bulk with
- *  ShiftedCCPotential::AllForce (one Type 2 transform, or its direct fallback), which also fills the
- *  rho cache when Energy was not called first; the forces are scaled by u0 N_s/N and stored at the
- *  global indices idx, and each particle then adds its contact force. Particles of Direct species use
- *  Force(i) as before, in one parallel loop. Either way the per-particle arithmetic matches Force().
+ *  Each species first fills its rho cache (also safe without prior Energy) through
+ *  ShiftedCCPotential::TryFinufftAllForce. Where that computes the collective-coordinate forces with one
+ *  Type 2 transform (FINUFFT backend and a predicted win of the cost gate), they are scaled by u0 N_s/N,
+ *  stored at the global indices idx, and each particle then adds its contact force. Particles of all
+ *  other species use Force(i) as before, in the same parallel loop, so a declined or failed transform
+ *  gives the previous direct results. Either way the per-particle arithmetic matches Force().
  *  \param results Output vector of forces. */
 void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 {
@@ -471,13 +472,9 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 	std::vector<GeometryVector> speciesForce;
 	for (size_t s = 0; s < this->species_constraints.size(); s++){
 		species_potential & species = this->species_constraints[s];
-		if (species.CCPotential->GetRhoBackend() != ShiftedCCPotential::RhoBackend::FinufftType1){
-			// Fill each shared cache before the parallel force loop (also safe without prior Energy).
-			species.CCPotential->GetRho();
+		bulk[s] = species.CCPotential->TryFinufftAllForce(speciesForce);
+		if (!bulk[s])
 			continue;
-		}
-		bulk[s] = 1;
-		species.CCPotential->AllForce(speciesForce);
 		const double scale = this->u0 * (double)species.idx.size()/(double)this->pConfig->NumParticle();
 		for (size_t j = 0; j < species.idx.size(); j++){
 			speciesForce[j].MultiplyFrom(scale);

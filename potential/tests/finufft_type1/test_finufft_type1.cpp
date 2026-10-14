@@ -274,9 +274,9 @@ Errors CompareBackends(Checker & ck, const ShiftedCCPotential & proto, const Con
 	for(size_t j=0; j<ff.size() && j<fd.size(); j++)
 		for(DimensionType d=0; d<config.GetDimension(); d++)
 			e.force=std::max(e.force, ck.Close(ff[j].x[d], fd[j].x[d], s.force, r, a, label+": AllForce", j));
-	//the FINUFFT rho backend also selects Type 2 forces; its fallback matches Direct bitwise (checked above)
+	//the FINUFFT rho backend also selects Type 2 forces when the cost gate predicts a win (UseFinufftForces)
 	const bool type2=fast.GetLastForceBackendUsed()==ShiftedCCPotential::ForceBackend::FinufftType2;
-	ck.Check(type2==usedFinufft, label+": AllForce used Type 2 exactly when rho used FINUFFT");
+	ck.Check(type2==(usedFinufft && fast.UseFinufftForces()), label+": AllForce used Type 2 exactly when rho used FINUFFT and the gate accepted");
 
 	//single-particle Force is always direct: bitwise equal to a direct AllForce, within tolerance of Type 2
 	const size_t np=config.NumParticle();
