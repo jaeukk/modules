@@ -3,7 +3,9 @@
  *
  * Usage: bench_finufft.out eval|opt DIM N SPECIES CHI THREADS SEED [direct|finufft]
  *   eval  per-evaluation timings (Configuration build, SetConfiguration, Energy, AllForce) for
- *         Direct and, when compiled in, FINUFFT, plus energy/force agreement with Direct.
+ *         Direct and, when compiled in, FINUFFT, plus energy/force agreement with Direct; also
+ *         SetConfiguration + Energy + AllForce against SetConfiguration + EnergyAndAllForce, interleaved
+ *         (sep_*, fused_*: median and minimum ms), and whether every fused result was bitwise the same.
  *   opt   one RelaxStructure_NLOPT run (as CollectiveCoordinateMultiRun) with the given backend;
  *         prints wall time, evaluation count, final energy (also re-evaluated by a fresh Direct
  *         potential) and a hash of the final coordinates for repeatability checks.
@@ -52,11 +54,15 @@ double Since(Clock::time_point t) { return std::chrono::duration<double>(Clock::
 
 /** \brief MultiStealthyPotential that counts energy evaluations (one per optimizer callback). */
 struct CountingPotential : MultiStealthyPotential {
-	size_t energyCalls = 0;  //< number of Energy() calls
+	size_t energyCalls = 0;  //< number of Energy() and EnergyAndAllForce() calls
 	using MultiStealthyPotential::MultiStealthyPotential;
 	/** \brief Count and forward to MultiStealthyPotential::Energy.
 	 *  \return Total potential energy. */
 	double Energy() override { ++energyCalls; return MultiStealthyPotential::Energy(); }
+	/** \brief Count and forward to MultiStealthyPotential::EnergyAndAllForce (which does not call Energy).
+	 *  \param forces  Output per-particle forces.
+	 *  \return        Total potential energy. */
+	double EnergyAndAllForce(std::vector<GeometryVector> & forces) override { ++energyCalls; return MultiStealthyPotential::EnergyAndAllForce(forces); }
 };
 
 /** \brief Random packing as in GetMultiCCO ("random"): cubic box of unit number density.
@@ -144,9 +150,10 @@ void Eval(const Setup & s)
 	for (Backend b : backends) {
 		auto p = MakePotential(s, packing, b, modes);
 		const int reps = 100;
-		std::vector<double> total;
+		std::vector<double> total, sep, fused;
 		double tBuild = 0, tSet = 0, tEnergy = 0, tForce = 0, dE = 0, dF = 0, fMax = 0;
-		std::vector<GeometryVector> f, fd;
+		bool bitwise = true;
+		std::vector<GeometryVector> f, fd, ff;
 		for (int r = 0; r < reps; r++) {
 			auto t0 = Clock::now();
 			Configuration moved(start);  // the optimizer builds a fresh Configuration per callback
@@ -156,11 +163,26 @@ void Eval(const Setup & s)
 				moved.MoveParticle(i, x);
 			}
 			const double build = Since(t0);
-			t0 = Clock::now(); p->SetConfiguration(moved); const double set = Since(t0);
-			t0 = Clock::now(); const double e = p->Energy(); const double energy = Since(t0);
-			t0 = Clock::now(); p->AllForce(f); const double force = Since(t0);
-			tBuild += build; tSet += set; tEnergy += energy; tForce += force;
-			total.push_back(build + set + energy + force);
+			double e = 0, ef = 0;
+			for (int pass = 0; pass < 2; pass++) {
+				if (pass == r % 2) {  // alternate which path runs first
+					t0 = Clock::now(); p->SetConfiguration(moved); const double set = Since(t0);
+					t0 = Clock::now(); e = p->Energy(); const double energy = Since(t0);
+					t0 = Clock::now(); p->AllForce(f); const double force = Since(t0);
+					tBuild += build; tSet += set; tEnergy += energy; tForce += force;
+					total.push_back(build + set + energy + force);
+					sep.push_back(set + energy + force);
+				}
+				else {
+					t0 = Clock::now();
+					p->SetConfiguration(moved);
+					ef = p->EnergyAndAllForce(ff);
+					fused.push_back(Since(t0));
+				}
+			}
+			bitwise = bitwise && std::memcmp(&e, &ef, sizeof(double)) == 0 && f.size() == ff.size();
+			for (size_t i = 0; bitwise && i < f.size(); i++)
+				bitwise = std::memcmp(f[i].x, ff[i].x, sizeof(double) * s.dim) == 0;
 			if (r == 0) {
 				direct->SetConfiguration(moved);
 				const double ed = direct->Energy();
@@ -174,12 +196,17 @@ void Eval(const Setup & s)
 			}
 		}
 		std::sort(total.begin(), total.end());
+		std::sort(sep.begin(), sep.end());
+		std::sort(fused.begin(), fused.end());
 		const double ms = 1e3 / reps;
 		std::cout << std::setprecision(4) << "{\"mode\":\"eval\",\"backend\":\"" << Name(b) << "\",\"dim\":" << s.dim
 			<< ",\"N\":" << s.n << ",\"species\":" << s.species << ",\"chi\":" << s.chi << ",\"modes\":" << modes
 			<< ",\"threads\":" << s.threads << ",\"build_ms\":" << tBuild * ms << ",\"set_ms\":" << tSet * ms
 			<< ",\"energy_ms\":" << tEnergy * ms << ",\"allforce_ms\":" << tForce * ms
 			<< ",\"median_total_ms\":" << 1e3 * total[total.size() / 2]
+			<< ",\"sep_median_ms\":" << 1e3 * sep[sep.size() / 2] << ",\"sep_min_ms\":" << 1e3 * sep[0]
+			<< ",\"fused_median_ms\":" << 1e3 * fused[fused.size() / 2] << ",\"fused_min_ms\":" << 1e3 * fused[0]
+			<< ",\"fused_bitwise\":" << (bitwise ? "true" : "false")
 			<< std::setprecision(3) << ",\"energy_rel_diff\":" << dE << ",\"force_rel_diff\":" << dF / std::max(fMax, 1e-300) << "}\n";
 	}
 }

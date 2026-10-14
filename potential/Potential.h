@@ -92,6 +92,19 @@ public:
 		\param Position  Configuration to bind; it must remain alive while energy and force are evaluated. */
 	virtual void SetConfiguration(const Configuration & Position) =0;
 
+	/** \brief Compute the total potential energy and the force on every particle of the bound configuration.
+		Exactly Energy() followed by AllForce(forces). A potential may override it with one combined evaluation
+		only if that returns bitwise the same energy and forces. Declared after every other virtual function so
+		that their vtable slots are unchanged.
+		\param[out] forces  A list of forces, as AllForce.
+		\return The total potential energy, as Energy(). */
+	virtual double EnergyAndAllForce(std::vector<GeometryVector> & forces)
+	{
+		const double e=this->Energy();
+		this->AllForce(forces);
+		return e;
+	}
+
 	/** \brief Print a number very close to 1 when Force() is consistent with Energy(), and c is not a local minimum of this potential.
 		\param c    Configuration on which to test the force/energy consistency.
 		\param Nbr  Index of the particle to perturb. */

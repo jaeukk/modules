@@ -143,6 +143,20 @@ protected:
 	 *  \return   e0 times the contact force on particle i (zero when repulsion is off). */
 	GeometryVector ContactForce(size_t i) const;
 
+	/** \brief Contact energy slot and contact force of one particle from one neighbor traversal: the same
+	 *  neighbors, order and expressions as the contact sum of Energy (pairs with i < SourceParticle) and as
+	 *  ContactForce (every SourceParticle != i), so both results are bitwise those of the separate walks.
+	 *  \param i           Particle index.
+	 *  \param[out] force  e0 times the contact force on particle i, as ContactForce(i).
+	 *  \return            Contact energy of the pairs (i, j > i), before the factor e0 (zero when repulsion is off). */
+	double ContactEnergyAndForce(size_t i, GeometryVector & force) const;
+
+	/** \brief Total energy from per-species and per-particle slots, summed in index order.
+	 *  \param speciesEnergy  Energy of each species potential.
+	 *  \param contactEnergy  Contact energy slot of each particle (empty when repulsion is off).
+	 *  \return               u0 times the sum of N_s/N times the species energies, plus e0 times the contact sum. */
+	double TotalEnergy(const std::vector<double> & speciesEnergy, const std::vector<double> & contactEnergy) const;
+
 public :
 	double e0 = 1.0;	//< energy scale for contact potential
 	double u0 = 1.0;	//< energy scale for collective-coordinate potential
@@ -289,6 +303,16 @@ public :
 	 *  other particle gets Force(i). See GetLastForceBackendUsed of each species potential.
 	 *  \param results  Output vector of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results);
+
+	/** \brief Compute the total energy and every force in one evaluation, bitwise equal to Energy() followed
+	 *  by AllForce(results) (the optimizer's gradient callback). The species calls are those of the two
+	 *  (FINUFFT species on one thread each, the others with the full team); the contact part walks each
+	 *  particle's neighbors once (ContactEnergyAndForce) instead of twice. With FINUFFT species, threads free
+	 *  from species work start the contact walk, and after the barrier each particle adds its species force as
+	 *  AllForce does. Keeps no state beyond the call.
+	 *  \param results  Output vector of per-particle forces.
+	 *  \return         The total potential energy. */
+	double EnergyAndAllForce(std::vector<GeometryVector> & results) override;
 	//virtual void EnergyDerivativeToBasisVectors(double * grad, double Pressure);
 
 };

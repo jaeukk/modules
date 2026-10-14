@@ -420,8 +420,17 @@ double MultiStealthyPotential::Energy()
 				contactEnergy[i] = contact(i);
 		}
 	}
+	return this->TotalEnergy(speciesEnergy, contactEnergy);
+}
+
+/** \brief Total energy from per-species and per-particle slots, summed in index order.
+ *  \param speciesEnergy Energy of each species potential.
+ *  \param contactEnergy Contact energy slot of each particle (empty when repulsion is off).
+ *  \return u0 times the sum of N_s/N times the species energies, plus e0 times the contact sum. */
+double MultiStealthyPotential::TotalEnergy(const std::vector<double> &speciesEnergy, const std::vector<double> &contactEnergy) const
+{
 	double CC = 0.0, CP = 0.0;
-	for (long s = 0; s < numSpecies; s++)
+	for (size_t s = 0; s < speciesEnergy.size(); s++)
 		CC += ((double)this->species_constraints[s].idx.size()/(double)this->pConfig->NumParticle())*speciesEnergy[s];
 	for (double energy : contactEnergy)
 		CP += energy;
@@ -494,6 +503,46 @@ GeometryVector MultiStealthyPotential::ContactForce(size_t i) const
 	return force_CP;
 }
 
+/** \brief Contact energy slot and contact force of one particle from one neighbor traversal.
+ *  The expressions are those of Energy's contact sum and of ContactForce, operation for operation.
+ *  \param i Particle index.
+ *  \param force Output: e0 times the contact force on particle i, as ContactForce(i).
+ *  \return Contact energy of the pairs (i, j > i), before the factor e0 (zero when repulsion is off). */
+double MultiStealthyPotential::ContactEnergyAndForce(size_t i, GeometryVector &force) const
+{
+	double E = 0.0;
+	force = GeometryVector(static_cast<int> (this->Dimension));
+	if (this->WithRepulsion){
+		pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc,
+			[&i, &E, &force, this](const GeometryVector & shift, const GeometryVector &, const signed long *, size_t SourceParticle)->void {
+			/*Prevent self-interaction */
+			if (i != SourceParticle) {
+				double r = sqrt(shift.Modulus2());
+				double sigma = this->radii[i] + this->radii[SourceParticle];
+
+				/*Energy: prevent double-counting */
+				if (i < SourceParticle) {
+					double rs = r / sigma;
+					if (rs < 1.0){
+						E += (1.0 - rs)*(1.0 - rs);
+					}
+				}
+				if (r < 1e-15){
+					/* two particles are completely overlapped.*/
+					GeometryVector x(shift);
+					x.x[0] = (i > SourceParticle)? -1.0 : 1.0 ;
+					force = force - 2.0 / sigma * x;
+				}
+				else if ( r < sigma ){
+					force = force + 2.0 / sigma * (1.0 / r - 1.0 / sigma) * (-1.*shift);
+				}
+			}
+		});
+	}
+	force.MultiplyFrom(this->e0);
+	return E;
+}
+
 /** \brief Evaluate forces for all particles.
  *  Every species' FINUFFT plans are prepared serially first (PrepareSpecies). Species that do not run FINUFFT
  *  fill rho one by one, each parallel over wavevectors with the full team. Then one parallel region: species
@@ -545,4 +594,84 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 		}
 	}
 	std::swap(tempNumThread, this->ParallelNumThread);
+}
+
+/** \brief Total energy and all forces in one evaluation, bitwise equal to Energy() then AllForce(results).
+ *  Prepares the species once, as AllForce (PrepareSpecies(true); Energy's PrepareSpecies(false) is the same
+ *  without the force setup, which leaves rho and the Type 1 plan alone). Species that do not run FINUFFT get
+ *  their energy (which fills rho) one by one with the full team, as in Energy. Then one parallel region: without
+ *  FINUFFT species, one static particle loop gives each particle its contact slot and the force arithmetic of
+ *  Force(i); with them, each FINUFFT species gets one thread for its energy, then rho-reusing Type 2 forces if the
+ *  gate accepted (as the two calls run it), while free threads start the contact walk, and after the barrier the
+ *  particle loop adds each species force as AllForce does. Slots are summed in index order (TotalEnergy).
+ *  \param results Output vector of forces.
+ *  \return Total potential energy. */
+double MultiStealthyPotential::EnergyAndAllForce(std::vector<GeometryVector> &results)
+{
+	this->UpdateSubconfigs();
+	for (size_t i = 0; i < this->idx2species.size(); i++)
+		if (this->idx2species[i].species < 0)
+			throw std::runtime_error("MultiStealthyPotential::EnergyAndAllForce: particle has no assigned species; assign every particle before evaluating.");
+	// Plans are made here, serially; the parallel region below only executes them.
+	const std::vector<char> oneThread = this->PrepareSpecies(true);
+	const bool concurrent = std::find(oneThread.begin(), oneThread.end(), 1) != oneThread.end();
+	const long numSpecies = static_cast<long>(this->species_constraints.size());
+	const long end = static_cast<long>(this->pConfig->NumParticle());
+	const long numContact = this->WithRepulsion ? end : 0;
+	std::vector<double> speciesEnergy(numSpecies, 0.0), contactEnergy(numContact, 0.0);
+	for (long s = 0; s < numSpecies; s++)
+		if (!oneThread[s]) {
+			speciesEnergy[s] = this->species_constraints[s].CCPotential->Energy();
+			this->species_constraints[s].CCPotential->GetRho();	// as AllForce; a no-op once Energy filled rho
+		}
+	results.resize(end);
+	std::vector<char> bulk(numSpecies, 0);
+	std::vector<std::vector<GeometryVector>> speciesForce(numSpecies);
+	/* Force(i) and AllForce arithmetic: contact force plus the species force scaled by u0 N_s/N. */
+	auto addSpeciesForce = [&](long i, const GeometryVector & contactForce) {
+		const spec_index & at = this->idx2species[i];
+		GeometryVector force_CC(static_cast<int> (this->Dimension));
+		if (bulk[at.species])
+			force_CC = speciesForce[at.species][at.index];
+		else
+			this->species_constraints[at.species].CCPotential->Force(force_CC, at.index);
+		force_CC.MultiplyFrom(this->u0 * (double)this->species_constraints[at.species].idx.size()/(double)this->pConfig->NumParticle());
+		results[i] = contactForce + force_CC;
+	};
+	/* contact slot of particle i, from the same walk as its contact force */
+	auto contact = [&](long i, GeometryVector & force) {
+		const double E = this->ContactEnergyAndForce(i, force);
+		if (numContact > 0)
+			contactEnergy[i] = E;
+	};
+	// As in Energy: team of ParallelNumThread; about four contact chunks per thread, at most 64 particles each.
+	const long chunk = std::clamp(end / (4L * static_cast<long>(std::max<unsigned long>(this->ParallelNumThread, 1))), 1L, 64L);
+#pragma omp parallel num_threads(this->ParallelNumThread) default(shared)
+	{
+		if (!concurrent) {
+			// No FINUFFT species: rho is ready, so each particle is finished in one pass.
+#pragma omp for schedule (static)
+			for (long i = 0; i < end; i++) {
+				GeometryVector contactForce;
+				contact(i, contactForce);
+				addSpeciesForce(i, contactForce);
+			}
+		}
+		else {
+			// One thread per FINUFFT species: energy, then (gate permitting) Type 2 forces from the same rho.
+#pragma omp for schedule (dynamic, 1) nowait
+			for (long s = 0; s < numSpecies; s++)
+				if (oneThread[s])
+					bulk[s] = OnOneThread(*this->species_constraints[s].CCPotential,
+						[&](ShiftedCCPotential & pot) { speciesEnergy[s] = pot.Energy(); return pot.TryFinufftAllForce(speciesForce[s]); });
+			// Free threads start the contact walk; its implicit barrier makes every rho and Type 2 force ready.
+#pragma omp for schedule (dynamic, chunk)
+			for (long i = 0; i < end; i++)
+				contact(i, results[i]);
+#pragma omp for
+			for (long i = 0; i < end; i++)
+				addSpeciesForce(i, results[i]);
+		}
+	}
+	return this->TotalEnergy(speciesEnergy, contactEnergy);
 }

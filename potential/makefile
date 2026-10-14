@@ -29,6 +29,10 @@ objs: $(OBJS)
 $(ODIR)%.o: %.cpp | $(ODIR)
 	$(CC) $(CFLAGS) $(INC) -o $@ $<
 
+# No per-object header tracking here, so every object depends on every header of this module: a changed
+# class layout (for example a new virtual function in Potential.h) must rebuild all of them.
+$(OBJS): $(wildcard *.h)
+
 $(ODIR):
 	mkdir -p $(ODIR)
 
