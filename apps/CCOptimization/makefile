@@ -89,7 +89,8 @@ $(ODIR)test_finufft_multi.o: tests/test_finufft_multi.cpp | $(ODIR)
 .PHONY: test-finufft
 test-finufft:
 	$(MAKE) USE_FINUFFT=1 test_finufft_multi.out test_finufft_plan_cache.out
-	./test_finufft_multi.out test_finufft_plan_cache.out
+	./test_finufft_multi.out
+	./test_finufft_plan_cache.out
 
 # Persistent Type 1 plan and mode-map checks; the wraps let the test observe every plan.
 test_finufft_plan_cache.out: $(ODIR)test_finufft_plan_cache.o $(ODIR)MultiStealthyPotential.o deps
