@@ -138,13 +138,12 @@ protected:
 		};
 		static constexpr size_t NoBlock = static_cast<size_t>(-1);	//< Task::block of a task without a Type 1 block
 		std::vector<char> concurrent;	//< one flag per species, nonzero for the concurrent path
-		std::vector<Task> rho;	//< phase-1 tasks: Type 1 blocks (or NoBlock), largest predicted time first
-		std::vector<Task> force;	//< phase-2 tasks: Type 2 blocks of species with several, largest first
+		std::vector<Task> rho;	//< Type 1 tasks: blocks (or NoBlock), largest predicted time first
+		std::vector<Task> force;	//< Type 2 tasks: blocks of the species with several, largest first
 		std::vector<size_t> forceBlocks;	//< per species: Type 2 blocks (PrepareFinufftForces)
-		std::vector<long> rhoLeft, forceLeft;	//< per species: phase-1 and phase-2 tasks not yet finished (shared)
-		std::vector<char> ready;	//< per species: StartForces succeeded (written in phase 1, read in phase 2)
+		std::vector<long> rhoLeft, forceLeft;	//< per species: Type 1 and Type 2 tasks not yet finished (shared)
+		std::vector<int> state;	//< per species with several Type 2 blocks: 0 pending, 1 released, 2 no Type 2 (shared)
 		long nextChunk = 0;	//< next contact chunk to take (shared by the team)
-		long pendingRho = 0;	//< phase-1 tasks not yet finished (shared by the team)
 	};
 
 	// ponytail: single-thread cost of the contact walk per particle [microseconds], by dimension, measured on 2026-10-14 on
@@ -168,14 +167,14 @@ protected:
 	SpeciesWork PrepareSpecies(bool forces);
 
 	/** \brief The concurrent FINUFFT species of one evaluation; every thread of a parallel region of the team calls it.
-	 *  Phase 1: the Type 1 block tasks, dynamically, largest first; the thread that finishes a species' last block
-	 *  continues with that species on one thread (OnOneThread): FinishRho (rho is the sum of the blocks in block order,
-	 *  or the direct fallback), the species energy if wanted, StartForces if forces, and a single Type 2 block with
-	 *  FinishForces right away. Threads without a task take contact chunks, while phase-1 tasks remain if phase 2
-	 *  follows, else until none is left. Barrier. Phase 2, only if some species has several Type 2 blocks: those
-	 *  blocks, the thread finishing a species' last one running FinishForces, then the remaining contact chunks.
-	 *  Barrier. Every result has its own slot and species state is handed over by seq_cst countdowns, so nothing
-	 *  depends on the schedule; an evaluation without split Type 2 work has the one barrier of the unsplit schedule.
+	 *  One dynamic loop over the Type 1 block tasks (largest first), then the Type 2 block tasks of the species with
+	 *  several. The thread that finishes a species' last Type 1 block continues with that species on one thread
+	 *  (OnOneThread): FinishRho (rho is the sum of the blocks in block order, or the direct fallback), the species
+	 *  energy if wanted, StartForces if forces, and then either its single Type 2 block with FinishForces, or the
+	 *  release of its several Type 2 blocks; a thread holding one of those before the release takes contact chunks
+	 *  meanwhile, and the thread finishing a species' last Type 2 block runs FinishForces. Then every remaining contact
+	 *  chunk and one barrier, as in the unsplit schedule. Every result has its own slot and species state is handed
+	 *  over by seq_cst countdowns and releases, so nothing depends on the schedule.
 	 *  \param work                PrepareSpecies result (its shared counters are used).
 	 *  \param speciesEnergy       Energy slot of each species to fill, or nullptr.
 	 *  \param speciesForce        Type 2 force buffer of each species, or nullptr for no forces.

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 #include <climits>
+#include <thread>
 
 SpherePacking MultiStealthyPotential::GetPackingSnapshot() const
 {
@@ -333,7 +334,7 @@ void MultiStealthyPotential::UpdateSubconfigs()
 
 /** \brief Prepare every species' FINUFFT plans serially, mark the species evaluated concurrently and list their blocks.
  *  \param forces Also decide the force paths (FinufftForceGate over the concurrent species) and prepare them.
- *  \return Flags, concurrent species and block tasks (largest predicted time first; ties by species, then block). */
+ *  \return Flags, block tasks (largest predicted time first; ties by species, then block) and countdowns. */
 MultiStealthyPotential::SpeciesWork MultiStealthyPotential::PrepareSpecies(bool forces)
 {
 	const size_t numSpecies = this->species_constraints.size();
@@ -356,7 +357,7 @@ MultiStealthyPotential::SpeciesWork MultiStealthyPotential::PrepareSpecies(bool 
 	work.forceBlocks.assign(numSpecies, 0);
 	work.rhoLeft.assign(numSpecies, 0);
 	work.forceLeft.assign(numSpecies, 0);
-	work.ready.assign(numSpecies, 0);
+	work.state.assign(numSpecies, 0);
 	for (size_t s = 0; s < numSpecies; s++) {
 		if (!work.concurrent[s])
 			continue;
@@ -382,7 +383,6 @@ MultiStealthyPotential::SpeciesWork MultiStealthyPotential::PrepareSpecies(bool 
 	};
 	std::sort(work.rho.begin(), work.rho.end(), largestFirst);
 	std::sort(work.force.begin(), work.force.end(), largestFirst);
-	work.pendingRho = static_cast<long>(work.rho.size());
 	return work;
 }
 
@@ -416,29 +416,19 @@ void MultiStealthyPotential::RunSpeciesWork(SpeciesWork & work, std::vector<doub
 	const Contact & contact)
 {
 	auto pot = [this](long s) -> ShiftedCCPotential & { return *this->species_constraints[s].CCPotential; };
-	/* Contact chunks from the shared counter; in phase 1 before a phase 2, only while phase-1 tasks are running. */
-	auto fill = [&](bool whileRho) {
-		for (;;) {
-			if (whileRho) {
-				long pending;
-#pragma omp atomic read
-				pending = work.pendingRho;
-				if (pending == 0)
-					return;
-			}
-			long next;
+	/* One contact chunk from the shared counter; false when none is left. */
+	auto chunkDone = [&]() {
+		long next;
 #pragma omp atomic capture
-			next = work.nextChunk++;
-			const long lo = next * chunk;
-			if (lo >= items)
-				return;
-			for (long i = lo; i < std::min(items, lo + chunk); i++)
-				contact(i);
-		}
+		next = work.nextChunk++;
+		const long lo = next * chunk;
+		for (long i = lo; i < std::min(items, lo + chunk); i++)
+			contact(i);
+		return lo < items;
 	};
 	const long numRho = static_cast<long>(work.rho.size()), numForce = static_cast<long>(work.force.size());
-	const bool phase2 = numForce > 0;
-	/* After the last phase-1 task of species s, on this thread: rho, energy, Type 2 input, and a single Type 2 block. */
+	/* After the last Type 1 task of species s, on this thread: rho, energy, Type 2 input, and a single Type 2 block;
+	   species with several Type 2 blocks are released to the threads waiting for them (state 1, or 2 without Type 2). */
 	auto finishSpecies = [&](long s) {
 		const bool ready = OnOneThread(pot(s), [&](ShiftedCCPotential & p) {
 			p.FinishRho();
@@ -446,44 +436,54 @@ void MultiStealthyPotential::RunSpeciesWork(SpeciesWork & work, std::vector<doub
 				(*speciesEnergy)[s] = p.Energy();
 			return speciesForce && p.StartForces((*speciesForce)[s]) > 0;
 		});
-		work.ready[s] = ready;
-		if (ready && work.forceBlocks[s] == 1) {
+		if (work.forceBlocks[s] > 1) {
+			const int state = ready ? 1 : 2;
+#pragma omp atomic write seq_cst
+			work.state[s] = state;
+		}
+		else if (ready) {
 			pot(s).RunForceBlock(0, (*speciesForce)[s]);
 			bulk[s] = pot(s).FinishForces();
 		}
 	};
-	// Phase 1: Type 1 blocks; seq_cst countdowns make every block of a species visible to the thread finishing it.
-#pragma omp for schedule (dynamic, 1) nowait
-	for (long t = 0; t < numRho; t++) {
-		const long s = work.rho[t].species;
-		if (work.rho[t].block != SpeciesWork::NoBlock)
-			pot(s).RunRhoBlock(work.rho[t].block);
-		long left;
+	/* One dynamic loop over the Type 1 tasks, then the Type 2 tasks; monotonic, so a thread runs its tasks in order and
+	   holds no unstarted Type 1 task while it waits: a thread holding a Type 2 block of a species not yet released
+	   takes contact chunks (or yields) meanwhile, and the release cannot wait on it. seq_cst countdowns and releases
+	   hand the species state between threads. */
+#pragma omp for schedule (monotonic: dynamic, 1) nowait
+	for (long t = 0; t < numRho + numForce; t++) {
+		if (t < numRho) {
+			const long s = work.rho[t].species;
+			if (work.rho[t].block != SpeciesWork::NoBlock)
+				pot(s).RunRhoBlock(work.rho[t].block);
+			long left;
 #pragma omp atomic capture seq_cst
-		left = --work.rhoLeft[s];
-		if (left == 0)
-			finishSpecies(s);
-#pragma omp atomic update
-		work.pendingRho--;
-	}
-	fill(phase2);
-#pragma omp barrier
-	if (!phase2)
-		return;
-	// Phase 2: several Type 2 blocks per species, then the remaining contact chunks.
-#pragma omp for schedule (dynamic, 1) nowait
-	for (long t = 0; t < numForce; t++) {
-		const long s = work.force[t].species;
-		if (!work.ready[s])
+			left = --work.rhoLeft[s];
+			if (left == 0)
+				finishSpecies(s);
 			continue;
-		pot(s).RunForceBlock(work.force[t].block, (*speciesForce)[s]);
+		}
+		const long s = work.force[t - numRho].species;
+		int state;
+		for (;;) {
+#pragma omp atomic read seq_cst
+			state = work.state[s];
+			if (state != 0)
+				break;
+			if (!chunkDone())
+				std::this_thread::yield();
+		}
+		if (state != 1)
+			continue;
+		pot(s).RunForceBlock(work.force[t - numRho].block, (*speciesForce)[s]);
 		long left;
 #pragma omp atomic capture seq_cst
 		left = --work.forceLeft[s];
 		if (left == 0)
 			bulk[s] = pot(s).FinishForces();
 	}
-	fill(false);
+	while (chunkDone())
+		;
 #pragma omp barrier
 }
 

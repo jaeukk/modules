@@ -189,6 +189,116 @@ A shorter history needs more evaluations (three seeds, history 40 against 100: +
 and repeated bitwise. A shorter history changes trajectories and endpoints for both backends, so the
 default stays 100; `history 40` is the measured best general setting.
 
+## Follow-up: species work in particle blocks
+
+With one FINUFFT species per thread, a run with fewer species than threads left most of the team idle
+while each species' transforms ran (one 3D species of 2000-5000 particles at chi 0.4 takes 4-20 ms on one
+thread, mostly spreading and interpolation). Each species' transforms now run as particle blocks.
+
+**Design.** A block is a contiguous range of the species' local particle order (block b of B covers
+[bN/B, (b+1)N/B)) with its own persistent guru plan; plans are still made only in the serial prepare step.
+
+- Type 1 (rho): B1 blocks, each transform giving its own mode grid; rho at a constraint is the sum of the
+  blocks' modes in block order. B1 = `FinufftBlocks(1)` depends only on N, G, d and eps: the largest B for
+  which a block's predicted spreading work stays at least twice the work every block repeats (call, FFT and
+  deconvolution on the mode grid) and at least 100 us, at most 16. So rho is bitwise identical for every
+  thread count; B1 = 1 (every small species, and every species of the chi 0.4 benchmarks below) is bitwise
+  the previous path, and B1 > 1 changes rho in the last bits (within FINUFFT tolerance of the single
+  transform).
+- Type 2 (forces): blocks of the same kind. Every block deconvolves and transforms the same coefficients and
+  FINUFFT interpolates each point on its own, so the forces are bitwise those of the unsplit transform for
+  any block count (checked against the simple interface in 1-3D). The count therefore may depend on the
+  team: `FinufftForceGate` picks one count b <= floor(T/F) for its F species (each species also capped by
+  `FinufftBlocks(2)`) that minimizes the predicted region time, max(longest species chain, total work / T),
+  with the contact walk as other work (`MultiStealthyPotential::ContactCostParticle`), and keeps b > 1 only
+  if that wins by 1.2 (`FinufftSplitMargin`). Its acceptance rule now costs the blocks (work = blocks x block
+  time, wall time added estimated as ceil(blocks/T) x the longest block).
+- Schedule: one region per evaluation, one monotonic dynamic loop over the Type 1 blocks (largest predicted
+  time first), then the Type 2 blocks of the species with several. The thread that finishes a species' last
+  Type 1 block (seq_cst countdown) continues with it: rho reduction in block order (or the direct
+  fallback), energy, Type 2 input, and either its single Type 2 block or the release of its several blocks;
+  a thread holding a block of a species not yet released takes contact chunks meanwhile. Then the remaining
+  contact chunks and one barrier, as before; `Energy`, `AllForce` and `EnergyAndAllForce` share it, so the
+  fused call stays bitwise equal to the two calls. An earlier version with a barrier between a Type 1 and a
+  Type 2 phase cost 3-8% on small 2D systems under load and was replaced.
+- A lone `ShiftedCCPotential` runs its blocks in parallel over `ParallelNumThread` in `GetRho` and
+  `TryFinufftAllForce`. Direct and fallback species keep their previous path.
+
+The Type 1 cost constants come from the extended calibration tool (`calibrate_gate.out` now also times one
+Type 1 block; `fit_gate.py` fits both envelopes); the Type 2 constants are unchanged.
+
+**Thread-CPU schedule model** (every task timed serially with `CLOCK_THREAD_CPUTIME_ID`, minimum over 7
+evaluations, then list-scheduled on T threads as each build schedules it; best of two passes; chi 0.4;
+ms per fused evaluation; blocks = Type 1 / Type 2 tasks). Cases with identical work in both builds scatter
+by up to 8%, which is the noise floor of this machine under load:
+
+| Case | Base | Blocks | Speedup | Blocks (T1/T2) |
+|---|---|---|---|---|
+| 2D N=2000 S=2 T=4 | 0.41 | 0.35 | 1.19 | 2/0 |
+| 2D N=2000 S=2 T=8 | 0.33 | 0.35 | 0.95 | 2/0 |
+| 2D N=2000 S=5 T=4 | 0.23 | 0.25 | 0.96 | 5/0 |
+| 2D N=2000 S=5 T=8 | 0.12 | 0.12 | 1.02 | 5/0 |
+| 2D N=10000 S=2 T=4 | 1.13 | 1.15 | 0.98 | 2/0 |
+| 2D N=10000 S=2 T=8 | 1.09 | 0.83 | 1.31 | 2/8 |
+| 2D N=10000 S=5 T=4 | 1.12 | 1.10 | 1.02 | 5/0 |
+| 2D N=10000 S=5 T=8 | 0.56 | 0.56 | 1.02 | 5/0 |
+| 3D N=2000 S=2 T=4 | 3.01 | 2.20 | 1.37 | 2/4 |
+| 3D N=2000 S=2 T=8 | 3.82 | 2.44 | 1.57 | 2/8 |
+| 3D N=2000 S=5 T=4 | 3.77 | 3.51 | 1.07 | 5/0 |
+| 3D N=2000 S=5 T=8 | 1.90 | 1.91 | 1.00 | 5/0 |
+| 3D N=10000 S=2 T=4 | 14.66 | 11.13 | 1.32 | 2/4 |
+| 3D N=10000 S=2 T=8 | 17.29 | 8.28 | 2.09 | 2/8 |
+| 3D N=10000 S=5 T=4 | 11.67 | 11.64 | 1.00 | 5/0 |
+| 3D N=10000 S=5 T=8 | 6.13 | 6.02 | 1.02 | 5/0 |
+
+**Wall clock** (`bench_finufft.out eval ... finufft`, three interleaved runs per build, load 3-7 on the 8
+threads; median of the per-run medians, and minimum, of SetConfiguration + EnergyAndAllForce in ms). Medians
+at T=8 are dominated by preemption; the minimums are the steadier comparison:
+
+| Case | Base median / min | Blocks median / min | Ratio of minimums |
+|---|---|---|---|
+| 2D N=2000 S=2 T=4 | 0.47 / 0.34 | 0.47 / 0.34 | 0.98 |
+| 2D N=2000 S=5 T=4 | 0.44 / 0.36 | 0.44 / 0.35 | 1.01 |
+| 2D N=10000 S=2 T=8 | 2.67 / 1.55 | 3.47 / 1.56 | 1.00 |
+| 2D N=10000 S=5 T=8 | 1.46 / 1.16 | 1.49 / 1.18 | 0.98 |
+| 3D N=2000 S=2 T=4 | 4.00 / 2.99 | 2.99 / 2.28 | 1.31 |
+| 3D N=2000 S=2 T=8 | 9.83 / 3.03 | 7.71 / 2.37 | 1.28 |
+| 3D N=10000 S=2 T=4 | 19.52 / 16.02 | 15.39 / 12.51 | 1.28 |
+| 3D N=10000 S=2 T=8 | 24.17 / 17.87 | 22.57 / 14.94 | 1.20 |
+| 3D N=10000 S=5 T=4 | 14.23 / 12.72 | 14.24 / 12.55 | 1.01 |
+
+All 16 cases of the model table were run; the omitted ones are within 0.98-1.08 by minimum. The split
+3D cases gain 1.2-1.3x here against 1.3-2.1x in the model: the other jobs leave fewer free cores than
+the model's idle team. The 2D N=10000 S=2 T=8 gain of the model (1.31x) does not show under this load.
+
+Full optimizations (`bench_finufft.out opt`, seed 1, history 100, two interleaved processes per build):
+
+| Case | Base (s) | Blocks (s) | Calls | Final energy (FINUFFT / Direct) | Hash |
+|---|---|---|---|---|---|
+| 3D N=2000 S=2 T=8 | 3.35 / 3.34 | 2.56 / 2.72 | 324 in all four | 3.589e-20 / 3.597e-20 | 8783c1a687821511 in all four |
+| 2D N=10000 S=2 T=8 | 30.3 / 30.3 | 31.7 / 30.6 | 1996 in all four | 1.239e-20 / 1.285e-20 | 7ba17c859dee174b in all four |
+
+Both builds end at bitwise the same coordinates: at chi 0.4 every Type 1 count is 1 and Type 2 blocks change
+no bit. The 2D N=10000 optimization is dominated by L-BFGS (15 ms per call against about 2 ms per
+evaluation), so the evaluation change is within its noise.
+
+**Checks.** New `test_finufft_blocks` (`make test-finufft-blocks`): rho is bitwise the block-order sum of
+simple-interface Type 1 transforms of the blocks and within tolerance of the single transform and of
+Direct, bitwise identical for 1, 4 and 8 threads and on repetition; Type 2 forces in several blocks are
+bitwise those of the unsplit simple-interface transform; mixed species (split, unsplit, FINUFFT fallback,
+Direct) at T = 1, 4, 8 with 2, 4 and 6 Type 2 blocks give bitwise identical results, every Type 1 block runs
+once per evaluation, the cold `AllForce` equals the warm one and `EnergyAndAllForce` equals `Energy` then
+`AllForce`; block plans are trimmed and completed with the particle count, remade on a tolerance change,
+never shared by copies, released by assignment, and injected makeplan and setpts failures in one block fall
+back cleanly. Mutations caught: reducing rho in thread-completion order (T-dependence and repetition checks
+fail), reversing the block order (block-order check fails), and a one-particle offset in the Type 2 blocks.
+Existing suites pass with two adapted observations: `test_species_concurrent` counts `GetRho` cache misses,
+which FINUFFT species no longer make (their rho comes from block tasks; the lazy-fill check stays for
+`GetRho`); and in `test_finufft_forces` the mid-size 3D case now uses Type 2 with eight threads (its blocks
+run in parallel), so the thread-count check moved to a dense case too small to split, and the mid-size case
+checks one block at T=1 against several at T=8, bitwise. AddressSanitizer runs of the block and plan-cache
+tests are clean.
+
 ## Open items
 
 1. The Type 2 gate constants are machine-specific (Ryzen 5 7500F, WSL2, FINUFFT 2.5.1). Refit them
@@ -203,6 +313,13 @@ default stays 100; `history 40` is the measured best general setting.
 6. DUCC0 starts an idle thread pool on the first FINUFFT call, as before this work.
 7. `ShiftedCCPotential_S2_MultiConfig` with FINUFFT selected builds an unused Type 1 plan in `AllForce`.
 8. Direct-vs-FINUFFT endpoint identity is still not claimed (unchanged from September).
+9. Particle blocks: the Type 1 constants, `FinufftBlockRatio`, `FinufftSplitMargin` and
+   `MultiStealthyPotential::ContactCostParticle` are fitted on this machine under load; refit with
+   `tests/finufft_gate` (and re-time the contact walk) on the production node. The contact estimate ignores
+   the packing fraction.
+10. Particle blocks: the model gains of the split cases (up to 2.1x) were only partly visible on this loaded
+    machine (1.2-1.3x); confirm on an idle node. A species with B1 > 1 changes rho in the last bits against
+    earlier builds (none of the chi 0.4 benchmarks does; low chi and large N do).
 
 ## Provenance
 
