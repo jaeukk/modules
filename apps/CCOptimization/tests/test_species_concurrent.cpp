@@ -9,8 +9,11 @@
  *  - repeated evaluations on one potential and on a fresh potential are bitwise identical;
  *  - FINUFFT results are bitwise identical at 4 and 8 threads (no thread-count-dependent sums);
  *  - each species' rho is filled exactly once per evaluation (never lazily inside the force loop);
- *  - every FINUFFT species really used FINUFFT, and the sampled peak OS thread count never exceeds
- *    the largest team (no oversized outer team, no persistent oversubscription).
+ *  - every FINUFFT species used the backend FinufftEligible predicts; species forced to fall back
+ *    (grid cap, or a sheared cell tripping the sparse-grid guard) report Direct, and when all fall back
+ *    the results equal the Direct backend bitwise; mixed eligible/fallback cases stay repeatable;
+ *  - the sampled peak OS thread count never exceeds the largest team (no oversized outer team, no
+ *    persistent oversubscription).
  * The makefile target runs it with default waiting, OMP_WAIT_POLICY=passive and nesting enabled.
  * Build and run: make test-species-concurrent */
 
@@ -37,6 +40,8 @@ struct Case {
 	std::vector<size_t> sizes;  //< particles per species
 	double chi;                 //< per-species chi
 	double e0;                  //< contact strength (0 disables contact)
+	unsigned fallback = 0;      //< bit s: species s falls back to Direct (FinufftMaxModes = 1)
+	double shear = 0;           //< if nonzero, second basis vector (shear L, L): sparse-grid fallback
 };
 
 /** \brief Species potential that counts rho cache misses, to catch a rho filled lazily inside the
@@ -102,6 +107,7 @@ Configuration Positions(const Case & tc)
 	for (DimensionType i = 0; i < d; i++)
 		basis[i].x[i] = L;
 	if (tc.skew && d >= 2) basis[1].x[0] = 0.27 * L;
+	if (tc.shear != 0) basis[1].x[0] = tc.shear * L;
 	if (tc.skew && d == 3) { basis[2].x[0] = -0.19 * L; basis[2].x[1] = 0.21 * L; }
 	Configuration c(d, basis, 0.1 * L);
 	RandomGenerator gen(77 + n + d);
@@ -142,6 +148,9 @@ std::unique_ptr<MultiStealthyPotential> Make(const Configuration & c, const Case
 			p->AddConstraint(s, k, {1.0 + 0.1 * s});
 	}
 	p->SetRhoBackend(backend);
+	for (size_t s = 0; s < tc.sizes.size(); s++)
+		if (tc.fallback >> s & 1u)
+			p->species_constraints[s].CCPotential->SetFinufftMaxModes(1);
 	p->SetConfiguration(c);
 	std::cout.rdbuf(old);
 	return p;
@@ -200,13 +209,14 @@ int PeakThreads(F work)
 void Run(const Case & tc)
 {
 	std::ostringstream name;
-	name << tc.dim << "D" << (tc.skew ? " skew" : "") << " S=" << tc.sizes.size() << " e0=" << tc.e0;
+	name << tc.dim << "D" << (tc.skew ? " skew" : "") << " S=" << tc.sizes.size() << " e0=" << tc.e0 << (tc.shear != 0 ? " sheared" : "") << (tc.fallback ? " fallback=" + std::to_string(tc.fallback) : std::string());
 	const Configuration c = Positions(tc);
 	const Result ref = Evaluate(*Make(c, tc, Backend::Direct, 1), c, false);
 	double scale = 0;
 	for (const auto & f : ref.force)
 		for (DimensionType d = 0; d < tc.dim; d++) scale = std::max(scale, std::abs(f.x[d]));
 
+	Result direct[2];  // direct[threads == 8]: Direct-backend result at that thread count
 	for (Backend backend : {Backend::Direct, Backend::FinufftType1}) {
 		const bool fast = backend == Backend::FinufftType1;
 		Result firstT;
@@ -225,11 +235,22 @@ void Run(const Case & tc)
 			Check(std::abs(warm.energy - ref.energy) <= 1e-10 * std::abs(ref.energy),
 			      label + ": energy rel diff " + std::to_string(std::abs(warm.energy - ref.energy) / std::abs(ref.energy)));
 			Check(df <= 1e-10 * std::max(1.0, scale), label + ": force diff " + std::to_string(df));
-			if (fast) {
-				for (auto & sp : p->species_constraints)
-					Check(sp.CCPotential->GetLastRhoBackendUsed() == Backend::FinufftType1, label + ": FINUFFT fell back to Direct");
-				if (threads == 4) firstT = warm;
-				else Check(Same(warm, firstT, tc.dim), label + ": FINUFFT result depends on the thread count");
+			if (!fast)
+				direct[threads == 8] = warm;
+			else {
+				size_t fallbacks = 0;
+				for (size_t s = 0; s < tc.sizes.size(); s++) {
+					const auto & cc = *p->species_constraints[s].CCPotential;
+					const bool expectFallback = tc.shear != 0 || (tc.fallback >> s & 1u);
+					fallbacks += expectFallback;
+					Check(cc.FinufftEligible() == !expectFallback, label + ": FinufftEligible wrong for species " + std::to_string(s));
+					Check(cc.GetLastRhoBackendUsed() == (expectFallback ? Backend::Direct : Backend::FinufftType1),
+					      label + ": unexpected backend used by species " + std::to_string(s));
+				}
+				if (fallbacks == tc.sizes.size())
+					Check(Same(warm, direct[threads == 8], tc.dim), label + ": all-fallback result differs from the Direct backend");
+				else if (fallbacks == 0 && threads == 4) firstT = warm;
+				else if (fallbacks == 0) Check(Same(warm, firstT, tc.dim), label + ": FINUFFT result depends on the thread count");
 			}
 		}
 	}
@@ -243,6 +264,7 @@ int main()
 {
 	// FINUFFT's FFT (ducc0) starts an idle pool of hardware-1 threads on first use; with nthreads=1 it
 	// never receives work. Size it to one so the OS thread count below measures OpenMP teams only.
+	// The idle pool also exists at baseline (c352d19) and in the application, which leaves this unset.
 	setenv("DUCC0_NUM_THREADS", "1", 1);
 	if (!ShiftedCCPotential::IsRhoBackendAvailable(Backend::FinufftType1)) {
 		std::cout << "FINUFFT backend not compiled in; build with make USE_FINUFFT=1\n";
@@ -255,6 +277,11 @@ int main()
 		{2, false, {60, 80, 100, 120, 140, 160, 180, 200, 220, 240}, 0.3, 1.0},
 		{3, false, std::vector<size_t>(5, 150), 0.2, 0.0},
 		{3, true, {90, 100, 110, 120, 130, 140, 150, 160, 170, 180}, 0.2, 1.0},
+		// Direct fallback of FINUFFT-selected species: all (sheared cell, sparse-grid guard; grid cap) and mixed.
+		{2, false, {600}, 0.4, 0.0, 0, 100.0},
+		{2, false, {60, 80, 100, 120, 140, 160, 180, 200, 220, 240}, 0.3, 1.0, 0x3ff},
+		{2, true, {300, 500}, 0.25, 1.0, 0x2},
+		{3, true, {90, 100, 110, 120, 130}, 0.2, 1.0, 0xa},
 	};
 	const int peak = PeakThreads([&] { for (const auto & tc : cases) Run(tc); });
 	Check(peak <= 8, "peak of " + std::to_string(peak) + " OS threads exceeds the 8-thread team");

@@ -216,6 +216,23 @@ public:
 		return this->FinufftLastStatus;
 	}
 
+	/** \brief Report whether ShiftedCCPotential::GetRho will run FINUFFT Type 1 for the bound configuration.
+		Runs only the mode mapping and eligibility checks of GetRho_FinufftType1, without a transform, so the
+		answer depends only on the constraints, the cell, the particle number and the FINUFFT settings.
+		A nonzero FINUFFT status at run time can still make GetRho fall back to the direct sum.
+		Like the backend selection, it is not meaningful for derived classes that override GetRho.
+		\return true if FinufftType1 is selected and compiled in, a configuration is bound, and every check passes. */
+	bool FinufftEligible(void) const
+	{
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		std::vector<std::int64_t> modes;
+		std::int64_t K[3], ms[3];
+		return this->RhoBackendSelected==RhoBackend::FinufftType1 && this->pConfig!=nullptr && this->FinufftModes(modes, K, ms);
+#else
+		return false;
+#endif
+	}
+
 protected:
 	RhoBackend RhoBackendSelected;	//< Backend requested by the user.
 	RhoBackend RhoBackendLastUsed;	//< Backend that produced the cached rho.
@@ -249,62 +266,14 @@ protected:
 		const DimensionType dim=this->Dimension;
 		const size_t nk=this->constraints.size();
 		const size_t np=this->pConfig->NumParticle();
-		if(dim<1 || dim>3 || nk==0 || np==0)
-			return false;
-		if(np>static_cast<size_t>(std::numeric_limits<std::int64_t>::max()))
-			return false;
-
 		const double twopi=2.0*::pi;
-		const double maxIndex=static_cast<double>(std::int64_t(1)<<30);
-		const double budget=std::min(1e-8, this->FinufftTolerance)/(4.0*twopi*static_cast<double>(dim));
-		if(4.0*DBL_EPSILON>budget)
-			return false;	//eps below what double-precision phases resolve
+		std::vector<std::int64_t> modes;
+		std::int64_t K[3], ms[3];
+		if(!this->FinufftModes(modes, K, ms))
+			return false;
 		try
 		{
-			GeometryVector basis[3];
-			for(DimensionType d=0; d<dim; d++)
-				basis[d]=this->pConfig->GetBasisVector(d);
-
-			//integer reciprocal-lattice indices of every constraint
-			std::vector<std::int64_t> modes(nk*dim);
-			std::int64_t K[3]={0, 0, 0};
-			for(size_t i=0; i<nk; i++)
-			{
-				const GeometryVector & k=this->constraints[i].k;
-				for(DimensionType d=0; d<dim; d++)
-				{
-					double dot=0.0, scale=0.0;
-					for(DimensionType c=0; c<dim; c++)
-					{
-						double t=k.x[c]*basis[d].x[c];
-						dot+=t;
-						scale+=std::abs(t);
-					}
-					double n=dot/twopi;
-					if(!std::isfinite(n) || std::abs(n)>maxIndex)
-						return false;
-					double nr=std::round(n);
-					double roundoff=4.0*DBL_EPSILON*(1.0+scale/twopi);
-					if(std::abs(n-nr)>std::max(budget, roundoff))
-						return false;
-					std::int64_t m=static_cast<std::int64_t>(nr);
-					modes[i*dim+d]=m;
-					K[d]=std::max(K[d], m<0 ? -m : m);
-				}
-			}
-
-			//grid sizes, guarded against overflow and unbounded allocation
-			std::int64_t ms[3]={1, 1, 1};
-			std::int64_t total=1;
-			for(DimensionType d=0; d<dim; d++)
-			{
-				ms[d]=2*K[d]+1;
-				if(ms[d]>this->FinufftMaxModes/total)
-					return false;
-				total*=ms[d];
-			}
-			if(static_cast<double>(total)>FinufftSparseGridFactor*(static_cast<double>(nk)+static_cast<double>(np)))
-				return false;
+			const std::int64_t total=ms[0]*ms[1]*ms[2];
 
 			//fractional coordinates as angles in [0, 2 pi]
 			std::vector<double> angles[3];
@@ -352,6 +321,82 @@ protected:
 				this->RhoReal[i]=tr;
 				this->RhoImag[i]=ti;
 			}
+		}
+		catch(const std::bad_alloc &)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	/** \brief Map every constraint to integer reciprocal-lattice modes and run the eligibility checks of
+		GetRho_FinufftType1 (dimension, empty input, eps floor, residual test, |n_d| cap, FinufftMaxModes and
+		FinufftSparseGridFactor). Shared by GetRho_FinufftType1 and FinufftEligible; no transform is run.
+		\param[out] modes  Index n_d of constraint i at modes[i*dim+d].
+		\param[out] K      Largest |n_d| per dimension (0 beyond dim).
+		\param[out] ms     Mode-grid size 2K_d+1 per dimension (1 beyond dim).
+		\return false if FINUFFT must not be used (the outputs are then unspecified), including on allocation failure. */
+	bool FinufftModes(std::vector<std::int64_t> & modes, std::int64_t K[3], std::int64_t ms[3]) const
+	{
+		const DimensionType dim=this->Dimension;
+		const size_t nk=this->constraints.size();
+		const size_t np=this->pConfig->NumParticle();
+		if(dim<1 || dim>3 || nk==0 || np==0)
+			return false;
+		if(np>static_cast<size_t>(std::numeric_limits<std::int64_t>::max()))
+			return false;
+
+		const double twopi=2.0*::pi;
+		const double maxIndex=static_cast<double>(std::int64_t(1)<<30);
+		const double budget=std::min(1e-8, this->FinufftTolerance)/(4.0*twopi*static_cast<double>(dim));
+		if(4.0*DBL_EPSILON>budget)
+			return false;	//eps below what double-precision phases resolve
+		try
+		{
+			GeometryVector basis[3];
+			for(DimensionType d=0; d<dim; d++)
+				basis[d]=this->pConfig->GetBasisVector(d);
+
+			//integer reciprocal-lattice indices of every constraint
+			modes.assign(nk*dim, 0);
+			K[0]=K[1]=K[2]=0;
+			for(size_t i=0; i<nk; i++)
+			{
+				const GeometryVector & k=this->constraints[i].k;
+				for(DimensionType d=0; d<dim; d++)
+				{
+					double dot=0.0, scale=0.0;
+					for(DimensionType c=0; c<dim; c++)
+					{
+						double t=k.x[c]*basis[d].x[c];
+						dot+=t;
+						scale+=std::abs(t);
+					}
+					double n=dot/twopi;
+					if(!std::isfinite(n) || std::abs(n)>maxIndex)
+						return false;
+					double nr=std::round(n);
+					double roundoff=4.0*DBL_EPSILON*(1.0+scale/twopi);
+					if(std::abs(n-nr)>std::max(budget, roundoff))
+						return false;
+					std::int64_t m=static_cast<std::int64_t>(nr);
+					modes[i*dim+d]=m;
+					K[d]=std::max(K[d], m<0 ? -m : m);
+				}
+			}
+
+			//grid sizes, guarded against overflow and unbounded allocation
+			ms[0]=ms[1]=ms[2]=1;
+			std::int64_t total=1;
+			for(DimensionType d=0; d<dim; d++)
+			{
+				ms[d]=2*K[d]+1;
+				if(ms[d]>this->FinufftMaxModes/total)
+					return false;
+				total*=ms[d];
+			}
+			if(static_cast<double>(total)>FinufftSparseGridFactor*(static_cast<double>(nk)+static_cast<double>(np)))
+				return false;
 		}
 		catch(const std::bad_alloc &)
 		{

@@ -323,12 +323,14 @@ void MultiStealthyPotential::UpdateSubconfigs()
 	}
 }
 
-/** \brief Decide whether species are evaluated concurrently (FINUFFT selected for any species).
- *  \return true for the species-concurrent path. */
-bool MultiStealthyPotential::SpeciesConcurrent() const
+/** \brief Mark the species whose GetRho will run FINUFFT; they are evaluated concurrently.
+ *  \return One flag per species, nonzero for the concurrent path. */
+std::vector<char> MultiStealthyPotential::SpeciesConcurrent() const
 {
-	return std::any_of(this->species_constraints.begin(), this->species_constraints.end(), [](const species_potential & sp) {
-		return sp.CCPotential->GetRhoBackend() == ShiftedCCPotential::RhoBackend::FinufftType1; });
+	std::vector<char> concurrent(this->species_constraints.size());
+	for (size_t s = 0; s < concurrent.size(); s++)
+		concurrent[s] = this->species_constraints[s].CCPotential->FinufftEligible();
+	return concurrent;
 }
 
 /** \brief Fill one species' rho and return its CC energy on the calling thread.
@@ -361,10 +363,11 @@ double MultiStealthyPotential::Energy()
 	const long numSpecies = static_cast<long>(this->species_constraints.size());
 	const long numContact = this->WithRepulsion ? static_cast<long>(this->pConfig->NumParticle()) : 0;
 	std::vector<double> speciesEnergy(numSpecies, 0.0), contactEnergy(numContact, 0.0);
-	const bool concurrent = this->SpeciesConcurrent();
-	/* Direct: stealthy potential contribution (CC) species by species, each parallel over wavevectors. */
-	if (!concurrent)
-		for (long s = 0; s < numSpecies; s++)
+	const std::vector<char> oneThread = this->SpeciesConcurrent();
+	const bool concurrent = std::find(oneThread.begin(), oneThread.end(), 1) != oneThread.end();
+	/* Direct or FINUFFT fallback: stealthy potential contribution (CC) species by species, each parallel over wavevectors. */
+	for (long s = 0; s < numSpecies; s++)
+		if (!oneThread[s])
 			speciesEnergy[s] = this->species_constraints[s].CCPotential->Energy();
 	/* FINUFFT: one thread per species, while free threads start the contact contribution (CP).
 	   Keep the team at ParallelNumThread even when S is smaller: a team size that differs from
@@ -374,7 +377,8 @@ double MultiStealthyPotential::Energy()
 		if (concurrent) {
 #pragma omp for schedule (dynamic, 1) nowait
 			for (long s = 0; s < numSpecies; s++)
-				speciesEnergy[s] = this->SpeciesEnergyOnOneThread(s);
+				if (oneThread[s])
+					speciesEnergy[s] = this->SpeciesEnergyOnOneThread(s);
 		}
 #pragma omp for schedule (dynamic, 64)
 		for (long i = 0; i < numContact; i++){
@@ -466,11 +470,12 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 {
 	this->UpdateSubconfigs();
 	// Fill each shared cache before the parallel force loop (also safe without prior Energy).
-	const bool concurrent = this->SpeciesConcurrent();
-	if (!concurrent)
-		for (auto & species : this->species_constraints)
-			species.CCPotential->GetRho();
+	const std::vector<char> oneThread = this->SpeciesConcurrent();
+	const bool concurrent = std::find(oneThread.begin(), oneThread.end(), 1) != oneThread.end();
 	const long numSpecies = static_cast<long>(this->species_constraints.size());
+	for (long s = 0; s < numSpecies; s++)
+		if (!oneThread[s])
+			this->species_constraints[s].CCPotential->GetRho();
 	long end = this->pConfig->NumParticle();
 	results.resize(end);
 	unsigned long tempNumThread = 1;
@@ -482,7 +487,8 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 			// The O(M_s) energy is a discarded by-product; rho is reused when Energy already filled it.
 #pragma omp for schedule (dynamic, 1)
 			for (long s = 0; s < numSpecies; s++)
-				this->SpeciesEnergyOnOneThread(s);
+				if (oneThread[s])
+					this->SpeciesEnergyOnOneThread(s);
 		}
 #pragma omp for
 		for (long i = 0; i<end; i++)

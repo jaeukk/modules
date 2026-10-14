@@ -126,12 +126,14 @@ protected:
 	std::vector<spec_index> idx2species;
 	std::vector<Configuration> subc;
 
-	/** \brief Whether Energy and AllForce run the species concurrently, one thread per species.
-	 *  True when any species selects the FINUFFT backend: its Type 1 call is single-threaded, so only
-	 *  running species side by side uses the other threads. Direct keeps the serial species loop,
-	 *  parallel over wavevectors, which balances better when S is not a multiple of the thread count.
-	 *  \return true for the species-concurrent path. */
-	bool SpeciesConcurrent() const;
+	/** \brief Mark the species that Energy and AllForce run concurrently, one thread per species.
+	 *  A species qualifies when its GetRho will run FINUFFT (ShiftedCCPotential::FinufftEligible): that call
+	 *  is single-threaded, so only running such species side by side uses the other threads. Every other
+	 *  species (Direct, or FINUFFT falling back to the direct sum) keeps its own evaluation, parallel over
+	 *  wavevectors with the full team, which also balances better when S is not a multiple of the thread
+	 *  count. The marks depend only on constraints, cells, particle numbers and settings, never on timing.
+	 *  \return One flag per species, nonzero for the concurrent path. */
+	std::vector<char> SpeciesConcurrent() const;
 
 	/** \brief Fill species s's rho and return its CC energy, running that species on the calling thread.
 	 *  The species' ParallelNumThread is 1 during the call and restored afterwards; touches only species s.
@@ -267,9 +269,10 @@ public :
 	 * -------------------------------------*/
 
 	/** \brief Compute total potential energy.
-	 *  With FINUFFT (see SpeciesConcurrent) one parallel region runs every species on its own thread
-	 *  while the remaining threads start on the contact sum. Species and particles own result slots that
-	 *  are summed in index order, so the result does not depend on thread scheduling.
+	 *  Species that run FINUFFT (see SpeciesConcurrent) get one thread each inside one parallel region while
+	 *  the remaining threads start on the contact sum; other species are evaluated first, one by one, with
+	 *  the full team. Species and particles own result slots that are summed in index order, so the result
+	 *  does not depend on thread scheduling.
 	 *  \return  The total potential energy. */
 	virtual double Energy();
 
@@ -279,8 +282,8 @@ public :
 	virtual void Force(GeometryVector & result, size_t i);
 
 	/** \brief Compute forces on all particles.
-	 *  Fills every species' rho first, so it is valid without a prior Energy call (MD order); with
-	 *  FINUFFT the species are filled concurrently inside the same parallel region as the force loop.
+	 *  Fills every species' rho first, so it is valid without a prior Energy call (MD order); species that
+	 *  run FINUFFT are filled concurrently inside the same parallel region as the force loop.
 	 *  \param results  Output vector of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results);
 	//virtual void EnergyDerivativeToBasisVectors(double * grad, double Pressure);
