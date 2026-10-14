@@ -11,9 +11,9 @@
  * Special cases: tiny periodic cells where a particle overlaps several images of one neighbor and its own
  * images, coincident particles (the overlap rule of ContactForce), FINUFFT species falling back to Direct,
  * and species whose Type 2 forces the gate accepts (the test requires that some evaluation used Type 2).
- * Also: the Potential default (a ShiftedCCPotential) equals Energy then AllForce bitwise, and
- * RelaxStructure_NLOPT, which now calls EnergyAndAllForce, ends at the same coordinates after the same number
- * of evaluations as with the separate calls.
+ * Also: RelaxStructure_NLOPT, which finds EnergyAndAllForce through CombinedEnergyForce, ends at the same
+ * coordinates after the same number of evaluations as with the separate calls, and a potential without that
+ * interface (a ShiftedCCPotential) still gets Energy and AllForce from the optimizer.
  * The makefile target runs it with default waiting and OMP_WAIT_POLICY=passive.
  * Build and run: make test-fused-contact */
 
@@ -278,13 +278,19 @@ void Run(const Case & tc)
 		}
 }
 
-/** \brief MultiStealthyPotential that answers EnergyAndAllForce with the Potential default (Energy, then AllForce). */
+/** \brief MultiStealthyPotential whose EnergyAndAllForce makes the separate calls, as the optimizer does for a
+ *  potential without CombinedEnergyForce. */
 struct SeparatePotential : MultiStealthyPotential {
 	using MultiStealthyPotential::MultiStealthyPotential;
-	/** \brief The Potential default: Energy() followed by AllForce(forces).
+	/** \brief Energy() followed by AllForce(forces).
 	 *  \param forces  Output per-particle forces.
 	 *  \return        Total potential energy. */
-	double EnergyAndAllForce(std::vector<GeometryVector> & forces) override { return Potential::EnergyAndAllForce(forces); }
+	double EnergyAndAllForce(std::vector<GeometryVector> & forces) override
+	{
+		const double e = this->Energy();
+		this->AllForce(forces);
+		return e;
+	}
 };
 
 /** \brief MultiStealthyPotential counting Energy and EnergyAndAllForce calls.
@@ -332,32 +338,46 @@ void Optimize(const Case & tc, Backend backend, int threads)
 	RelaxStructure_NLOPT(a, *sep, 0.0, 0, 0.0, 400);
 	RelaxStructure_NLOPT(b, *fus, 0.0, 0, 0.0, 400);
 	Check(fus->fused > 0, label + ": the optimizer never called EnergyAndAllForce");
-	// The default EnergyAndAllForce of sep calls Energy, which its counter sees too.
+	// The EnergyAndAllForce of sep calls Energy, which its counter sees too.
 	Check(sep->fused == fus->fused && sep->energy == fus->energy + fus->fused,
 	      label + ": call counts differ (" + std::to_string(sep->energy) + "+" + std::to_string(sep->fused) + " vs "
 	      + std::to_string(fus->energy) + "+" + std::to_string(fus->fused) + ")");
 	Check(Hash(a) == Hash(b), label + ": end points differ");
 }
 
-/** \brief The Potential default on a potential without an override equals Energy then AllForce bitwise. */
-void Default()
+/** \brief Species potential counting the optimizer's Energy and AllForce calls (it is no CombinedEnergyForce). */
+struct CountingShifted : ShiftedCCPotential {
+	size_t energy = 0, force = 0;  //< calls of Energy() and AllForce()
+	using ShiftedCCPotential::ShiftedCCPotential;
+	/** \brief Count and forward.
+	 *  \return Collective-coordinate energy. */
+	double Energy() override { ++energy; return ShiftedCCPotential::Energy(); }
+	/** \brief Count and forward.
+	 *  \param results  Output per-particle forces. */
+	void AllForce(std::vector<GeometryVector> & results) override { ++force; ShiftedCCPotential::AllForce(results); }
+};
+
+/** \brief A potential without CombinedEnergyForce keeps the separate calls: the optimizer's dynamic_cast finds the
+ *  interface on MultiStealthyPotential only, and RelaxStructure_NLOPT on a ShiftedCCPotential calls AllForce, each
+ *  time after Energy. */
+void Fallback()
 {
-	Case tc{2, true, {300}, 0.4, 0.0};
-	const Configuration c = Positions(tc);
-	ShiftedCCPotential p(2), q(2);
+	const Case tc{2, false, {200}, 0.3, 0.0};
+	Configuration c = Positions(tc);
+	CountingShifted p(2);
 	const double K = 2 * pi * std::pow(2 * 2 * tc.chi / HyperSphere_Volume(2, 1.0), 0.5);
-	for (const auto & k : GetKs(c, K, K, 1)) {
+	for (const auto & k : GetKs(c, K, K, 1))
 		p.AddConstraint(k, {1.0});
-		q.AddConstraint(k, {1.0});
-	}
-	p.ParallelNumThread = q.ParallelNumThread = 4;
+	p.ParallelNumThread = 4;
+	Potential * plain = &p;
+	auto multi = Make(c, tc, Backend::Direct, 4);
+	Potential * combined = multi.get();
+	Check(dynamic_cast<CombinedEnergyForce *>(plain) == nullptr, "ShiftedCCPotential unexpectedly is a CombinedEnergyForce");
+	Check(dynamic_cast<CombinedEnergyForce *>(combined) == static_cast<CombinedEnergyForce *>(multi.get()), "MultiStealthyPotential not found as a CombinedEnergyForce");
 	p.SetConfiguration(c);
-	q.SetConfiguration(c);
-	Result a, b;
-	a.energy = p.Energy();
-	p.AllForce(a.force);
-	b.energy = q.EnergyAndAllForce(b.force);
-	Check(Same(a, b, 2), "Potential default: EnergyAndAllForce differs from Energy + AllForce");
+	RelaxStructure_NLOPT(c, p, 0.0, 0, 0.0, 100);
+	Check(p.force > 0 && p.energy >= p.force, "optimizer on a plain potential: " + std::to_string(p.energy) + " Energy and "
+	      + std::to_string(p.force) + " AllForce calls");
 }
 
 }  // namespace
@@ -397,7 +417,7 @@ int main()
 	for (const auto & tc : cases)
 		Run(tc);
 	Check(type2Evaluations > 0, "no fused evaluation used Type 2 forces (gate constants changed?)");
-	Default();
+	Fallback();
 	for (Backend backend : {Backend::Direct, Backend::FinufftType1})
 		Optimize({2, false, {150, 150, 100}, 0.4, 1.0}, backend, 4);
 	Optimize({3, true, {120, 100}, 0.3, 1.0, 0.2, true}, Backend::FinufftType1, 8);

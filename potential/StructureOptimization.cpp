@@ -1,4 +1,5 @@
 #include "StructureOptimization.h"
+#include "CombinedEnergyForce.h"
 
 #define GSL_RANGE_CHECK_OFF
 
@@ -415,8 +416,9 @@ namespace
 	}
 
 	/** \brief Optimizer objective: the enthalpy (energy + pressure*volume) of the configuration encoded by x, with optional gradient.
-		A gradient in the particle coordinates (Switch 0 or 2) takes the energy and forces from one
-		Potential::EnergyAndAllForce call (by default Energy then AllForce); otherwise only Energy is called.
+		For a gradient in the particle coordinates (Switch 0 or 2), a potential that also derives from
+		CombinedEnergyForce gives the energy and forces in one EnergyAndAllForce call; any other potential gets
+		Energy() and then AllForce(), as before.
 		\param n     Number of optimization variables.
 		\param x     Optimization parameter vector.
 		\param grad  If non-null, filled with the gradient of the objective.
@@ -454,10 +456,10 @@ namespace
 			double Pressure = (*pAux->pPressure);
 
 			pAux->pPot->SetConfiguration(list);
-			//a gradient in the particle coordinates (Switch 0 or 2) needs the forces as well: one combined call
+			//a gradient in the particle coordinates (Switch 0 or 2) needs the forces as well: one call if the potential offers it
+			CombinedEnergyForce * combined = (grad != nullptr && (pAux->Switch==0 || pAux->Switch==2)) ? dynamic_cast<CombinedEnergyForce *>(pAux->pPot) : nullptr;
 			std::vector<GeometryVector> forces;
-			const bool withForces = grad != nullptr && (pAux->Switch==0 || pAux->Switch==2);
-			double result=(withForces ? pAux->pPot->EnergyAndAllForce(forces) : pAux->pPot->Energy())+ Pressure*Volume;
+			double result=(combined != nullptr ? combined->EnergyAndAllForce(forces) : pAux->pPot->Energy())+ Pressure*Volume;
 
 			if(Verbosity>=5 ||  (Verbosity==4&&pAux->NumEvaluation%1000==999) )
 			{
@@ -472,6 +474,8 @@ namespace
 
 				if(pAux->Switch==2)
 				{
+					if(combined == nullptr)
+						pAux->pPot->AllForce(forces);
 					for(size_t i=0; i<list.NumParticle(); i++)
 					{
 						//Configuration::particle * pA=list.GetParticle(i);
@@ -486,6 +490,8 @@ namespace
 				}
 				else if(pAux->Switch==0)
 				{
+					if(combined == nullptr)
+						pAux->pPot->AllForce(forces);
 					for(size_t i=0; i<list.NumParticle(); i++)
 					{
 						GeometryVector & Force=forces[i];

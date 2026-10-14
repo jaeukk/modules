@@ -14,6 +14,7 @@
 #include <PeriodicCellList.h>
 /* in $(pot) */
 #include <Potential.h>
+#include <CombinedEnergyForce.h>
 #include <CollectiveCoordinatePotential.h>
 
 #include <algorithm>
@@ -113,7 +114,7 @@ struct spec_index{
 	spec_index(int s, size_t idx): species(s), index(idx){}
 };
 
-class MultiStealthyPotential : public Potential
+class MultiStealthyPotential : public Potential, public CombinedEnergyForce
 {
 protected:
 	std::unique_ptr<Configuration> pConfig;	//< packing of interest
@@ -305,8 +306,8 @@ public :
 	virtual void AllForce(std::vector<GeometryVector> & results);
 
 	/** \brief Compute the total energy and every force in one evaluation, bitwise equal to Energy() followed
-	 *  by AllForce(results) (the optimizer's gradient callback). The species calls are those of the two
-	 *  (FINUFFT species on one thread each, the others with the full team); the contact part walks each
+	 *  by AllForce(results) (the optimizer's gradient callback, see CombinedEnergyForce). The species calls are
+	 *  those of the two (FINUFFT species on one thread each, the others with the full team); the contact part walks each
 	 *  particle's neighbors once (ContactEnergyAndForce) instead of twice. With FINUFFT species, threads free
 	 *  from species work start the contact walk, and after the barrier each particle adds its species force as
 	 *  AllForce does. Keeps no state beyond the call.
