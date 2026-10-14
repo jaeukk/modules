@@ -9,6 +9,7 @@ const double MaxLength2=4000000;
 const double MinVolumeCoeff = 0.0;//structure is invalid if Volume < MinVolumeCoeff*|a1|*|a2|*...*|ad|
 size_t StructureOptimization_SaveConfigurationInterval=std::numeric_limits<size_t>::max();
 bool StructureOptimization_SaveNumberedConfiguration = false;
+size_t StructureOptimization_LBFGSHistory = 100;
 
 //codes related to elastic constants
 //\epsilon_{ij}=C_{ijkl}*e_{kl}
@@ -866,7 +867,7 @@ void RelaxStructure_NLOPT_inner(Configuration & List, Potential & pot, double Pr
 		return;
 
 	opt = nlopt_create(NLOPT_LD_LBFGS, NumParam);
-	nlopt_set_vector_storage(opt, 100);
+	nlopt_set_vector_storage(opt, StructureOptimization_LBFGSHistory);
 	//nlopt_set_lower_bounds(opt, LBounds);
 	//nlopt_set_upper_bounds(opt, UBounds);
 	//nlopt_set_initial_step(opt, StepSizes);
