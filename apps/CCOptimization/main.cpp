@@ -321,7 +321,23 @@ int GetCCO(int argc, char ** argv){
 			ofile << "chi = " << chi << std::endl;			
 		}
 
-
+		/* `finufft` keyword of the MD and ground blocks: collective densities by a FINUFFT Type 1 transform and, where
+		   the cost gate predicts a win, forces by Type 2, as in GetMultiCCO. Using the NUFFT for collective-coordinate
+		   optimization follows A. Shih, M. Casiulis and S. Martiniani, Phys. Rev. E 110, 034122 (2024).
+		   Returns false (after printing why) when FINUFFT is not compiled in (make USE_FINUFFT=1). */
+		auto useFinufft = [&]() -> bool {
+			try {
+				potential->CCPotential->SetRhoBackend(ShiftedCCPotential::RhoBackend::FinufftType1);
+			}
+			catch (const std::invalid_argument & error) {
+				ofile << "\n" << error.what() << "\n";
+				return false;
+			}
+			ofile << "\nCollective densities use the FINUFFT backend.\n";
+			if (S0 != 0.0)
+				ofile << "S0 != 0 uses ShiftedCCPotential_S2, which always computes direct sums.\n";
+			return true;
+		};
 
 		if (strcmp (mode, "MD") == 0)
 		{
@@ -369,6 +385,10 @@ int GetCCO(int argc, char ** argv){
 				else if (tempstring2.compare("restore")== 0){
 					ofile << "\nSave and load the progress of MD simulations.\n";
 					MDAllowRestore = true;
+				}
+				else if (tempstring2 == "finufft"){
+					if (!useFinufft())
+						return 1;
 				}
 				else {
 					ofile << tempstring2 << " is an undefined command\n";
@@ -446,6 +466,10 @@ int GetCCO(int argc, char ** argv){
 				else if (tempstring2.compare("algorithm") == 0){
 					ofile << "\nMinimization algorithm = ";
 					ifile >> algorithm ; 
+				}
+				else if (tempstring2 == "finufft"){
+					if (!useFinufft())
+						return 1;
 				}
 				else {
 					ofile << tempstring2 << " is an undefined command\n";

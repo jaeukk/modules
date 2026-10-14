@@ -76,4 +76,16 @@ run
         assert result.returncode == 0, result.stdout + result.stderr
         packs.append(pathlib.Path(str(root / run) + ".ConfigPack").read_bytes())
     assert packs[0] and packs[0] == packs[1]
-print("CLI tests passed: text/binary/off, legacy defaults, PairStat, resume, invalid/EOF input, GetCCO repeat.")
+    # GetCCO `finufft`: runs and repeats bitwise in a USE_FINUFFT=1 build, fails with a message otherwise.
+    packs = []
+    for run in ("cco_f_a", "cco_f_b"):
+        text = f"2\n0\n1.0\n0\n1\n0.505\n0.2\n1\n200\n1\nrandom\n{root / run}\nground\nfinufft\nrun\n"
+        result = subprocess.run([str(executable), "1", "17"], input=text,
+                                text=True, capture_output=True, cwd=root, timeout=60)
+        if "requires compiling" in result.stdout:
+            assert result.returncode != 0, result.stdout
+            break
+        assert result.returncode == 0 and "FINUFFT backend" in result.stdout, result.stdout + result.stderr
+        packs.append(pathlib.Path(str(root / run) + ".ConfigPack").read_bytes())
+    assert not packs or packs[0] == packs[1]
+print("CLI tests passed: text/binary/off, legacy defaults, PairStat, resume, invalid/EOF input, GetCCO repeat, GetCCO finufft.")

@@ -6,7 +6,7 @@ parameters from standard input:
 
 | Command | Driver | Potential |
 |---|---|---|
-| `soft_core_stealthy.out [hours [seed [first [verbosity [vtilde]]]]]` | `GetCCO` | One component: `RepulsiveCCPotential` (contact + `ShiftedCCPotential`), direct sums. |
+| `soft_core_stealthy.out [hours [seed [first [verbosity [vtilde]]]]]` | `GetCCO` | One component: `RepulsiveCCPotential` (contact + `ShiftedCCPotential`); optional FINUFFT backend. |
 | `soft_core_stealthy.out multi [hours [seed [first [verbosity [vtilde]]]]]` | `GetMultiCCO` | Several species, each with its own constraints: `MultiStealthyPotential`; optional FINUFFT backend. |
 
 `hours` is the time limit (default 144), `vtilde` the shape of v(k): `flat` (default), `overlap` or
@@ -49,7 +49,7 @@ run
 configurations, `random` or `input` (with a ConfigPack name), the save prefix, the mode, the block
 keywords and `run`.
 
-Keywords of the `ground` block (`GetMultiCCO`; `GetCCO` accepts the first three):
+Keywords of the `ground` block (`GetMultiCCO`; `GetCCO` accepts `tolerance`, `maxsteps`, `algorithm` and `finufft`):
 
 | Keyword | Effect |
 |---|---|
@@ -62,13 +62,18 @@ Keywords of the `ground` block (`GetMultiCCO`; `GetCCO` accepts the first three)
 | `export txt\|binary\|pack\|off` | Output format of accepted configurations. |
 | `pairstat Kmax dK Rmax dR samples seed` | Pair statistics of each accepted configuration. |
 
-The `MD` block of `GetMultiCCO` accepts `timestep`, `samplesteps`, `temperature`,
+The `MD` blocks of both drivers accept `timestep`, `samplesteps`, `temperature`,
 `numequilibration`, `autotimestep`, `restore` and `finufft`.
 
 ## Performance notes
 
+- **Why FINUFFT.** Collective densities and forces are nonuniform Fourier sums on an integer mode grid,
+  so a NUFFT replaces the O(N M) direct sums with O(N w^d + G log G) work (kernel width w,
+  mode-grid size G). Using FINUFFT here was motivated by
+  A. Shih, M. Casiulis and S. Martiniani, *Fast generation of spectrally shaped disorder*, Phys. Rev. E **110**, 034122 (2024), [doi:10.1103/PhysRevE.110.034122](https://doi.org/10.1103/PhysRevE.110.034122) (BibTeX key `shih_fast_2024`).
 - **Direct is the default.** The FINUFFT backend agrees with direct sums to about 1e-14 relative in
-  energy and forces. For tiny systems (N of order 100) direct sums stay faster.
+  energy and forces. For tiny systems (N of order 100) direct sums stay faster. One-component example
+  (`GetCCO`, 2D, N = 2000, chi 0.31, 4 threads): a ground state in 14.4 s with direct sums, 0.8 s with `finufft`.
 - **What the FINUFFT path does.** Densities are Type 1 transforms on persistent plans; forces are
   Type 2 transforms where a deterministic cost gate predicts a win; each species' transforms run as
   particle blocks spread over the threads, and threads without transform work take the contact sum.

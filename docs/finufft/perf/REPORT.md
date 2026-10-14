@@ -1,7 +1,8 @@
 # FINUFFT speedup of the multi-component optimization
 
 October 14, 2026. This report supersedes the performance part of [../REPORT.md](../REPORT.md)
-(September 28), where only the densities rho(k) used FINUFFT and forces stayed direct.
+(September 28), where only the densities rho(k) used FINUFFT and forces stayed direct. Using FINUFFT for
+collective-coordinate optimization was motivated by A. Shih, M. Casiulis and S. Martiniani, *Fast generation of spectrally shaped disorder*, Phys. Rev. E **110**, 034122 (2024), [doi:10.1103/PhysRevE.110.034122](https://doi.org/10.1103/PhysRevE.110.034122) (BibTeX key `shih_fast_2024`).
 
 ## Result
 
@@ -214,9 +215,16 @@ per-evaluation copies (`GetConfig` copies `origConfig`) and MD's working copy in
 (`RepulsiveCCPotential` through the API; 2D, chi 0.4, T=4, interleaved): one evaluation N=2000 1.6 to
 1.2 ms, N=10000 about 17 to 3.9 ms, no change at N <= 1000; a full N=10000 optimization 34 to 20 s. 3D is
 within noise up to N=5000 (cells already near the cutoff) and about 4% faster at N=10000. The CLI's
-`GetCCO` runs Direct sums only, where the gain is about 3% at 2D N=5000. 2D endpoints change in the last
+`GetCCO` ran Direct sums only, where the gain is about 3% at 2D N=5000; it now accepts the `finufft`
+keyword (below). 2D endpoints change in the last
 bits, remain ground states and repeat bitwise; `test_cli.py` runs a GetCCO ground state twice and compares
 the packs byte for byte.
+
+**GetCCO `finufft` keyword.** The single-component driver now accepts `finufft` in its `ground` and `MD`
+blocks, as `GetMultiCCO` does; a build without `USE_FINUFFT=1` stops with a message, and with `S0 != 0`
+(`ShiftedCCPotential_S2`) the keyword has no effect. A 2D N=2000 ground state (K2a=1.0, chi 0.31, sigma
+0.505, 4 threads) took 14.4 s with Direct and 0.75–0.86 s with FINUFFT (two processes, bitwise identical
+packs; both endpoints are ground states, E about 5e-22 and 4e-22). `test_cli.py` checks both build variants.
 
 **Thread allocation after the fix.** With the contact walk cheap, a thread-CPU schedule model (each task
 timed with `CLOCK_THREAD_CPUTIME_ID`, list-scheduled on T threads; robust to the machine's load) bounded
@@ -365,11 +373,10 @@ optimization hash. Its one follow-up, a stale open item on GetCCO cells, is fixe
 11. Particle blocks reach only part of the schedule-model bound: 3D S=5 T=8 stays at 1.0x against a
     1.42–1.57x bound, because Type 1 at chi 0.4 stays one block (its count may not depend on T) and Type 2
     gets floor(T/S) = 1 block per species.
-12. A lone `ShiftedCCPotential` with FINUFFT (API use; the `GetCCO` CLI has no `finufft` keyword) now
+12. A lone `ShiftedCCPotential` with FINUFFT (`GetCCO` with `finufft`, or API use) now
     costs Type 2 by its largest block, so its gate accepts Type 2 at smaller sizes than before when T > 1;
     forces then differ from earlier builds in the last bits.
-13. The `GetCCO` CLI runs Direct sums only, so its contact-cell fix gains about 3%; a `finufft` keyword
-    there would give the 1.3–4x evaluation gains measured through the API.
+13. `GetCCO`'s `history` keyword is not exposed (only `GetMultiCCO` sets the L-BFGS history).
 
 ## Provenance
 

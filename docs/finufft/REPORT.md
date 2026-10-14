@@ -4,6 +4,10 @@
 > and the CCOptimization app can enable the backend. See [perf/REPORT.md](perf/REPORT.md); the
 > statements below that force evaluation remains direct describe the September release.
 
+**Motivation.** Using the nonuniform fast Fourier transform (FINUFFT) for collective-coordinate
+optimization was motivated by A. Shih, M. Casiulis and S. Martiniani, *Fast generation of spectrally shaped disorder*, Phys. Rev. E **110**, 034122 (2024), [doi:10.1103/PhysRevE.110.034122](https://doi.org/10.1103/PhysRevE.110.034122) (BibTeX key `shih_fast_2024`), which formulates the inverse problem with NUFFTs at
+O(N log N) cost.
+
 September 28, 2026. This document supersedes earlier reports for current implementation status. Historical report snapshots are preserved in [reports/manifest.json](reports/manifest.json), including source paths and hashes. Their relative links refer to original evidence folders and may not resolve within these snapshots. Dates, "running," "uncommitted," and incomplete-audit statements in old reports describe their original snapshots, not current status.
 
 ## Release decision

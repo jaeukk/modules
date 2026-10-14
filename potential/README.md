@@ -7,7 +7,8 @@ the unresolved cross-backend L-BFGS limitation are documented in the
 [consolidated FINUFFT report](../docs/finufft/REPORT.md).
 The October 2026 speedup of the multi-component optimizer (FINUFFT Type 2 forces, persistent
 plans, particle blocks spread over the threads, a fused contact pass, a configurable L-BFGS history)
-is documented in [docs/finufft/perf/REPORT.md](../docs/finufft/perf/REPORT.md).
+is documented in [docs/finufft/perf/REPORT.md](../docs/finufft/perf/REPORT.md). Using FINUFFT for
+collective-coordinate optimization was motivated by A. Shih, M. Casiulis and S. Martiniani, *Fast generation of spectrally shaped disorder*, Phys. Rev. E **110**, 034122 (2024), [doi:10.1103/PhysRevE.110.034122](https://doi.org/10.1103/PhysRevE.110.034122) (BibTeX key `shih_fast_2024`).
 
 ## Contents
 
