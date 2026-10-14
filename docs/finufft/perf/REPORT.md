@@ -189,6 +189,30 @@ A shorter history needs more evaluations (three seeds, history 40 against 100: +
 and repeated bitwise. A shorter history changes trajectories and endpoints for both backends, so the
 default stays 100; `history 40` is the measured best general setting.
 
+## Follow-up: contact cells and the thread-allocation measurement
+
+The question was whether threads sit idle while FINUFFT species run one per thread, so that the
+stealthy part should be split further. An instrumented copy of `EnergyAndAllForce` (2D/3D,
+N=2000/10000, S=2/5, T=4/8, chi_s 0.4) found the team only 1–4% idle, but the contact walk at 80% of an
+evaluation at 2D N=10000 and growing as N^2. Cause: random packings start from `GetUnitCubicBox(d, 0.1)`,
+whose cell list keeps 10 cells per side through `Rescale`, and `PrepareIterateThroughNeighbors` never
+re-bins, so each contact query scanned about 0.09 N particles.
+
+**Contact cells (commit 24727d9).** `MultiStealthyPotential::PrepareContactCells` re-bins the
+per-evaluation copy to cells of width max(rc, (V/N)^(1/d)) in `SetConfiguration`, `SetSecureRadii` and
+`SetPacking`. FINUFFT evaluation, 2D, S=5, T=4: N=2000 1.17 to 0.77 ms; N=10000 18.3 to 3.66 ms. 3D at
+N=2000 already had cells near 1.7 rc and is unchanged; 3D N=10000 contact time fell 25–35%. The width
+rule matched or beat a fixed width of 0.55. Contact sums now visit neighbors in a different order, so 2D
+endpoints change in the last bits; they remain ground states and repeat bitwise across processes (the 3D
+N=2000 endpoint hash is unchanged).
+
+**Thread allocation after the fix.** With the contact walk cheap, a thread-CPU schedule model (each task
+timed with `CLOCK_THREAD_CPUTIME_ID`, list-scheduled on T threads; robust to the machine's load) bounded
+what a perfect split of the species work could gain: 2D S=2 T=8 2.35–2.67x; 3D S=2 T=4 1.42–1.57x;
+3D S=2 T=8 about 3x; 3D S=5 T=8 1.42–1.57x; S=5 T=4, and generally S >= T with equal species, about
+1.0x. Ordering species largest first gains nothing for equal species. The hypothesis held for S < T
+(binary mixtures, 3D) but not for S >= T, which motivated the particle blocks below.
+
 ## Follow-up: species work in particle blocks
 
 With one FINUFFT species per thread, a run with fewer species than threads left most of the team idle
@@ -320,6 +344,15 @@ tests are clean.
 10. Particle blocks: the model gains of the split cases (up to 2.1x) were only partly visible on this loaded
     machine (1.2-1.3x); confirm on an idle node. A species with B1 > 1 changes rho in the last bits against
     earlier builds (none of the chi 0.4 benchmarks does; low chi and large N do).
+11. Particle blocks reach only part of the schedule-model bound: 3D S=5 T=8 stays at 1.0x against a
+    1.42–1.57x bound, because Type 1 at chi 0.4 stays one block (its count may not depend on T) and Type 2
+    gets floor(T/S) = 1 block per species.
+12. The lone `ShiftedCCPotential` path (`GetCCO`) now costs Type 2 by its largest block, so its gate
+    accepts Type 2 at smaller sizes than before when T > 1; forces then differ from earlier builds in
+    the last bits.
+13. The single-component `RepulsiveCCPotential` (`GetCCO`) still searches contacts on the coarse cells
+    of `GetUnitCubicBox(d, 0.1)` (O(N^2)); the 24727d9 re-binning applies only to
+    `MultiStealthyPotential`.
 
 ## Provenance
 
