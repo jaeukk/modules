@@ -10,6 +10,7 @@
  *    and changes of FinufftTolerance, FinufftMaxModes and FinufftNumThreads rebuild the map or plan as needed,
  *    and rho always matches a fresh Direct evaluation;
  *  - an ineligible (fallback) result and a failed makeplan are cached and re-checked when an input changes;
+ *  - no plan is ever made inside an OpenMP parallel region (MultiStealthyPotential prepares them serially);
  *  - the Type 2 force plan: copies start without it, assignment, a declining gate and destruction release it,
  *    and a failed Type 2 setpts falls back to the direct forces for that call only;
  *  - copies (copy constructor, clone, derived converting constructors) start empty, assignment drops the
@@ -45,6 +46,7 @@ int __real_finufft_setpts(finufft_plan plan, int64_t M, const double * x, const 
 namespace obs {
 size_t makeplans = 0;            //< finufft_makeplan calls
 size_t makeplans2 = 0;           //< finufft_makeplan calls of Type 2 (force) plans
+size_t parallelMakeplans = 0;    //< finufft_makeplan calls made inside an OpenMP parallel region
 size_t setpts = 0;               //< finufft_setpts calls
 size_t badDestroys = 0;          //< finufft_destroy of a handle that is not live (double destroy)
 int lastNthreads = -1;           //< opts->nthreads of the last makeplan
@@ -62,6 +64,7 @@ extern "C" int __wrap_finufft_makeplan(int type, int dim, const int64_t * n_mode
 {
 	obs::makeplans++;
 	obs::makeplans2 += type == 2;
+	obs::parallelMakeplans += omp_in_parallel() != 0;
 	obs::lastNthreads = opts->nthreads;
 	obs::lastUpsampfac = opts->upsampfac;
 	obs::lastSort = opts->spread_sort;
@@ -613,6 +616,7 @@ int main()
 	TestMulti();
 	Check(obs::live.empty(), "plans still live at exit: " + std::to_string(obs::live.size()));
 	Check(obs::badDestroys == 0, "double or unknown destroys: " + std::to_string(obs::badDestroys));
+	Check(obs::parallelMakeplans == 0, "plans made inside a parallel region: " + std::to_string(obs::parallelMakeplans));
 	std::cout << (failures ? "FAILED: " + std::to_string(failures) + " of " + std::to_string(checks) + " check(s)\n"
 	                       : "All " + std::to_string(checks) + " plan-cache checks passed\n");
 	return failures ? 1 : 0;

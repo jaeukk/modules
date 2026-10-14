@@ -9,7 +9,9 @@
  * system stays on the direct loop (bitwise equal to per-particle Force), and a mid-size one switches to
  * Type 2 with one thread but not with eight. MultiStealthyPotential with one heavy and two light species:
  * the heavy one uses Type 2, every species uses the backend of the joint gate (FinufftForceGate), and AllForce
- * agrees with per-particle Force within the same tolerance; with Direct it equals Force bitwise.
+ * agrees with per-particle Force within the same tolerance; with Direct it equals Force bitwise. Combined check of
+ * the integrated design (see Combined): indexed views, persistent plans, species-concurrent Type 1 and Type 2, and
+ * the joint gate match Direct, choose the expected paths, and repeat bitwise at 4 and 8 threads.
  * Build and run: make USE_FINUFFT=1 test_finufft_forces.out && ./test_finufft_forces.out */
 
 #include "MultiStealthyPotential.h"
@@ -288,6 +290,142 @@ void Gate(int threads)
 	Check(!eight.UseFinufftForces() && eight.GetLastForceBackendUsed() == ForceBackend::Direct, label + ": eight-thread mid case used Type 2");
 }
 
+/** \brief One case of the combined check: species sizes and chi, cell, contact, and the expected gate decisions. */
+struct Combo {
+	DimensionType d;              //< dimension
+	bool skew;                    //< non-orthogonal cell
+	std::vector<size_t> sizes;    //< particles per species
+	std::vector<double> chi;      //< per-species chi (at the species density)
+	double e0;                    //< contact strength (0 disables contact)
+	std::string expect[2];        //< per species at T=4 and T=8: '0' direct, '1' Type 2, '2' Type 2 only jointly
+};
+
+/** \brief Species-resolved potential on c with interleaved species (indexed views differ from contiguous blocks).
+ *  \param c        Configuration.
+ *  \param tc       Case.
+ *  \param backend  Collective-density backend.
+ *  \param threads  ParallelNumThread.
+ *  \return         The potential, bound to c. */
+std::unique_ptr<MultiStealthyPotential> MakeCombo(const Configuration & c, const Combo & tc, Backend backend, int threads)
+{
+	std::ostringstream sink;
+	std::streambuf * old = std::cout.rdbuf(sink.rdbuf());
+	auto p = std::make_unique<MultiStealthyPotential>(tc.d, tc.e0);
+	p->ParallelNumThread = threads;
+	p->SetConfiguration(c);
+	p->SetNumSpecies(tc.sizes.size());
+	p->SetSecureRadii(std::vector<double>(c.NumParticle(), std::pow(0.2 / HyperSphere_Volume(tc.d, 1.0), 1.0 / tc.d)));
+	std::vector<size_t> label;
+	for (size_t s = 0; s < tc.sizes.size(); s++)
+		label.insert(label.end(), tc.sizes[s], s);
+	RandomGenerator gen(99 + label.size());
+	for (size_t i = label.size(); i > 1; i--)
+		std::swap(label[i - 1], label[size_t(gen.RandomDouble() * i) % i]);
+	for (size_t i = 0; i < label.size(); i++)
+		p->SetSpeciesOfParticle(i, label[i]);
+	for (size_t s = 0; s < tc.sizes.size(); s++) {
+		const double rhoS = double(tc.sizes[s]) / c.PeriodicVolume();
+		const double K = 2 * pi * std::pow(2 * tc.d * rhoS * tc.chi[s] / HyperSphere_Volume(tc.d, 1.0), 1.0 / tc.d);
+		for (const auto & k : GetKs(c, K, K, 1))
+			p->AddConstraint(s, k, {1.0 + 0.1 * k.Modulus2()});
+	}
+	p->SetRhoBackend(backend);
+	p->SetConfiguration(c);
+	std::cout.rdbuf(old);
+	return p;
+}
+
+/** \brief Combined check of the integrated design on one case: exact-type species bound as indexed views, persistent
+ *  Type 1 and Type 2 plans, species-concurrent rho and Type 2 forces, and the joint cost gate. At T=4 and T=8:
+ *  every species' force path equals FinufftForceGate over the concurrent species and the expected decision
+ *  (expectations follow the calibrated constants: recheck them after a refit); a cold AllForce (MD order) equals
+ *  the warm one bitwise; energy and forces match Direct within 1e-10 (relative, and times max(1, max|F|)); repeated
+ *  evaluations, a fresh potential, and a moved configuration repeat bitwise; and when the decisions at T=4 and T=8
+ *  agree, so do the results, bitwise.
+ *  \param tc  Case. */
+void Combined(const Combo & tc)
+{
+	size_t n = 0;
+	for (size_t ns : tc.sizes) n += ns;
+	const Configuration c = RandomCell(tc.d, n, tc.skew);
+	Configuration moved(c);
+	RandomGenerator gen(5 + n);
+	for (size_t i = 0; i < n; i++) {
+		GeometryVector x = moved.GetRelativeCoordinates(i);
+		for (DimensionType a = 0; a < tc.d; a++) x.x[a] += 0.05 * gen.RandomDouble();
+		moved.MoveParticle(i, x);
+	}
+	std::string decided[2];
+	double energy[2] = {0, 0};
+	std::vector<GeometryVector> force[2];
+	for (int t = 0; t < 2; t++) {
+		const int threads = t ? 8 : 4;
+		std::ostringstream name;
+		name << "combined " << tc.d << "D" << (tc.skew ? " skew" : "") << " S=" << tc.sizes.size() << " e0=" << tc.e0 << " T=" << threads;
+		const std::string label = name.str();
+		auto direct = MakeCombo(c, tc, Backend::Direct, threads);
+		auto fast = MakeCombo(c, tc, Backend::FinufftType1, threads);
+		auto again = MakeCombo(c, tc, Backend::FinufftType1, threads);
+
+		std::vector<GeometryVector> cold, warm, repeat, fd;
+		fast->AllForce(cold);  // MD order: no prior Energy
+		const double e1 = fast->Energy();
+		fast->AllForce(warm);
+		Check(Same(cold, warm, tc.d), label + ": cold AllForce differs from warm AllForce");
+
+		std::vector<const ShiftedCCPotential *> pots;
+		for (const auto & sp : fast->species_constraints)
+			pots.push_back(sp.CCPotential.get());
+		const std::vector<char> gate = ShiftedCCPotential::FinufftForceGate(pots, threads);
+		for (size_t s = 0; s < tc.sizes.size(); s++) {
+			const ShiftedCCPotential & cc = *fast->species_constraints[s].CCPotential;
+			const bool type2 = cc.GetLastForceBackendUsed() == ForceBackend::FinufftType2;
+			decided[t] += type2 ? '1' : '0';
+			const std::string tag = label + " species " + std::to_string(s);
+			Check(cc.GetLastRhoBackendUsed() == Backend::FinufftType1, tag + ": rho fell back");
+			Check(type2 == (gate[s] != 0), tag + ": force path differs from FinufftForceGate");
+			Check(type2 == (tc.expect[t][s] != '0'), tag + ": gate decision differs from the expected one");
+			if (tc.expect[t][s] == '2')
+				Check(!cc.UseFinufftForces(), tag + ": accepted alone, expected only jointly");
+		}
+
+		const double ed = direct->Energy();
+		direct->AllForce(fd);
+		double scale = 0;
+		const double df = ForceDiff(warm, fd, tc.d, scale);
+		Check(std::abs(e1 - ed) <= 1e-10 * std::abs(ed), label + ": energy rel diff " + std::to_string(std::abs(e1 - ed) / std::abs(ed)));
+		Check(df <= 1e-10 * std::max(1.0, scale), label + ": force diff " + std::to_string(df) + " (scale " + std::to_string(scale) + ")");
+
+		const double e2 = again->Energy();
+		again->AllForce(repeat);
+		Check(std::memcmp(&e1, &e2, sizeof(double)) == 0 && Same(warm, repeat, tc.d), label + ": fresh potential not bitwise repeatable");
+		for (int rep = 0; rep < 3; rep++) {
+			fast->SetConfiguration(c);
+			const double e = fast->Energy();
+			fast->AllForce(repeat);
+			Check(std::memcmp(&e, &e1, sizeof(double)) == 0 && Same(warm, repeat, tc.d), label + ": repeated evaluation not bitwise identical");
+		}
+
+		// Moved particles: plans reused, angles refilled; agreement and repeatability again (MD order on one of them).
+		std::vector<GeometryVector> fm, fm2, fmd;
+		fast->SetConfiguration(moved);
+		again->SetConfiguration(moved);
+		direct->SetConfiguration(moved);
+		fast->AllForce(fm);
+		const double em = fast->Energy(), em2 = again->Energy(), emd = direct->Energy();
+		again->AllForce(fm2);
+		direct->AllForce(fmd);
+		Check(std::memcmp(&em, &em2, sizeof(double)) == 0 && Same(fm, fm2, tc.d), label + ": moved, not bitwise repeatable");
+		Check(std::abs(em - emd) <= 1e-10 * std::abs(emd) && ForceDiff(fm, fmd, tc.d, scale) <= 1e-10 * std::max(1.0, scale), label + ": moved, differs from Direct");
+
+		energy[t] = e1;
+		force[t] = warm;
+	}
+	if (decided[0] == decided[1])
+		Check(std::memcmp(&energy[0], &energy[1], sizeof(double)) == 0 && Same(force[0], force[1], tc.d),
+		      "combined " + std::to_string(tc.d) + "D S=" + std::to_string(tc.sizes.size()) + ": same decisions at T=4 and T=8 but different bits");
+}
+
 }  // namespace
 
 /** \brief Run the suite.
@@ -298,6 +436,19 @@ int main()
 		std::cout << "FINUFFT backend not compiled in; build with make USE_FINUFFT=1\n";
 		return 1;
 	}
+	const std::vector<Combo> combos = {
+		// uniform mid-size species: Type 2 at T=4 on their own; at T=8 only jointly (F = 6 concurrent species)
+		{2, true, std::vector<size_t>(6, 150), std::vector<double>(6, 0.2), 1.0, {"111111", "222222"}},
+		// one heavy and two light species: only the heavy one pays, alone or jointly
+		{2, false, {700, 120, 120}, {0.4, 0.05, 0.05}, 0.0, {"100", "100"}},
+		{1, false, {400, 300, 200}, {0.5, 0.5, 0.5}, 1.0, {"111", "111"}},
+		// 3D: both alone at T=4; at T=8 the smaller species only jointly
+		{3, true, {500, 400}, {1.0, 1.0}, 1.0, {"11", "12"}},
+		// tiny 3D species: Type 2 never pays
+		{3, false, std::vector<size_t>(4, 60), std::vector<double>(4, 0.2), 0.0, {"0000", "0000"}},
+	};
+	for (const auto & tc : combos)
+		Combined(tc);
 	for (int threads : {4, 8}) {
 		Gate(threads);
 		for (DimensionType d = 1; d <= 3; d++) {
