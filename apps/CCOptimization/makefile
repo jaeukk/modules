@@ -54,7 +54,8 @@ deps:
 $(TARGET): $(OBJS) deps
 	$(CC) -o $@ $(OBJS) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
 
-$(ODIR)%.o: %.cpp | $(ODIR)
+# makefile: objects built before -MMD header tracking have no .d file; rebuild them once after this file changes.
+$(ODIR)%.o: %.cpp makefile | $(ODIR)
 	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
 
 $(ODIR):
