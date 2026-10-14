@@ -61,7 +61,7 @@ $(ODIR):
 	mkdir -p $(ODIR)
 
 clean:
-	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out
+	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out test_species_concurrent.out
 
 # Offline archive management and multicomponent analysis stay local to this app.
 mspb_pack.out: $(ODIR)mspb_pack_main.o $(ODIR)MSPB_Pack.o $(ODIR)MultiStealthyPotential.o $(ODIR)MultiComponentPairStat.o deps
@@ -90,6 +90,20 @@ $(ODIR)test_finufft_multi.o: tests/test_finufft_multi.cpp | $(ODIR)
 test-finufft:
 	$(MAKE) USE_FINUFFT=1 test_finufft_multi.out
 	./test_finufft_multi.out
+
+# Species-concurrent evaluation: repeatability, MD order, thread count, under each OpenMP wait/nesting mode.
+test_species_concurrent.out: $(ODIR)test_species_concurrent.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_species_concurrent.o: tests/test_species_concurrent.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-species-concurrent
+test-species-concurrent:
+	$(MAKE) USE_FINUFFT=1 test_species_concurrent.out
+	./test_species_concurrent.out
+	OMP_WAIT_POLICY=passive ./test_species_concurrent.out
+	OMP_MAX_ACTIVE_LEVELS=4 ./test_species_concurrent.out
 
 # Header dependencies (CollectiveCoordinatePotential.h changes must rebuild every object).
 -include $(wildcard $(ODIR)*.d)
