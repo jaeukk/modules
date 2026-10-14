@@ -8,7 +8,9 @@
  *  - AllForce without a prior Energy (MD order) equals the warm AllForce bitwise;
  *  - repeated evaluations on one potential and on a fresh potential are bitwise identical;
  *  - FINUFFT results are bitwise identical at 4 and 8 threads (no thread-count-dependent sums);
- *  - each species' rho is filled exactly once per evaluation (never lazily inside the force loop);
+ *  - the rho of each Direct or fallback species is filled through GetRho exactly once per evaluation, and that of
+ *    each FINUFFT species never through GetRho (its Type 1 block tasks fill it; test_finufft_blocks counts them), so
+ *    no rho is filled lazily inside the force loop;
  *  - every FINUFFT species used the backend FinufftEligible predicts; species forced to fall back
  *    (grid cap, or a sheared cell tripping the sparse-grid guard) report Direct, and when all fall back
  *    the results equal the Direct backend bitwise; mixed eligible/fallback cases stay repeatable;
@@ -45,8 +47,9 @@ struct Case {
 	double shear = 0;           //< if nonzero, second basis vector (shear L, L): sparse-grid fallback
 };
 
-/** \brief Species potential that counts rho cache misses, to catch a rho filled lazily inside the
- *  parallel force loop (a race whose racing threads write identical values, invisible in results). */
+/** \brief Species potential that counts rho cache misses of GetRho, to catch a rho filled lazily inside the
+ *  parallel force loop (a race whose racing threads write identical values, invisible in results). FINUFFT species
+ *  fill rho with the non-virtual block steps (StartRho, RunRhoBlock, FinishRho) instead. */
 struct CountingCC : ShiftedCCPotential {
 	std::atomic<int> fills{0};  //< GetRho calls that found the cache invalid
 
@@ -162,7 +165,8 @@ std::unique_ptr<MultiStealthyPotential> Make(const Configuration & c, const Case
 }
 
 /** \brief Evaluate in the MD order (AllForce, then Energy) or the optimizer order (Energy, then AllForce),
- *  and check that each species' rho was filled exactly once, before any force used it.
+ *  and check that each species' rho was filled once through GetRho if it is not on the FINUFFT block path and
+ *  never otherwise, so never lazily by a force.
  *  \param p        Potential built by Make.
  *  \param c        Configuration to bind first (invalidates every cache).
  *  \param mdOrder  Call AllForce before Energy.
@@ -175,7 +179,9 @@ Result Evaluate(MultiStealthyPotential & p, const Configuration & c, bool mdOrde
 	else { r.energy = p.Energy(); p.AllForce(r.force); }
 	for (auto & sp : p.species_constraints) {
 		auto & cc = static_cast<CountingCC &>(*sp.CCPotential);
-		Check(cc.fills == 1, "rho filled " + std::to_string(cc.fills) + " times in one evaluation" + (mdOrder ? " (MD order)" : ""));
+		const int expected = cc.FinufftEligible() ? 0 : 1;	// FINUFFT species fill rho in their block tasks
+		Check(cc.fills == expected, "rho filled " + std::to_string(cc.fills) + " times through GetRho in one evaluation, expected "
+		      + std::to_string(expected) + (mdOrder ? " (MD order)" : ""));
 		cc.fills = 0;
 	}
 	return r;

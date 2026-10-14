@@ -6,8 +6,9 @@
  * match Direct to 1e-10 max(1, max|F|); a cold AllForce (no prior Energy) equals the warm one and a fresh
  * object bitwise; a forced fallback (mode cap) reports Direct and equals Direct bitwise;
  * ShiftedCCPotential_S2 and LogCCPotential keep their own per-particle Force loop. Cost gate: a tiny 3D
- * system stays on the direct loop (bitwise equal to per-particle Force), and a mid-size one switches to
- * Type 2 with one thread but not with eight. MultiStealthyPotential with one heavy and two light species:
+ * system stays on the direct loop (bitwise equal to per-particle Force); a 3D system whose Type 2 work is too small to
+ * split switches to Type 2 with one thread but not with eight; a mid-size one runs Type 2 as one block with one
+ * thread and as several blocks, in parallel, with eight, with bitwise equal forces. MultiStealthyPotential with one heavy and two light species:
  * the heavy one uses Type 2, every species uses the backend of the joint gate (FinufftForceGate), and AllForce
  * agrees with per-particle Force within the same tolerance; with Direct it equals Force bitwise. Combined check of
  * the integrated design (see Combined): indexed views, persistent plans, species-concurrent Type 1 and Type 2, and
@@ -238,7 +239,7 @@ void Multi(DimensionType d, Backend backend, int threads)
 	std::vector<const ShiftedCCPotential *> pots;
 	for (const auto & sp : p.species_constraints)
 		pots.push_back(sp.CCPotential.get());
-	const std::vector<char> gate = ShiftedCCPotential::FinufftForceGate(pots, threads);
+	const std::vector<size_t> gate = ShiftedCCPotential::FinufftForceGate(pots, threads);
 	Check(!finufft || (gate[1] && p.species_constraints[1].CCPotential->UseFinufftForces()), label + ": heavy species declined");
 	for (size_t s = 0; s < species; s++) {
 		const ShiftedCCPotential & cc = *p.species_constraints[s].CCPotential;
@@ -274,20 +275,40 @@ void Gate(int threads)
 	Check(small.GetLastRhoBackendUsed() == Backend::FinufftType1, label + ": tiny case rho did not use FINUFFT");
 	Check(Same(f, PerParticle(small, 64), 3), label + ": declined AllForce differs from per-particle Force bitwise");
 
-	// Mid-size 3D system: Type 2 wins clearly against one direct thread, not against eight.
-	const Configuration mid = RandomCell(3, 500, false);
+	// Small dense 3D system, Type 2 too small to split: it wins clearly against one direct thread, not against eight.
+	const Configuration dense = RandomCell(3, 200, false);
 	ShiftedCCPotential one(3);
-	AddModes(one, Modes(mid, 0.3), false);
+	AddModes(one, Modes(dense, 1.0), false);
 	one.SetRhoBackend(Backend::FinufftType1);
 	ShiftedCCPotential eight(one);
 	one.ParallelNumThread = 1;
 	eight.ParallelNumThread = 8;
-	one.SetConfiguration(mid);
-	eight.SetConfiguration(mid);
+	one.SetConfiguration(dense);
+	eight.SetConfiguration(dense);
 	one.AllForce(f);
-	Check(one.UseFinufftForces() && one.GetLastForceBackendUsed() == ForceBackend::FinufftType2, label + ": one-thread mid case did not use Type 2");
+	Check(one.UseFinufftForces() && one.GetLastForceBackendUsed() == ForceBackend::FinufftType2, label + ": one-thread dense case did not use Type 2");
+	Check(ShiftedCCPotential::FinufftForceGate({&eight}, 64)[0] <= 1, label + ": dense case splits its Type 2 work");
 	eight.AllForce(f);
-	Check(!eight.UseFinufftForces() && eight.GetLastForceBackendUsed() == ForceBackend::Direct, label + ": eight-thread mid case used Type 2");
+	Check(!eight.UseFinufftForces() && eight.GetLastForceBackendUsed() == ForceBackend::Direct, label + ": eight-thread dense case used Type 2");
+
+	// Mid-size 3D system: one Type 2 block on one thread, several in parallel on eight; the forces agree bitwise.
+	const Configuration mid = RandomCell(3, 500, false);
+	ShiftedCCPotential serial(3);
+	AddModes(serial, Modes(mid, 0.3), false);
+	serial.SetRhoBackend(Backend::FinufftType1);
+	ShiftedCCPotential split(serial);
+	serial.ParallelNumThread = 1;
+	split.ParallelNumThread = 8;
+	serial.SetConfiguration(mid);
+	split.SetConfiguration(mid);
+	std::vector<GeometryVector> fs;
+	serial.AllForce(f);
+	split.AllForce(fs);
+	Check(ShiftedCCPotential::FinufftForceGate({&serial}, 1)[0] == 1 && ShiftedCCPotential::FinufftForceGate({&split}, 8)[0] > 1,
+	      label + ": mid case not one Type 2 block at T=1 and several at T=8");
+	Check(serial.GetLastForceBackendUsed() == ForceBackend::FinufftType2 && split.GetLastForceBackendUsed() == ForceBackend::FinufftType2,
+	      label + ": mid case did not use Type 2");
+	Check(Same(f, fs, 3), label + ": Type 2 forces depend on the block count");
 }
 
 /** \brief One case of the combined check: species sizes and chi, cell, contact, and the expected gate decisions. */
@@ -376,7 +397,7 @@ void Combined(const Combo & tc)
 		std::vector<const ShiftedCCPotential *> pots;
 		for (const auto & sp : fast->species_constraints)
 			pots.push_back(sp.CCPotential.get());
-		const std::vector<char> gate = ShiftedCCPotential::FinufftForceGate(pots, threads);
+		const std::vector<size_t> gate = ShiftedCCPotential::FinufftForceGate(pots, threads);
 		for (size_t s = 0; s < tc.sizes.size(); s++) {
 			const ShiftedCCPotential & cc = *fast->species_constraints[s].CCPotential;
 			const bool type2 = cc.GetLastForceBackendUsed() == ForceBackend::FinufftType2;

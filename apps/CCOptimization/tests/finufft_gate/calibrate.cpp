@@ -1,5 +1,6 @@
 /** \file calibrate.cpp
- * \brief Timings for the Type 2 force gate of ShiftedCCPotential (FinufftForceGate, FinufftForceCosts).
+ * \brief Timings for the cost model of ShiftedCCPotential: the Type 2 force gate (FinufftForceGate, FinufftForceCosts)
+ *  and the Type 1 particle blocks (FinufftBlocks, FinufftExecutionCosts).
  *
  * For each case (a cell of unit number density, orthogonal or skew, with N uniformly random particles and a
  * constraint at every reciprocal-lattice vector with |k| < K(chi)) it times, at the default eps and FINUFFT
@@ -7,9 +8,11 @@
  *  - one Type 2 force execution with the persistent plan (coefficients, setpts, execute, output copy) on one
  *    thread, whatever the gate would decide;
  *  - the direct per-particle Force() loop on one thread, divided by the number of particle-constraint pairs;
- *  - the direct Force() loop over teams of 4 and 8 threads (wall time, used only by the margin check).
+ *  - the direct Force() loop over teams of 4 and 8 threads (wall time, used only by the margin check);
+ *  - one Type 1 particle block (angles, setpts, execute: RunRhoBlock) of n1 = N / B1 points, B1 the case's Type 1
+ *    block count, on one thread.
  * It prints one line per case on stdout (redirect it to the data area, never into the repository):
- *   skew chi dim N M G type2_us pair_us direct4_us direct8_us
+ *   skew chi dim N M G type2_us pair_us direct4_us direct8_us n1 type1_us
  * with M the number of constraints and G the FINUFFT mode-grid size. fit_gate.py turns the lines into the
  * constants of CollectiveCoordinatePotential.h. Results are machine-specific (see README.md).
  * Usage (from apps/CCOptimization, after make finufft-gate):
@@ -97,13 +100,17 @@ void Case(int d, size_t n, double chi, bool skew)
 	p.SetConfiguration(c);
 	p.ParallelNumThread = 1;
 	p.GetRho();
-	// accept=true makes the Type 2 plan whatever the gate decides; with rho valid, TryFinufftAllForce runs only Type 2
+	// one block makes the unsplit Type 2 plan whatever the gate decides; with rho valid, TryFinufftAllForce runs only Type 2
 	if (p.GetLastRhoBackendUsed() != ShiftedCCPotential::RhoBackend::FinufftType1 || !p.PrepareFinufft() || !p.PrepareFinufftForces(true)) {
 		std::printf("# skipped (FINUFFT not eligible): skew %d chi %g dim %d N %zu\n", int(skew), chi, d, n);
 		return;
 	}
 	std::vector<GeometryVector> f;
 	const double type2 = MinTime([&] { p.TryFinufftAllForce(f); }, 15, 0.3);
+	p.RhoValid = false;
+	const size_t blocks1 = p.StartRho(false);
+	const double type1 = MinTime([&] { p.RunRhoBlock(0); }, 15, 0.3);
+	p.FinishRho();
 	const size_t m = p.constraints.size();
 	const size_t sample = std::min<size_t>(n, std::max<size_t>(16, 200000 / std::max<size_t>(m, 1)));
 	std::vector<GeometryVector> g(sample);
@@ -118,8 +125,8 @@ void Case(int d, size_t n, double chi, bool skew)
 				p.Force(fa[i], i);
 		}, 5, 0.3);
 	}
-	std::printf("%d %g %d %zu %zu %lld %.3f %.6f %.3f %.3f\n", int(skew), chi, d, n, m, p.GridModes(),
-	            1e6 * type2, 1e6 * pair, 1e6 * wall[0], 1e6 * wall[1]);
+	std::printf("%d %g %d %zu %zu %lld %.3f %.6f %.3f %.3f %zu %.3f\n", int(skew), chi, d, n, m, p.GridModes(),
+	            1e6 * type2, 1e6 * pair, 1e6 * wall[0], 1e6 * wall[1], n / std::max<size_t>(blocks1, 1), 1e6 * type1);
 	std::fflush(stdout);
 }
 
@@ -136,7 +143,7 @@ int main(int argc, char ** argv)
 		std::fprintf(stderr, "usage: calibrate_gate.out [DIM N CHI [SKEW]]\n");
 		return 1;
 	}
-	std::printf("# skew chi dim N M G type2_us pair_us direct%d_us direct%d_us\n", Teams[0], Teams[1]);
+	std::printf("# skew chi dim N M G type2_us pair_us direct%d_us direct%d_us n1 type1_us\n", Teams[0], Teams[1]);
 	if (argc > 1) {
 		Case(dim, std::stoul(argv[2]), std::atof(argv[3]), argc > 4 && std::atoi(argv[4]) != 0);
 		return 0;

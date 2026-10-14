@@ -3,7 +3,8 @@
  *
  * Usage: bench_finufft.out eval|opt DIM N SPECIES CHI THREADS SEED [direct|finufft [HISTORY]]
  *   eval  per-evaluation timings (Configuration build, SetConfiguration, Energy, AllForce) for
- *         Direct and, when compiled in, FINUFFT, plus energy/force agreement with Direct; also
+ *         Direct and, when compiled in, FINUFFT (only the named backend if one is given), plus energy/force
+ *         agreement with Direct; also
  *         SetConfiguration + Energy + AllForce against SetConfiguration + EnergyAndAllForce, interleaved
  *         (sep_*, fused_*: median and minimum ms), and whether every fused result was bitwise the same.
  *   opt   one RelaxStructure_NLOPT run (as CollectiveCoordinateMultiRun) with the given backend;
@@ -136,8 +137,9 @@ std::uint64_t Hash(const Configuration & c)
 const char * Name(Backend b) { return b == Backend::Direct ? "direct" : "finufft"; }
 
 /** \brief Time the parts of one optimizer evaluation and compare energies/forces with Direct.
- *  \param s  Benchmark parameters. */
-void Eval(const Setup & s)
+ *  \param s     Benchmark parameters.
+ *  \param only  Backend to time ("direct" or "finufft"), or empty for both. */
+void Eval(const Setup & s, const std::string & only)
 {
 	const SpherePacking packing = RandomPacking(s);
 	const Configuration start(packing, "a");
@@ -146,6 +148,8 @@ void Eval(const Setup & s)
 	std::vector<Backend> backends{Backend::Direct};
 	if (ShiftedCCPotential::IsRhoBackendAvailable(Backend::FinufftType1))
 		backends.push_back(Backend::FinufftType1);
+	if (!only.empty())
+		backends.erase(std::remove_if(backends.begin(), backends.end(), [&](Backend b) { return only != Name(b); }), backends.end());
 	RandomGenerator jitter(s.seed + 1);
 	for (Backend b : backends) {
 		auto p = MakePotential(s, packing, b, modes);
@@ -259,7 +263,7 @@ try {
 	ProgramStart = std::time(nullptr);
 	TimeLimit = std::numeric_limits<time_t>::max();
 	if (mode == "eval")
-		Eval(s);
+		Eval(s, argc > 8 ? argv[8] : "");
 	else if (mode == "opt") {
 		const std::string backend = argc > 8 ? argv[8] : "direct";
 		if (argc > 9)

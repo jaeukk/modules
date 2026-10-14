@@ -1,10 +1,11 @@
-"""Fit the Type 2 force-gate constants of ShiftedCCPotential from calibrate_gate.out output.
+"""Fit the cost constants of ShiftedCCPotential (Type 2 force gate, Type 1 blocks) from calibrate_gate.out output.
 
 Usage: python3 fit_gate.py CALIBRATION_FILE
 
 Per dimension, the Type 2 time of one execution, type2 = Call + Particle * N + Mode * G [us], is the
 tightest linear upper envelope of the measured times (non-negative coefficients, every case on or below
-it, smallest summed relative prediction), rounded up to three significant digits. Pair is the smallest
+it, smallest summed relative prediction), rounded up to three significant digits; the Type 1 time of one block,
+type1 = Call + Particle * n1 + Mode * G, is fitted the same way. Pair is the smallest
 single-thread direct cost per particle-constraint pair among the long direct loops (short loops dodge
 load and overstate the speed), rounded down. The script prints the four constant lines in the form of
 CollectiveCoordinatePotential.h, the envelope's prediction/measurement ratios, and a margin check: with
@@ -21,7 +22,10 @@ LONG_LOOP_PAIRS = 4e4  # direct loops with at least this many pairs define Pair
 COMMENTS = ["Type 2 fixed cost per execution, by dimension.",
             "Type 2 cost per particle (all d transforms) at kernel width 13.",
             "Type 2 cost per mode-grid point.",
-            "Direct Force() cost per particle-constraint pair."]
+            "Direct Force() cost per particle-constraint pair.",
+            "Type 1 fixed cost per execution, by dimension.",
+            "Type 1 cost per particle at kernel width 13.",
+            "Type 1 cost per mode-grid point."]
 
 
 def load(path):
@@ -30,12 +34,12 @@ def load(path):
     Parameters
     ----------
     path : str
-        File with lines ``skew chi dim N M G type2_us pair_us directT1_us directT2_us``; lines starting
-        with ``#`` hold comments and the two team sizes T1, T2 in the header.
+        File with lines ``skew chi dim N M G type2_us pair_us directT1_us directT2_us n1 type1_us``; lines
+        starting with ``#`` hold comments and the two team sizes T1, T2 in the header.
 
     Returns
     -------
-    rows : numpy.ndarray, shape (cases, 10)
+    rows : numpy.ndarray, shape (cases, 12)
         One row per case, columns as above; times in microseconds.
     teams : tuple of int
         Team sizes of the two direct wall-time columns.
@@ -44,7 +48,7 @@ def load(path):
     with open(path) as handle:
         for line in handle:
             if line.startswith("# skew"):
-                teams = tuple(int(word[len("direct"):-len("_us")]) for word in line.split()[-2:])
+                teams = tuple(int(word[len("direct"):-len("_us")]) for word in line.split() if word.startswith("direct"))
     rows = np.loadtxt(path, comments="#", ndmin=2)
     return rows, teams
 
@@ -106,8 +110,8 @@ def main():
         print(__doc__)
         return 1
     rows, teams = load(sys.argv[1])
-    skew, chi, dim, n, m, g, t2, pair, wall1, wall2 = rows.T
-    consts = np.full((4, 3), np.nan)
+    skew, chi, dim, n, m, g, t2, pair, wall1, wall2, n1, t1 = rows.T
+    consts = np.full((7, 3), np.nan)
     print("# envelope prediction/measurement per dimension (min must be 1.00):")
     for d in (1, 2, 3):
         sel = dim == d
@@ -120,8 +124,13 @@ def main():
         long_loops = sel & (n * m >= LONG_LOOP_PAIRS)
         rates = pair[long_loops] if long_loops.any() else pair[sel]
         consts[3, d - 1] = round_sig(rates.min(), up=False)
-        print(f"#   {d}D: {sel.sum()} cases, min {ratio.min():.2f} median {np.median(ratio):.2f} max {ratio.max():.2f}")
-    names = ["FinufftCostCall", "FinufftCostParticle", "FinufftCostMode", "FinufftCostPair"]
+        coef1 = upper_envelope(n1[sel], g[sel], t1[sel])
+        consts[4:, d - 1] = [round_sig(c, up=True) for c in coef1]
+        ratio1 = (coef1[0] + coef1[1] * n1[sel] + coef1[2] * g[sel]) / t1[sel]
+        print(f"#   {d}D: {sel.sum()} cases, Type 2 min {ratio.min():.2f} median {np.median(ratio):.2f} max {ratio.max():.2f}, "
+              f"Type 1 min {ratio1.min():.2f} median {np.median(ratio1):.2f} max {ratio1.max():.2f}")
+    names = ["FinufftCostCall", "FinufftCostParticle", "FinufftCostMode", "FinufftCostPair",
+             "FinufftRhoCostCall", "FinufftRhoCostParticle", "FinufftRhoCostMode"]
     for name, values, comment in zip(names, consts, COMMENTS):
         text = ", ".join(f"{v:.3g}" for v in values)
         print(f"\tstatic constexpr double {name}[3]={{{text}}};\t//< {comment}")

@@ -126,18 +126,63 @@ protected:
 	//	double Volume;
 	std::vector<spec_index> idx2species;
 
-	/** \brief Prepare every species' FINUFFT plans (ShiftedCCPotential::PrepareFinufft and, for AllForce,
-	 *  PrepareFinufftForces; serially, so no plan is made inside a parallel region) and mark the species that
-	 *  Energy and AllForce run concurrently, one thread per species. A species qualifies when its GetRho will
-	 *  run FINUFFT (FinufftEligible): that call is single-threaded, so only running such species side by side
-	 *  uses the other threads. In AllForce the same thread also runs the species' Type 2 forces when the joint
-	 *  cost gate (ShiftedCCPotential::FinufftForceGate over the concurrent species) accepted them. Every other
-	 *  species (Direct, or FINUFFT falling back to the direct sum) keeps its own evaluation, parallel over
-	 *  wavevectors with the full team, which also balances better when S is not a multiple of the thread
-	 *  count. The marks depend only on constraints, cells, particle numbers and settings, never on timing.
+	/** \brief Work of one evaluation's concurrent FINUFFT path, prepared serially by PrepareSpecies. */
+	struct SpeciesWork
+	{
+		/** \brief One FINUFFT particle block of one species. */
+		struct Task
+		{
+			long species;	//< species index
+			size_t block;	//< block index
+			double cost;	//< predicted time (ShiftedCCPotential::FinufftBlockTime), only for the order
+		};
+		std::vector<char> concurrent;	//< one flag per species, nonzero for the concurrent path
+		std::vector<long> species;	//< the concurrent species, in index order
+		std::vector<Task> rho, force;	//< Type 1 and Type 2 block tasks, largest predicted time first
+		long nextChunk = 0;	//< next contact chunk to take (shared by the team)
+		long pendingRho = 0;	//< Type 1 tasks not yet finished (shared by the team)
+	};
+
+	/** \brief Prepare every species' FINUFFT plans (ShiftedCCPotential::PrepareFinufft and, with forces,
+	 *  PrepareFinufftForces; serially, so no plan is made inside a parallel region), mark the species evaluated on
+	 *  the concurrent path and list their block tasks. A species qualifies when its GetRho will run FINUFFT
+	 *  (FinufftEligible): its rho is then split into Type 1 particle blocks (StartRho, block count from the inputs
+	 *  only), and with forces its Type 2 forces into Type 2 blocks when the joint cost gate
+	 *  (ShiftedCCPotential::FinufftForceGate over the concurrent species) accepted them; each block runs as one task
+	 *  on one thread (RunSpeciesWork). Every other species (Direct, or FINUFFT falling back to the direct sum) keeps
+	 *  its own evaluation, parallel over wavevectors with the full team. The marks and tasks depend only on
+	 *  constraints, cells, particle numbers, settings and the team size, never on timing.
 	 *  \param forces  Also decide and prepare the Type 2 force transforms (AllForce); false for Energy.
-	 *  \return One flag per species, nonzero for the concurrent path. */
-	std::vector<char> PrepareSpecies(bool forces);
+	 *  \return The flags and tasks; the rho of a concurrent species is started (StartRho(forces)). */
+	SpeciesWork PrepareSpecies(bool forces);
+
+	/** \brief The concurrent FINUFFT species of one evaluation; every thread of a parallel region of the team calls it.
+	 *  Phase 1: the Type 1 block tasks, dynamically, largest first; threads without a block meanwhile take contact
+	 *  chunks while blocks remain. Barrier. Per species, on one thread (OnOneThread): FinishRho (rho is the sum of the
+	 *  blocks in block order, or the direct fallback), the species energy if wanted, and StartForces if forces.
+	 *  Phase 2: the Type 2 block tasks of the species whose StartForces succeeded, then every remaining contact chunk.
+	 *  Barrier. Then FinishForces per species. Every result has its own slot, so nothing depends on the schedule.
+	 *  \param work                PrepareSpecies result (its shared counters are used).
+	 *  \param speciesEnergy       Energy slot of each species to fill, or nullptr.
+	 *  \param speciesForce        Type 2 force buffer of each species, or nullptr for no forces.
+	 *  \param[out] bulk           Per species: nonzero if its Type 2 forces succeeded (set only with forces).
+	 *  \param items               Number of contact items.
+	 *  \param chunk               Contact items per chunk.
+	 *  \param contact             Callable taking an item index (long), run once per item. */
+	template <class Contact>
+	void RunSpeciesWork(SpeciesWork & work, std::vector<double> * speciesEnergy,
+		std::vector<std::vector<GeometryVector>> * speciesForce, std::vector<char> & bulk, long items, long chunk,
+		const Contact & contact);
+
+	/** \brief Add particle i's collective-coordinate force, scaled by u0 N_s/N, to its contact force, with the
+	 *  arithmetic of Force(i): from its species' Type 2 forces when bulk, else from the species' direct sum.
+	 *  \param i             Particle index.
+	 *  \param contactForce  e0 times the contact force on particle i (ContactForce).
+	 *  \param bulk          Per species: nonzero if speciesForce holds its forces.
+	 *  \param speciesForce  Type 2 forces per species.
+	 *  \return              The total force on particle i. */
+	GeometryVector WithSpeciesForce(size_t i, const GeometryVector & contactForce, const std::vector<char> & bulk,
+		const std::vector<std::vector<GeometryVector>> & speciesForce);
 
 	/** \brief Soft-core contact force on one particle.
 	 *  \param i  Particle index.
@@ -288,8 +333,8 @@ public :
 	 * -------------------------------------*/
 
 	/** \brief Compute total potential energy.
-	 *  Species that run FINUFFT (see PrepareSpecies) get one thread each inside one parallel region while
-	 *  the remaining threads start on the contact sum; other species are evaluated first, one by one, with
+	 *  Species that run FINUFFT (see PrepareSpecies) are evaluated inside one parallel region as Type 1 block tasks
+	 *  while free threads take the contact sum (RunSpeciesWork); other species are evaluated first, one by one, with
 	 *  the full team. Species and particles own result slots that are summed in index order, so the result
 	 *  does not depend on thread scheduling.
 	 *  \return  The total potential energy. */
@@ -302,18 +347,19 @@ public :
 
 	/** \brief Compute forces on all particles.
 	 *  Fills every species' rho first, so it is valid without a prior Energy call (MD order); species that
-	 *  run FINUFFT are filled concurrently inside the same parallel region as the force loop, together with
-	 *  their Type 2 forces where the joint cost gate accepted them (ShiftedCCPotential::FinufftForceGate); every
-	 *  other particle gets Force(i). See GetLastForceBackendUsed of each species potential.
+	 *  run FINUFFT are filled inside the same parallel region as the force loop, as block tasks, together with
+	 *  their Type 2 forces where the joint cost gate accepted them (ShiftedCCPotential::FinufftForceGate), while
+	 *  free threads take the contact forces (RunSpeciesWork); every other particle gets Force(i) arithmetic. See
+	 *  GetLastForceBackendUsed of each species potential.
 	 *  \param results  Output vector of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results);
 
 	/** \brief Compute the total energy and every force in one evaluation, bitwise equal to Energy() followed
 	 *  by AllForce(results) (the optimizer's gradient callback, see CombinedEnergyForce). The species calls are
-	 *  those of the two (FINUFFT species on one thread each, the others with the full team); the contact part walks each
+	 *  those of the two (FINUFFT species as block tasks, the others with the full team); the contact part walks each
 	 *  particle's neighbors once (ContactEnergyAndForce) instead of twice. With FINUFFT species, threads free
-	 *  from species work start the contact walk, and after the barrier each particle adds its species force as
-	 *  AllForce does. Keeps no state beyond the call.
+	 *  from block tasks take the contact walk (RunSpeciesWork), and after the barrier each particle adds its species
+	 *  force as AllForce does. Keeps no state beyond the call.
 	 *  \param results  Output vector of per-particle forces.
 	 *  \return         The total potential energy. */
 	double EnergyAndAllForce(std::vector<GeometryVector> & results) override;

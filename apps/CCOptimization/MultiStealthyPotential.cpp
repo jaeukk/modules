@@ -331,25 +331,45 @@ void MultiStealthyPotential::UpdateSubconfigs()
 	}
 }
 
-/** \brief Prepare every species' FINUFFT plans serially and mark the species evaluated concurrently.
+/** \brief Prepare every species' FINUFFT plans serially, mark the species evaluated concurrently and list their blocks.
  *  \param forces Also decide the force paths (FinufftForceGate over the concurrent species) and prepare them.
- *  \return One flag per species, nonzero for the concurrent path. */
-std::vector<char> MultiStealthyPotential::PrepareSpecies(bool forces)
+ *  \return Flags, concurrent species and block tasks (largest predicted time first; ties by species, then block). */
+MultiStealthyPotential::SpeciesWork MultiStealthyPotential::PrepareSpecies(bool forces)
 {
 	const size_t numSpecies = this->species_constraints.size();
-	std::vector<char> concurrent(numSpecies);
+	SpeciesWork work;
+	work.concurrent.assign(numSpecies, 0);
 	std::vector<const ShiftedCCPotential *> pots;
 	for (size_t s = 0; s < numSpecies; s++) {
-		concurrent[s] = this->species_constraints[s].CCPotential->PrepareFinufft();
-		if (concurrent[s])
+		work.concurrent[s] = this->species_constraints[s].CCPotential->PrepareFinufft();
+		if (work.concurrent[s]) {
 			pots.push_back(this->species_constraints[s].CCPotential.get());
+			work.species.push_back(static_cast<long>(s));
+		}
 	}
+	std::vector<size_t> forceBlocks(numSpecies, 0);
 	if (forces) {
-		const std::vector<char> type2 = ShiftedCCPotential::FinufftForceGate(pots, this->ParallelNumThread);
+		const std::vector<size_t> type2 = ShiftedCCPotential::FinufftForceGate(pots, this->ParallelNumThread);
 		for (size_t s = 0, j = 0; s < numSpecies; s++)
-			this->species_constraints[s].CCPotential->PrepareFinufftForces(concurrent[s] && type2[j++]);
+			forceBlocks[s] = this->species_constraints[s].CCPotential->PrepareFinufftForces(work.concurrent[s] ? type2[j++] : 0);
 	}
-	return concurrent;
+	for (long s : work.species) {
+		ShiftedCCPotential & pot = *this->species_constraints[s].CCPotential;
+		const size_t rhoBlocks = pot.StartRho(forces);
+		for (size_t b = 0; b < rhoBlocks; b++)
+			work.rho.push_back({s, b, pot.FinufftBlockTime(1)});
+		for (size_t b = 0; b < forceBlocks[s]; b++)
+			work.force.push_back({s, b, pot.FinufftBlockTime(2)});
+	}
+	auto largestFirst = [](const SpeciesWork::Task & x, const SpeciesWork::Task & y) {
+		if (x.cost != y.cost)
+			return x.cost > y.cost;
+		return x.species != y.species ? x.species < y.species : x.block < y.block;
+	};
+	std::sort(work.rho.begin(), work.rho.end(), largestFirst);
+	std::sort(work.force.begin(), work.force.end(), largestFirst);
+	work.pendingRho = static_cast<long>(work.rho.size());
+	return work;
 }
 
 /** \brief Run one call on a species potential with its ParallelNumThread set to 1, restored afterwards.
@@ -368,6 +388,95 @@ static auto OnOneThread(ShiftedCCPotential & pot, Call call)
 	return result;
 }
 
+/** \brief The concurrent FINUFFT species of one evaluation, called by every thread of a parallel region.
+ *  \param work          PrepareSpecies result; its shared counters are used.
+ *  \param speciesEnergy Energy slot of each species to fill, or nullptr.
+ *  \param speciesForce  Type 2 force buffer of each species, or nullptr for no forces.
+ *  \param bulk          Output (with forces): nonzero for each species whose Type 2 forces succeeded.
+ *  \param items         Number of contact items.
+ *  \param chunk         Contact items per chunk.
+ *  \param contact       Callable run once per contact item index. */
+template <class Contact>
+void MultiStealthyPotential::RunSpeciesWork(SpeciesWork & work, std::vector<double> * speciesEnergy,
+	std::vector<std::vector<GeometryVector>> * speciesForce, std::vector<char> & bulk, long items, long chunk,
+	const Contact & contact)
+{
+	auto pot = [this](long s) -> ShiftedCCPotential & { return *this->species_constraints[s].CCPotential; };
+	/* Contact chunks from the shared counter; in phase 1 only while Type 1 blocks are still running. */
+	auto fill = [&](bool whileRho) {
+		for (;;) {
+			if (whileRho) {
+				long pending;
+#pragma omp atomic read
+				pending = work.pendingRho;
+				if (pending == 0)
+					return;
+			}
+			long next;
+#pragma omp atomic capture
+			next = work.nextChunk++;
+			const long lo = next * chunk;
+			if (lo >= items)
+				return;
+			for (long i = lo; i < std::min(items, lo + chunk); i++)
+				contact(i);
+		}
+	};
+	const long numRho = static_cast<long>(work.rho.size()), numForce = static_cast<long>(work.force.size());
+	const long numSpecies = static_cast<long>(work.species.size());
+	// Phase 1: Type 1 blocks.
+#pragma omp for schedule (dynamic, 1) nowait
+	for (long t = 0; t < numRho; t++) {
+		pot(work.rho[t].species).RunRhoBlock(work.rho[t].block);
+#pragma omp atomic update
+		work.pendingRho--;
+	}
+	fill(true);
+#pragma omp barrier
+	// Per species: rho from its blocks in block order, then energy and the Type 2 input.
+#pragma omp for schedule (dynamic, 1)
+	for (long j = 0; j < numSpecies; j++) {
+		const long s = work.species[j];
+		bulk[s] = OnOneThread(pot(s), [&](ShiftedCCPotential & p) {
+			p.FinishRho();
+			if (speciesEnergy)
+				(*speciesEnergy)[s] = p.Energy();
+			return speciesForce && p.StartForces((*speciesForce)[s]) > 0;
+		});
+	}
+	// Phase 2: Type 2 blocks of the species whose StartForces succeeded, then the remaining contact chunks.
+#pragma omp for schedule (dynamic, 1) nowait
+	for (long t = 0; t < numForce; t++)
+		if (bulk[work.force[t].species])
+			pot(work.force[t].species).RunForceBlock(work.force[t].block, (*speciesForce)[work.force[t].species]);
+	fill(false);
+#pragma omp barrier
+	if (speciesForce) {
+#pragma omp for schedule (static)
+		for (long j = 0; j < numSpecies; j++)
+			bulk[work.species[j]] = pot(work.species[j]).FinishForces();
+	}
+}
+
+/** \brief Total force on particle i from its contact force and its species force (Force(i) arithmetic).
+ *  \param i            Particle index.
+ *  \param contactForce e0 times the contact force on particle i.
+ *  \param bulk         Per species: nonzero if speciesForce holds its forces.
+ *  \param speciesForce Type 2 forces per species.
+ *  \return The total force on particle i. */
+GeometryVector MultiStealthyPotential::WithSpeciesForce(size_t i, const GeometryVector & contactForce, const std::vector<char> & bulk,
+	const std::vector<std::vector<GeometryVector>> & speciesForce)
+{
+	const spec_index & at = this->idx2species[i];
+	GeometryVector force_CC(static_cast<int> (this->Dimension));
+	if (bulk[at.species])
+		force_CC = speciesForce[at.species][at.index];
+	else
+		this->species_constraints[at.species].CCPotential->Force(force_CC, at.index);
+	force_CC.MultiplyFrom(this->u0 * (double)this->species_constraints[at.species].idx.size()/(double)this->pConfig->NumParticle());
+	return contactForce + force_CC;
+}
+
 /** \brief Compute total energy from stealthy and repulsive contributions.
  *  \return Total potential energy. */
 double MultiStealthyPotential::Energy()
@@ -384,11 +493,10 @@ double MultiStealthyPotential::Energy()
 	const long numSpecies = static_cast<long>(this->species_constraints.size());
 	const long numContact = this->WithRepulsion ? static_cast<long>(this->pConfig->NumParticle()) : 0;
 	std::vector<double> speciesEnergy(numSpecies, 0.0), contactEnergy(numContact, 0.0);
-	const std::vector<char> oneThread = this->PrepareSpecies(false);
-	const bool concurrent = std::find(oneThread.begin(), oneThread.end(), 1) != oneThread.end();
+	SpeciesWork work = this->PrepareSpecies(false);
 	/* Direct or FINUFFT fallback: stealthy potential contribution (CC) species by species, each parallel over wavevectors. */
 	for (long s = 0; s < numSpecies; s++)
-		if (!oneThread[s])
+		if (!work.concurrent[s])
 			speciesEnergy[s] = this->species_constraints[s].CCPotential->Energy();
 	/* compute the contact potential contribution (CP) of particle i */
 	auto contact = [this](size_t i) {
@@ -406,7 +514,7 @@ double MultiStealthyPotential::Energy()
 		);
 		return E;
 	};
-	if (!concurrent) {
+	if (work.species.empty()) {
 		/* No species runs concurrently: the contact sum as before, statically split over the team. */
 		if (numContact > 0) {
 #pragma omp parallel for schedule (static) num_threads(this->ParallelNumThread)
@@ -415,23 +523,16 @@ double MultiStealthyPotential::Energy()
 		}
 	}
 	else {
-		/* FINUFFT: one thread per species, while free threads start the contact contribution (CP).
-		   Keep the team at ParallelNumThread even when S is smaller: a team size that differs from
+		/* FINUFFT: Type 1 block tasks, while free threads take the contact contribution (CP).
+		   Keep the team at ParallelNumThread even when there are fewer tasks: a team size that differs from
 		   AllForce's makes libgomp destroy and recreate threads on every evaluation. About four contact
-		   chunks per thread let the threads freed by the species loop share the rest, even for small N;
+		   chunks per thread let the threads freed by the block tasks share the rest, even for small N;
 		   the cap of 64 keeps large N on fine-grained chunks (N/(4T) was 6-18% slower at N=1e4). */
 		const long chunk = std::clamp(numContact / (4L * static_cast<long>(std::max<unsigned long>(this->ParallelNumThread, 1))), 1L, 64L);
+		std::vector<char> bulk(numSpecies, 0);
 #pragma omp parallel num_threads(this->ParallelNumThread)
-		{
-#pragma omp for schedule (dynamic, 1) nowait
-			for (long s = 0; s < numSpecies; s++)
-				if (oneThread[s])
-					speciesEnergy[s] = OnOneThread(*this->species_constraints[s].CCPotential,
-						[](ShiftedCCPotential & pot) { return pot.Energy(); });
-#pragma omp for schedule (dynamic, chunk)
-			for (long i = 0; i < numContact; i++)
-				contactEnergy[i] = contact(i);
-		}
+		this->RunSpeciesWork(work, &speciesEnergy, nullptr, bulk, numContact, chunk,
+			[&](long i) { contactEnergy[i] = contact(i); });
 	}
 	return this->TotalEnergy(speciesEnergy, contactEnergy);
 }
@@ -559,11 +660,11 @@ double MultiStealthyPotential::ContactEnergyAndForce(size_t i, GeometryVector &f
 /** \brief Evaluate forces for all particles.
  *  Every species' FINUFFT plans are prepared serially first (PrepareSpecies). Species that do not run FINUFFT
  *  fill rho one by one, each parallel over wavevectors with the full team. Then one parallel region: species
- *  that run FINUFFT get one thread each to fill rho and, where the cost gate accepted, all their
- *  collective-coordinate forces with one Type 2 execution (ShiftedCCPotential::TryFinufftAllForce); after
- *  the barrier, the particle loop gives such a particle its contact force plus its Type 2 force scaled by
- *  u0 N_s/N, and every other particle Force(i) as before, so a declined or failed transform gives the
- *  previous direct results. Also valid without a prior Energy (MD order).
+ *  that run FINUFFT fill rho as Type 1 block tasks and, where the cost gate accepted, all their collective-coordinate
+ *  forces as Type 2 block tasks, while free threads take the contact forces (RunSpeciesWork); after the barrier, the
+ *  particle loop adds to each contact force the species force scaled by u0 N_s/N, from Type 2 or else from the direct
+ *  sum of Force(i), so a declined or failed transform gives the previous direct results. Also valid without a prior
+ *  Energy (MD order).
  *  \param results Output vector of forces. */
 void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 {
@@ -572,38 +673,31 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 		if (this->idx2species[i].species < 0)
 			throw std::runtime_error("MultiStealthyPotential::AllForce: particle has no assigned species; assign every particle before evaluating forces.");
 	// Plans are made here, serially; the parallel region below only executes them.
-	const std::vector<char> oneThread = this->PrepareSpecies(true);
-	const bool concurrent = std::find(oneThread.begin(), oneThread.end(), 1) != oneThread.end();
+	SpeciesWork work = this->PrepareSpecies(true);
 	const long numSpecies = static_cast<long>(this->species_constraints.size());
 	for (long s = 0; s < numSpecies; s++)
-		if (!oneThread[s])
+		if (!work.concurrent[s])
 			this->species_constraints[s].CCPotential->GetRho();
 	long end = this->pConfig->NumParticle();
 	results.resize(end);
 	std::vector<char> bulk(numSpecies, 0);
 	std::vector<std::vector<GeometryVector>> speciesForce(numSpecies);
+	const long chunk = std::clamp(end / (4L * static_cast<long>(std::max<unsigned long>(this->ParallelNumThread, 1))), 1L, 64L);
 	unsigned long tempNumThread = 1;
 	std::swap(tempNumThread, this->ParallelNumThread);
+	if (work.species.empty()) {
+#pragma omp parallel for num_threads(tempNumThread) default(shared)
+		for (long i = 0; i<end; i++)
+			this->Force(results[i], i);
+	}
+	else {
 #pragma omp parallel num_threads(tempNumThread) default(shared)
-	{
-		if (concurrent) {
-			// FINUFFT: one thread per species; the implicit barrier makes every rho and Type 2 force ready.
-#pragma omp for schedule (dynamic, 1)
-			for (long s = 0; s < numSpecies; s++)
-				if (oneThread[s])
-					bulk[s] = OnOneThread(*this->species_constraints[s].CCPotential,
-						[&](ShiftedCCPotential & pot) { return pot.TryFinufftAllForce(speciesForce[s]); });
-		}
+		{
+			this->RunSpeciesWork(work, nullptr, &speciesForce, bulk, end, chunk,
+				[&](long i) { results[i] = this->ContactForce(i); });
 #pragma omp for
-		for (long i = 0; i<end; i++){
-			const spec_index & at = this->idx2species[i];
-			if (bulk[at.species]) {
-				GeometryVector force_CC = speciesForce[at.species][at.index];
-				force_CC.MultiplyFrom(this->u0 * (double)this->species_constraints[at.species].idx.size()/(double)this->pConfig->NumParticle());
-				results[i] = this->ContactForce(i) + force_CC;
-			}
-			else
-				this->Force(results[i], i);
+			for (long i = 0; i<end; i++)
+				results[i] = this->WithSpeciesForce(i, results[i], bulk, speciesForce);
 		}
 	}
 	std::swap(tempNumThread, this->ParallelNumThread);
@@ -611,12 +705,12 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 
 /** \brief Total energy and all forces in one evaluation, bitwise equal to Energy() then AllForce(results).
  *  Prepares the species once, as AllForce (PrepareSpecies(true); Energy's PrepareSpecies(false) is the same
- *  without the force setup, which leaves rho and the Type 1 plan alone). Species that do not run FINUFFT get
+ *  without the force setup, which leaves the Type 2 plans alone). Species that do not run FINUFFT get
  *  their energy (which fills rho) one by one with the full team, as in Energy. Then one parallel region: without
  *  FINUFFT species, one static particle loop gives each particle its contact slot and the force arithmetic of
- *  Force(i); with them, each FINUFFT species gets one thread for its energy, then rho-reusing Type 2 forces if the
- *  gate accepted (as the two calls run it), while free threads start the contact walk, and after the barrier the
- *  particle loop adds each species force as AllForce does. Slots are summed in index order (TotalEnergy).
+ *  Force(i); with them, RunSpeciesWork runs their Type 1 blocks, energies and (gate permitting) rho-reusing Type 2
+ *  blocks, as the two calls do, while free threads take the contact walk, and after the barrier the particle loop
+ *  adds each species force as AllForce does. Slots are summed in index order (TotalEnergy).
  *  \param results Output vector of forces.
  *  \return Total potential energy. */
 double MultiStealthyPotential::EnergyAndAllForce(std::vector<GeometryVector> &results)
@@ -626,31 +720,19 @@ double MultiStealthyPotential::EnergyAndAllForce(std::vector<GeometryVector> &re
 		if (this->idx2species[i].species < 0)
 			throw std::runtime_error("MultiStealthyPotential::EnergyAndAllForce: particle has no assigned species; assign every particle before evaluating.");
 	// Plans are made here, serially; the parallel region below only executes them.
-	const std::vector<char> oneThread = this->PrepareSpecies(true);
-	const bool concurrent = std::find(oneThread.begin(), oneThread.end(), 1) != oneThread.end();
+	SpeciesWork work = this->PrepareSpecies(true);
 	const long numSpecies = static_cast<long>(this->species_constraints.size());
 	const long end = static_cast<long>(this->pConfig->NumParticle());
 	const long numContact = this->WithRepulsion ? end : 0;
 	std::vector<double> speciesEnergy(numSpecies, 0.0), contactEnergy(numContact, 0.0);
 	for (long s = 0; s < numSpecies; s++)
-		if (!oneThread[s]) {
+		if (!work.concurrent[s]) {
 			speciesEnergy[s] = this->species_constraints[s].CCPotential->Energy();
 			this->species_constraints[s].CCPotential->GetRho();	// as AllForce; a no-op once Energy filled rho
 		}
 	results.resize(end);
 	std::vector<char> bulk(numSpecies, 0);
 	std::vector<std::vector<GeometryVector>> speciesForce(numSpecies);
-	/* Force(i) and AllForce arithmetic: contact force plus the species force scaled by u0 N_s/N. */
-	auto addSpeciesForce = [&](long i, const GeometryVector & contactForce) {
-		const spec_index & at = this->idx2species[i];
-		GeometryVector force_CC(static_cast<int> (this->Dimension));
-		if (bulk[at.species])
-			force_CC = speciesForce[at.species][at.index];
-		else
-			this->species_constraints[at.species].CCPotential->Force(force_CC, at.index);
-		force_CC.MultiplyFrom(this->u0 * (double)this->species_constraints[at.species].idx.size()/(double)this->pConfig->NumParticle());
-		results[i] = contactForce + force_CC;
-	};
 	/* contact slot of particle i, from the same walk as its contact force */
 	auto contact = [&](long i, GeometryVector & force) {
 		const double E = this->ContactEnergyAndForce(i, force);
@@ -661,29 +743,21 @@ double MultiStealthyPotential::EnergyAndAllForce(std::vector<GeometryVector> &re
 	const long chunk = std::clamp(end / (4L * static_cast<long>(std::max<unsigned long>(this->ParallelNumThread, 1))), 1L, 64L);
 #pragma omp parallel num_threads(this->ParallelNumThread) default(shared)
 	{
-		if (!concurrent) {
+		if (work.species.empty()) {
 			// No FINUFFT species: rho is ready, so each particle is finished in one pass.
 #pragma omp for schedule (static)
 			for (long i = 0; i < end; i++) {
 				GeometryVector contactForce;
 				contact(i, contactForce);
-				addSpeciesForce(i, contactForce);
+				results[i] = this->WithSpeciesForce(i, contactForce, bulk, speciesForce);
 			}
 		}
 		else {
-			// One thread per FINUFFT species: energy, then (gate permitting) Type 2 forces from the same rho.
-#pragma omp for schedule (dynamic, 1) nowait
-			for (long s = 0; s < numSpecies; s++)
-				if (oneThread[s])
-					bulk[s] = OnOneThread(*this->species_constraints[s].CCPotential,
-						[&](ShiftedCCPotential & pot) { speciesEnergy[s] = pot.Energy(); return pot.TryFinufftAllForce(speciesForce[s]); });
-			// Free threads start the contact walk; its implicit barrier makes every rho and Type 2 force ready.
-#pragma omp for schedule (dynamic, chunk)
-			for (long i = 0; i < end; i++)
-				contact(i, results[i]);
+			this->RunSpeciesWork(work, &speciesEnergy, &speciesForce, bulk, end, chunk,
+				[&](long i) { contact(i, results[i]); });
 #pragma omp for
 			for (long i = 0; i < end; i++)
-				addSpeciesForce(i, results[i]);
+				results[i] = this->WithSpeciesForce(i, results[i], bulk, speciesForce);
 		}
 	}
 	return this->TotalEnergy(speciesEnergy, contactEnergy);

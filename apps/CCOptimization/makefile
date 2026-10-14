@@ -62,7 +62,7 @@ $(ODIR):
 
 clean:
 	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out test_indexed_view.out \
-	      test_finufft_plan_cache.out test_species_concurrent.out test_finufft_forces.out test_fused_contact.out \
+	      test_finufft_plan_cache.out test_species_concurrent.out test_finufft_forces.out test_fused_contact.out test_finufft_blocks.out \
 	      calibrate_gate.out check_gate.out
 
 # Offline archive management and multicomponent analysis stay local to this app.
@@ -106,6 +106,20 @@ $(ODIR)test_finufft_plan_cache.o: tests/test_finufft_plan_cache.cpp | $(ODIR)
 test-finufft-plan:
 	$(MAKE) USE_FINUFFT=1 test_finufft_plan_cache.out
 	./test_finufft_plan_cache.out
+
+# Particle-block split of the FINUFFT transforms; the wraps let the test observe every plan and execution.
+test_finufft_blocks.out: $(ODIR)test_finufft_blocks.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT) \
+	  -Wl,--wrap=finufft_makeplan,--wrap=finufft_destroy,--wrap=finufft_setpts,--wrap=finufft_execute
+
+$(ODIR)test_finufft_blocks.o: tests/test_finufft_blocks.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-finufft-blocks
+test-finufft-blocks:
+	$(MAKE) USE_FINUFFT=1 test_finufft_blocks.out
+	./test_finufft_blocks.out
+	OMP_WAIT_POLICY=passive ./test_finufft_blocks.out
 
 # Indexed species views versus the former per-species sub-Configurations (bitwise; Direct and FINUFFT).
 test_indexed_view.out: $(ODIR)test_indexed_view.o $(ODIR)MultiStealthyPotential.o deps
