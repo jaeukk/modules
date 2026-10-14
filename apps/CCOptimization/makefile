@@ -93,7 +93,7 @@ test-finufft:
 	./test_finufft_multi.out
 	./test_finufft_plan_cache.out
 
-# Persistent Type 1 plan and mode-map checks; the wraps let the test observe every plan.
+# Persistent Type 1/Type 2 plan and mode-map checks; the wraps let the test observe every plan.
 test_finufft_plan_cache.out: $(ODIR)test_finufft_plan_cache.o $(ODIR)MultiStealthyPotential.o deps
 	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT) \
 	  -Wl,--wrap=finufft_makeplan,--wrap=finufft_destroy,--wrap=finufft_setpts
@@ -132,7 +132,8 @@ test-species-concurrent:
 	OMP_WAIT_POLICY=passive ./test_species_concurrent.out
 	OMP_MAX_ACTIVE_LEVELS=4 ./test_species_concurrent.out
 
-# FINUFFT Type 2 force checks (single potential, fallback, derived classes, multi-species AllForce).
+# FINUFFT Type 2 force checks (single potential, fallback, derived classes, multi-species AllForce, and the
+# combined check of views, persistent plans, species concurrency and the joint gate) under each OpenMP mode.
 test_finufft_forces.out: $(ODIR)test_finufft_forces.o $(ODIR)MultiStealthyPotential.o deps
 	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
 
@@ -143,6 +144,8 @@ $(ODIR)test_finufft_forces.o: tests/test_finufft_forces.cpp | $(ODIR)
 test-finufft-forces:
 	$(MAKE) USE_FINUFFT=1 test_finufft_forces.out
 	./test_finufft_forces.out
+	OMP_WAIT_POLICY=passive ./test_finufft_forces.out
+	OMP_MAX_ACTIVE_LEVELS=4 ./test_finufft_forces.out
 
 # Header dependencies (CollectiveCoordinatePotential.h changes must rebuild every object).
 -include $(wildcard $(ODIR)*.d)
