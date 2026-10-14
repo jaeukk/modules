@@ -241,6 +241,61 @@ public:
 		return this->FinufftLastStatus;
 	}
 
+	/** \brief Report whether ShiftedCCPotential::GetRho will run FINUFFT Type 1 for the bound configuration.
+		Reads the eligibility of the persistent FINUFFT cache when it is current, and otherwise runs only the mode
+		mapping of GetRho_FinufftType1 (MapFinufftModes), without a plan or transform, so the answer depends only
+		on the constraints, the cell, the particle number and the FINUFFT settings (and a cached makeplan failure).
+		A nonzero FINUFFT status at run time can still make GetRho fall back to the direct sum.
+		Like the backend selection, it is not meaningful for derived classes that override GetRho.
+		\return true if FinufftType1 is selected and compiled in, a configuration is bound, and every check passes. */
+	bool FinufftEligible(void) const
+	{
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		GeometryVector basis[3];
+		size_t np=0;
+		if(this->RhoBackendSelected!=RhoBackend::FinufftType1 || !this->FinufftInputs(basis, np))
+			return false;
+		if(this->FinufftCacheIsCurrent(basis, np))
+			return this->FinufftCache.eligible;
+		try
+		{
+			std::int64_t ms[3]={1, 1, 1};
+			std::vector<std::int64_t> slot;
+			return this->MapFinufftModes(basis, np, ms, slot);
+		}
+		catch(const std::bad_alloc &)
+		{
+			return false;
+		}
+#else
+		return false;
+#endif
+	}
+
+	/** \brief Refresh the persistent FINUFFT state serially and report whether GetRho will run FINUFFT.
+		Rebuilds the mode map and makes the Type 1 plan if an input changed, exactly as GetRho would, so that
+		a following GetRho only executes the plan. Call it before running GetRho of several objects
+		concurrently, so that plans are never made inside a parallel region. Does not touch the cached rho.
+		\return FinufftEligible() after the refresh: true if GetRho will run FINUFFT unless it fails at run time. */
+	bool PrepareFinufft(void)
+	{
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		if(this->RhoBackendSelected!=RhoBackend::FinufftType1)
+			return false;
+		try
+		{
+			size_t np=0;
+			return this->RefreshFinufftCache(np) && this->FinufftCache.eligible;
+		}
+		catch(const std::bad_alloc &)
+		{
+			return false;
+		}
+#else
+		return false;
+#endif
+	}
+
 protected:
 	RhoBackend RhoBackendSelected;	//< Backend requested by the user.
 	RhoBackend RhoBackendLastUsed;	//< Backend that produced the cached rho.
@@ -305,6 +360,24 @@ protected:
 		}
 	};
 	FinufftType1Cache FinufftCache;	//< Persistent Type 1 state; copies start empty (see FinufftType1Cache).
+
+	/** \brief Read the inputs the FINUFFT path needs from the bound configuration.
+		\param[out] basis  Receives the first Dimension cell basis vectors.
+		\param[out] np     Receives the bound particle count.
+		\return false, leaving the outputs unspecified, when nothing is bound, the dimension is not 1-3, or there
+			are no constraints or no particles (FINUFFT is then not used). */
+	bool FinufftInputs(GeometryVector basis[3], size_t & np) const
+	{
+		const DimensionType dim=this->Dimension;
+		if((this->pConfig==nullptr && this->pViewConfig==nullptr) || dim<1 || dim>3 || this->constraints.empty())
+			return false;
+		np=this->NumBoundParticle();
+		if(np==0 || np>static_cast<size_t>(std::numeric_limits<std::int64_t>::max()))
+			return false;
+		for(DimensionType d=0; d<dim; d++)
+			basis[d]=this->BoundConfig().GetBasisVector(d);
+		return true;
+	}
 
 	/** \brief Report whether FinufftCache was built from the current inputs.
 		Compares bit for bit everything the mode map, its eligibility and the plan depend on: Dimension, the
@@ -477,6 +550,22 @@ protected:
 		return true;
 	}
 
+	/** \brief Bring FinufftCache up to date with the bound configuration (FinufftInputs, then
+		FinufftCacheIsCurrent, rebuilding with RebuildFinufftCache if an input changed).
+		\param[out] np  Bound particle count.
+		\return false, leaving the cache untouched, if FinufftInputs rejects the inputs; otherwise true, and
+			FinufftCache.eligible tells whether FINUFFT can run.
+		\throw std::bad_alloc if a rebuild cannot allocate; the cache is then left unbuilt. */
+	bool RefreshFinufftCache(size_t & np)
+	{
+		GeometryVector basis[3];
+		if(!this->FinufftInputs(basis, np))
+			return false;
+		if(!this->FinufftCacheIsCurrent(basis, np))
+			this->RebuildFinufftCache(basis, np);
+		return true;
+	}
+
 	/** \brief Try to fill RhoReal/RhoImag with one FINUFFT Type 1 transform.
 		rho(k) = sum_j exp(+i k.r_j) with unit strengths and no normalization. The constraint-to-mode map and
 		the guru plan persist in FinufftCache and are rebuilt only when an input changes (FinufftCacheIsCurrent);
@@ -491,21 +580,13 @@ protected:
 	{
 		const DimensionType dim=this->Dimension;
 		const size_t nk=this->constraints.size();
-		const size_t np=this->NumBoundParticle();
-		if(dim<1 || dim>3 || nk==0 || np==0)
-			return false;
-		if(np>static_cast<size_t>(std::numeric_limits<std::int64_t>::max()))
-			return false;
-
 		FinufftType1Cache & c=this->FinufftCache;
 		const double twopi=2.0*::pi;
+		size_t np=0;
 		try
 		{
-			GeometryVector basis[3];
-			for(DimensionType d=0; d<dim; d++)
-				basis[d]=this->BoundConfig().GetBasisVector(d);
-			if(!this->FinufftCacheIsCurrent(basis, np))
-				this->RebuildFinufftCache(basis, np);
+			if(!this->RefreshFinufftCache(np))
+				return false;
 			if(!c.eligible)
 			{
 				this->FinufftLastStatus=c.status;

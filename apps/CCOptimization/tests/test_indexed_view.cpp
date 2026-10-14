@@ -186,8 +186,10 @@ void CompareWithOldBinding(MultiStealthyPotential & p, const Configuration & c, 
 		ref.AllForce(fr);
 		view.AllForce(fv);
 		Check(fr.size() == idx.size() && Same(fr, fv, dim), tag + ": species forces differ");
-		// Assemble the totals exactly as MultiStealthyPotential does (valid when contact is off).
-		cc += ((double)idx.size() / (double)n) * es;
+		// Assemble the totals exactly as MultiStealthyPotential does (valid when contact is off); a species that
+		// runs FINUFFT sums its energy on one thread there (species-concurrent evaluation).
+		if (view.FinufftEligible()) ref.ParallelNumThread = 1;
+		cc += ((double)idx.size() / (double)n) * ref.Energy();
 		for (size_t j = 0; j < idx.size() && j < fr.size(); j++) {
 			GeometryVector f = fr[j];
 			f.MultiplyFrom(p.u0 * (double)idx.size() / (double)n);

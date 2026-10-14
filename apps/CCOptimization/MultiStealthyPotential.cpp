@@ -318,6 +318,31 @@ void MultiStealthyPotential::UpdateSubconfigs()
 	}
 }
 
+/** \brief Refresh every species' FINUFFT plan serially and mark the species whose GetRho will run FINUFFT;
+ *  they are evaluated concurrently.
+ *  \return One flag per species, nonzero for the concurrent path. */
+std::vector<char> MultiStealthyPotential::SpeciesConcurrent()
+{
+	std::vector<char> concurrent(this->species_constraints.size());
+	for (size_t s = 0; s < concurrent.size(); s++)
+		concurrent[s] = this->species_constraints[s].CCPotential->PrepareFinufft();
+	return concurrent;
+}
+
+/** \brief Fill one species' rho and return its CC energy on the calling thread.
+ *  \param s Species id.
+ *  \return The species' collective-coordinate energy. */
+double MultiStealthyPotential::SpeciesEnergyOnOneThread(size_t s)
+{
+	// One thread per species: also fixes the species' energy partial sums to a single slot.
+	ShiftedCCPotential & pot = *this->species_constraints[s].CCPotential;
+	unsigned long threads = 1;
+	std::swap(threads, pot.ParallelNumThread);
+	const double energy = pot.Energy();
+	std::swap(threads, pot.ParallelNumThread);
+	return energy;
+}
+
 /** \brief Compute total energy from stealthy and repulsive contributions.
  *  \return Total potential energy. */
 double MultiStealthyPotential::Energy()
@@ -329,42 +354,35 @@ double MultiStealthyPotential::Energy()
 		if (this->idx2species[i].species < 0)
 			throw std::runtime_error("MultiStealthyPotential::Energy: particle has no assigned species; assign every particle before evaluating the energy.");
 
-	double CC = 0.0, CP = 0.0;
-	/* compute stealthy potential contribution (CC)*/
-	for (size_t s = 0; s < this->species_constraints.size(); s ++ ){
-		double CC_s = this->species_constraints[s].CCPotential->Energy();
-		CC += ((double)this->species_constraints[s].idx.size()/(double)this->pConfig->NumParticle())*CC_s;
-	}
-	// 	double CC_s = 0.0;
-	// 	EnergyConstraints * ptr_s = & (this->species_constraints[s]);
-		
-	// 	if(ptr_s->RhoValid == false){
-	// 		this->GetRho(s);
-	// 	}
-		
-	// 	// iterate over wavevectors 
-	// 	#pragma omp parallel for schedule (guided, 1) num_threads(this->ParallelNumThread) reduction(+:CC_s)
-	// 	for (size_t i = 0; i < ptr_s -> constraints.size(); i++){
-	// 		CC_s += ptr_s -> constraints[i].V * (ptr_s -> constraints[i].rho_real*ptr_s -> constraints[i].rho_real + ptr_s -> constraints[i].rho_imag * ptr_s -> constraints[i].rho_imag );
-	// 	}
-
-	// 	CC += CC_s ;
-	// }	
-	// CC /= this->Volume;
-
-	/* compute the contact potential contribution (CP)*/
-	if (this->WithRepulsion){
-		// Keep arithmetic order independent of worker assignment and reduction order.
-		// Each particle owns one slot; only the final, ordered sum combines slots.
-		std::vector<double> contactEnergy(this->pConfig->NumParticle(), 0.0);
-#pragma omp parallel for schedule (static) num_threads(this->ParallelNumThread)
-		for (size_t i = 0; i < this->pConfig->NumParticle(); i++){
-
-			double E = 0.0L;
-			pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc, 
+	// Keep arithmetic order independent of worker assignment and reduction order.
+	// Each species and each particle owns one slot; only the final, ordered sums combine slots.
+	const long numSpecies = static_cast<long>(this->species_constraints.size());
+	const long numContact = this->WithRepulsion ? static_cast<long>(this->pConfig->NumParticle()) : 0;
+	std::vector<double> speciesEnergy(numSpecies, 0.0), contactEnergy(numContact, 0.0);
+	const std::vector<char> oneThread = this->SpeciesConcurrent();
+	const bool concurrent = std::find(oneThread.begin(), oneThread.end(), 1) != oneThread.end();
+	/* Direct or FINUFFT fallback: stealthy potential contribution (CC) species by species, each parallel over wavevectors. */
+	for (long s = 0; s < numSpecies; s++)
+		if (!oneThread[s])
+			speciesEnergy[s] = this->species_constraints[s].CCPotential->Energy();
+	/* FINUFFT: one thread per species, while free threads start the contact contribution (CP).
+	   Keep the team at ParallelNumThread even when S is smaller: a team size that differs from
+	   AllForce's makes libgomp destroy and recreate threads on every evaluation. */
+#pragma omp parallel num_threads(this->ParallelNumThread) if (concurrent || numContact > 0)
+	{
+		if (concurrent) {
+#pragma omp for schedule (dynamic, 1) nowait
+			for (long s = 0; s < numSpecies; s++)
+				if (oneThread[s])
+					speciesEnergy[s] = this->SpeciesEnergyOnOneThread(s);
+		}
+#pragma omp for schedule (dynamic, 64)
+		for (long i = 0; i < numContact; i++){
+			double E = 0.0;
+			pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc,
 				[&i, &E, this](const GeometryVector & shift, const GeometryVector &, const signed long *, size_t SourceParticle)->void {
 				/*Prevent double-counting */
-				if (i < SourceParticle) { 
+				if (static_cast<size_t>(i) < SourceParticle) {
 					double r = sqrt(shift.Modulus2()) / (radii[i] + radii[SourceParticle]);
 					if (r < 1.0){
 						E += (1.0 - r)*(1.0 - r);
@@ -372,12 +390,14 @@ double MultiStealthyPotential::Energy()
 				}
 				}
 			);
-			
 			contactEnergy[i] = E;
 		}
-		for (double energy : contactEnergy)
-			CP += energy;
-	} 
+	}
+	double CC = 0.0, CP = 0.0;
+	for (long s = 0; s < numSpecies; s++)
+		CC += ((double)this->species_constraints[s].idx.size()/(double)this->pConfig->NumParticle())*speciesEnergy[s];
+	for (double energy : contactEnergy)
+		CP += energy;
 	return this->u0 * CC + this->e0 * CP;
 }
 
@@ -446,14 +466,29 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 {
 	this->UpdateSubconfigs();
 	// Fill each shared cache before the parallel force loop (also safe without prior Energy).
-	for (auto & species : this->species_constraints)
-		species.CCPotential->GetRho();
+	const std::vector<char> oneThread = this->SpeciesConcurrent();
+	const bool concurrent = std::find(oneThread.begin(), oneThread.end(), 1) != oneThread.end();
+	const long numSpecies = static_cast<long>(this->species_constraints.size());
+	for (long s = 0; s < numSpecies; s++)
+		if (!oneThread[s])
+			this->species_constraints[s].CCPotential->GetRho();
 	long end = this->pConfig->NumParticle();
 	results.resize(end);
 	unsigned long tempNumThread = 1;
 	std::swap(tempNumThread, this->ParallelNumThread);
-#pragma omp parallel for num_threads(tempNumThread) default(shared)
-	for (long i = 0; i<end; i++)
-		this->Force(results[i], i);
+#pragma omp parallel num_threads(tempNumThread) default(shared)
+	{
+		if (concurrent) {
+			// FINUFFT: one thread per species; the implicit barrier makes every rho ready before forces.
+			// The O(M_s) energy is a discarded by-product; rho is reused when Energy already filled it.
+#pragma omp for schedule (dynamic, 1)
+			for (long s = 0; s < numSpecies; s++)
+				if (oneThread[s])
+					this->SpeciesEnergyOnOneThread(s);
+		}
+#pragma omp for
+		for (long i = 0; i<end; i++)
+			this->Force(results[i], i);
+	}
 	std::swap(tempNumThread, this->ParallelNumThread);
 }
