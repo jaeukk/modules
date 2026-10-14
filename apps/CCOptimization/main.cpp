@@ -229,7 +229,16 @@ int GetCCO(int argc, char ** argv){
 			ofile << tempstring << " is undefined \n";
 			return 1;
 		}
-		
+		/* Size the cells for the soft-core contact search to max(sigma, (V/N)^(1/d)): random packings from
+		   GetUnitCubicBox(dim, 0.1) keep 10 cells per side after Rescale, which makes every contact query scan
+		   about 0.09 N particles (an O(N^2) contact sum). The optimizer's and MD's working copies inherit these cells. */
+		GetInitConfigs = [get = GetInitConfigs, &sigma](size_t i) -> Configuration {
+			Configuration c = get(i);
+			const double n = std::max<double>(1.0, double(c.NumParticle()));
+			c.SetCellSize(std::max(sigma, std::pow(c.PeriodicVolume() / n, 1.0 / c.GetDimension())));
+			return c;
+		};
+
 		ofile << "Save as "; ifile >> savename;
 		ofile << std::endl;
 		ofile << "NumParticle = "<<num<<std::endl;
