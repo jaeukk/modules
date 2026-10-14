@@ -377,33 +377,46 @@ double MultiStealthyPotential::Energy()
 	for (long s = 0; s < numSpecies; s++)
 		if (!oneThread[s])
 			speciesEnergy[s] = this->species_constraints[s].CCPotential->Energy();
-	/* FINUFFT: one thread per species, while free threads start the contact contribution (CP).
-	   Keep the team at ParallelNumThread even when S is smaller: a team size that differs from
-	   AllForce's makes libgomp destroy and recreate threads on every evaluation. */
-#pragma omp parallel num_threads(this->ParallelNumThread) if (concurrent || numContact > 0)
-	{
-		if (concurrent) {
+	/* compute the contact potential contribution (CP) of particle i */
+	auto contact = [this](size_t i) {
+		double E = 0.0;
+		pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc,
+			[&i, &E, this](const GeometryVector & shift, const GeometryVector &, const signed long *, size_t SourceParticle)->void {
+			/*Prevent double-counting */
+			if (i < SourceParticle) {
+				double r = sqrt(shift.Modulus2()) / (radii[i] + radii[SourceParticle]);
+				if (r < 1.0){
+					E += (1.0 - r)*(1.0 - r);
+				}
+			}
+			}
+		);
+		return E;
+	};
+	if (!concurrent) {
+		/* No species runs concurrently: the contact sum as before, statically split over the team. */
+		if (numContact > 0) {
+#pragma omp parallel for schedule (static) num_threads(this->ParallelNumThread)
+			for (long i = 0; i < numContact; i++)
+				contactEnergy[i] = contact(i);
+		}
+	}
+	else {
+		/* FINUFFT: one thread per species, while free threads start the contact contribution (CP).
+		   Keep the team at ParallelNumThread even when S is smaller: a team size that differs from
+		   AllForce's makes libgomp destroy and recreate threads on every evaluation. About four contact
+		   chunks per thread let the threads freed by the species loop share the rest, even for small N. */
+		const long chunk = std::max(1L, numContact / (4L * static_cast<long>(std::max<unsigned long>(this->ParallelNumThread, 1))));
+#pragma omp parallel num_threads(this->ParallelNumThread)
+		{
 #pragma omp for schedule (dynamic, 1) nowait
 			for (long s = 0; s < numSpecies; s++)
 				if (oneThread[s])
 					speciesEnergy[s] = OnOneThread(*this->species_constraints[s].CCPotential,
 						[](ShiftedCCPotential & pot) { return pot.Energy(); });
-		}
-#pragma omp for schedule (dynamic, 64)
-		for (long i = 0; i < numContact; i++){
-			double E = 0.0;
-			pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc,
-				[&i, &E, this](const GeometryVector & shift, const GeometryVector &, const signed long *, size_t SourceParticle)->void {
-				/*Prevent double-counting */
-				if (static_cast<size_t>(i) < SourceParticle) {
-					double r = sqrt(shift.Modulus2()) / (radii[i] + radii[SourceParticle]);
-					if (r < 1.0){
-						E += (1.0 - r)*(1.0 - r);
-					}
-				}
-				}
-			);
-			contactEnergy[i] = E;
+#pragma omp for schedule (dynamic, chunk)
+			for (long i = 0; i < numContact; i++)
+				contactEnergy[i] = contact(i);
 		}
 	}
 	double CC = 0.0, CP = 0.0;
