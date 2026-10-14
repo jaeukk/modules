@@ -206,6 +206,18 @@ rule matched or beat a fixed width of 0.55. Contact sums now visit neighbors in 
 endpoints change in the last bits; they remain ground states and repeat bitwise across processes (the 3D
 N=2000 endpoint hash is unchanged).
 
+**GetCCO contact cells (commit 930d18a).** The single-component driver had the same coarse cells.
+`RepulsiveCCPotential` points at the caller's configuration instead of owning a copy, so re-binning
+inside it would cost a copy per evaluation (15–20% slower at 2D N=500). Instead `GetCCO` wraps
+`GetInitConfigs` to set the cell size to max(sigma, (V/N)^(1/d)) once per configuration; the optimizer's
+per-evaluation copies (`GetConfig` copies `origConfig`) and MD's working copy inherit it. With FINUFFT rho
+(`RepulsiveCCPotential` through the API; 2D, chi 0.4, T=4, interleaved): one evaluation N=2000 1.6 to
+1.2 ms, N=10000 about 17 to 3.9 ms, no change at N <= 1000; a full N=10000 optimization 34 to 20 s. 3D is
+within noise up to N=5000 (cells already near the cutoff) and about 4% faster at N=10000. The CLI's
+`GetCCO` runs Direct sums only, where the gain is about 3% at 2D N=5000. 2D endpoints change in the last
+bits, remain ground states and repeat bitwise; `test_cli.py` runs a GetCCO ground state twice and compares
+the packs byte for byte.
+
 **Thread allocation after the fix.** With the contact walk cheap, a thread-CPU schedule model (each task
 timed with `CLOCK_THREAD_CPUTIME_ID`, list-scheduled on T threads; robust to the machine's load) bounded
 what a perfect split of the species work could gain: 2D S=2 T=8 2.35–2.67x; 3D S=2 T=4 1.42–1.57x;
@@ -323,6 +335,12 @@ run in parallel), so the thread-count check moved to a dense case too small to s
 checks one block at T=1 against several at T=8, bitwise. AddressSanitizer runs of the block and plan-cache
 tests are clean.
 
+**Audit.** One Codex round over 854eea9..930d18a (contact cells, particle blocks, GetCCO cells;
+[reviews/blocks-review-r1.md](reviews/blocks-review-r1.md)) found no blocking issue. Besides the suites
+above it ran the block test with `OMP_THREAD_LIMIT=1`, with `OMP_THREAD_LIMIT=2 OMP_DYNAMIC=true`, and inside
+an outer two-thread region (nested levels 1 and 4) without deadlock, and repeated the 3D N=2000 S=2
+optimization hash. Its one follow-up, a stale open item on GetCCO cells, is fixed.
+
 ## Open items
 
 1. The Type 2 gate constants are machine-specific (Ryzen 5 7500F, WSL2, FINUFFT 2.5.1). Refit them
@@ -347,12 +365,11 @@ tests are clean.
 11. Particle blocks reach only part of the schedule-model bound: 3D S=5 T=8 stays at 1.0x against a
     1.42–1.57x bound, because Type 1 at chi 0.4 stays one block (its count may not depend on T) and Type 2
     gets floor(T/S) = 1 block per species.
-12. The lone `ShiftedCCPotential` path (`GetCCO`) now costs Type 2 by its largest block, so its gate
-    accepts Type 2 at smaller sizes than before when T > 1; forces then differ from earlier builds in
-    the last bits.
-13. The single-component `RepulsiveCCPotential` (`GetCCO`) still searches contacts on the coarse cells
-    of `GetUnitCubicBox(d, 0.1)` (O(N^2)); the 24727d9 re-binning applies only to
-    `MultiStealthyPotential`.
+12. A lone `ShiftedCCPotential` with FINUFFT (API use; the `GetCCO` CLI has no `finufft` keyword) now
+    costs Type 2 by its largest block, so its gate accepts Type 2 at smaller sizes than before when T > 1;
+    forces then differ from earlier builds in the last bits.
+13. The `GetCCO` CLI runs Direct sums only, so its contact-cell fix gains about 3%; a `finufft` keyword
+    there would give the 1.3–4x evaluation gains measured through the API.
 
 ## Provenance
 
