@@ -18,7 +18,7 @@ include ../../config.mk
 ODIR   := obj/
 TARGET := soft_core_stealthy.out
 
-SRCS := main.cpp MultiStealthyPotential.cpp MultiComponentPairStat.cpp
+SRCS := main.cpp MultiStealthyPotential.cpp MultiComponentPairStat.cpp MSPB_Pack.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I$(pairstat) -I$(potential) -I. $(NLOPT_INC)
@@ -31,7 +31,7 @@ POT_OBJS  := $(potential)/obj/Potential.o $(potential)/obj/StructureOptimization
              $(potential)/obj/MD_System.o
 
 .PHONY: all clean deps
-all: $(TARGET)
+all: $(TARGET) mspb_pack.out
 
 deps:
 	$(MAKE) -C $(core) objs
@@ -48,4 +48,13 @@ $(ODIR):
 	mkdir -p $(ODIR)
 
 clean:
-	rm -f $(ODIR)*.o $(TARGET)
+	rm -f $(ODIR)*.o $(TARGET) mspb_pack.out
+
+# Offline archive management and multicomponent analysis stay local to this app.
+mspb_pack.out: $(ODIR)mspb_pack_main.o $(ODIR)MSPB_Pack.o $(ODIR)MultiStealthyPotential.o $(ODIR)MultiComponentPairStat.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB)
+
+.PHONY: test-mspb-pack
+test-mspb-pack: all
+	bash tests/run_mspb_pack_test.sh
+	python3 tests/test_mspb_pack_cli.py

@@ -43,8 +43,8 @@ coordinates. No square or orthogonal-cell assumption is made.
 
 Total size: `36 + 8*D*D + N*(20 + 8*D)` bytes. Readers should reject unknown
 versions/flags, invalid dimensions/counts/labels, truncated or trailing data, and
-nonfinite values before constructing a configuration. This exporter does not add
-a production importer; the regression test decodes records to verify round trips.
+nonfinite values before constructing a configuration. A production reader and collection API are provided by `MSPBSnapshot::Read` and
+`MSPB_Pack`; see [MSPB_PACK.md](MSPB_PACK.md).
 
 The existing text default and old archived sweep files are unchanged by adding
 binary support. Binary output streams must be opened with `std::ios::binary`.
@@ -60,3 +60,8 @@ or `.mspb`, with a zero-based index in the success pack. These files contain all
 components regardless of the legacy `combined` setting. Export runs directly on
 the accepted in-memory configuration; it does not reread the configuration pack.
 Existing configuration-pack/restart output is retained. MD export is not added.
+
+For collection output, use `export pack` to append accepted configurations to
+`<prefix>_Success.MSPBPack`. The archive supports indexed retrieval, import/export
+of individual snapshots, and offline PairStat analysis; see [MSPB_PACK.md](MSPB_PACK.md)
+for API, CLI examples, layout, and resume requirements.

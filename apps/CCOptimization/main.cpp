@@ -33,6 +33,7 @@ size_t Verbosity = 3;  // each executable defines it (new_c++ convention)
 
 #include "RepulsiveCCPotential.h"
 #include "MultiStealthyPotential.h"
+#include "MSPB_Pack.h"
 #include "MultiComponentPairStat.h"
 
 /** \brief Perform the energy optimization multiple times for a given potential energy.
@@ -1378,13 +1379,22 @@ int GetMultiCCO(int argc, char ** argv){
 			double tolerance = 1e-14;
 			bool split_species = true;
 			bool export_enabled = false;
+			bool export_pack = false;
+			MSPB_Pack archive;
 			bool pairstat_enabled = false;
 			MultiComponentPairStatOptions pairstat_options;
 			auto export_format = MultiStealthyPotential::ExportFormat::Text;
 			auto onAccepted = [&](const Configuration & c, size_t index) {
 				if (!export_enabled && !pairstat_enabled) return;
 				potential->SetConfiguration(c);
-				if (export_enabled) {
+				if (export_enabled && export_pack) {
+					if (archive.NumConfig() != index)
+						throw std::runtime_error("MSPB archive and success pack counts differ");
+					std::ostringstream bytes(std::ios::out | std::ios::binary);
+					potential->ExportConfiguration(bytes, MultiStealthyPotential::ExportFormat::Binary);
+					std::istringstream input(bytes.str(), std::ios::in | std::ios::binary);
+					archive.AddConfig(MSPBSnapshot::Read(input));
+				} else if (export_enabled) {
 					const bool binary = export_format == MultiStealthyPotential::ExportFormat::Binary;
 					const std::string path = savename + "_Success_" + std::to_string(index) + (binary ? ".mspb" : ".txt");
 					std::ofstream output(path, std::ios::out | (binary ? std::ios::binary : std::ios::openmode(0)));
@@ -1401,7 +1411,7 @@ int GetMultiCCO(int argc, char ** argv){
 					if (!output) throw std::runtime_error("Could not finish PairStat report: " + path);
 				}
 			};
-			ofile << "Optional: export txt|binary|off (default off); then run\n";
+			ofile << "Optional: export txt|binary|pack|off (default off); then run\n";
 			ofile << "Optional: pairstat Kmax dK Rmax dR samples seed (default disabled)\n";
 			std::string algorithm = "LBFGS";
 
@@ -1436,11 +1446,12 @@ int GetMultiCCO(int argc, char ** argv){
 				}
 				else if (tempstring2 == "export") {
 					std::string format;
-					if (!(ifile >> format) || (format != "txt" && format != "binary" && format != "off")) {
-						ofile << "Expected: export txt|binary|off\n";
+					if (!(ifile >> format) || (format != "txt" && format != "binary" && format != "pack" && format != "off")) {
+						ofile << "Expected: export txt|binary|pack|off\n";
 						return 1;
 					}
 					export_enabled = format != "off";
+					export_pack = format == "pack";
 					export_format = format == "binary" ? MultiStealthyPotential::ExportFormat::Binary : MultiStealthyPotential::ExportFormat::Text;
 				}
 				else if (tempstring2 == "pairstat") {
@@ -1475,6 +1486,11 @@ int GetMultiCCO(int argc, char ** argv){
 				{
 					ConfigurationPack save_(savename+"_Success");				
 					N_success = save_.NumConfig();
+				}
+				if (export_pack) {
+					archive.Open(savename + "_Success");
+					if (archive.NumConfig() != static_cast<size_t>(N_success))
+						throw std::runtime_error("MSPB archive must contain all existing successes before resuming with export pack");
 				}
 				size_t numConfig_comp = (N_config > N_success )? N_config - N_success : 0;
 

@@ -79,8 +79,9 @@ filename-input branch are not extended here.
   library's zero placeholder must not be interpreted as zero uncertainty.
 - Seeded centers are reproducible, but threaded floating-point reductions need not
   be bitwise repeatable. No optimizer, acceptance threshold, or FINUFFT setting is changed.
-- No production MSPB importer, archive conversion, new optimization sweep, or
-  reanalysis of the full historical dataset is part of this change.
+- Archived MSPB snapshots can now be analyzed offline through `mspb_pack.out
+  pairstat`; see [MSPB_PACK.md](MSPB_PACK.md). This reuses the same adapter without
+  running an optimization sweep or automatically reanalyzing historical data.
 
 ## Validation
 
