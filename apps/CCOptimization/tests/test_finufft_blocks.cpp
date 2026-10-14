@@ -493,9 +493,11 @@ void Mixed()
 		for (const auto & species : sp)
 			decided += species.CCPotential->GetLastForceBackendUsed() == ForceBackend::FinufftType2 ? '1' : '0';
 		p->SetConfiguration(c);
-		const size_t exec1b = obs::executed[1];
+		const size_t exec1b = obs::executed[1], exec2b = obs::executed[2];
 		const double ef = p->EnergyAndAllForce(fused);
+		const size_t blocks2 = obs::executed[2] - exec2b;
 		Check(obs::executed[1] - exec1b == blocks1, label + ": fused evaluation did not run every Type 1 block once");
+		Check(threads == 1 ? blocks2 == 2 : blocks2 > 2, label + ": unexpected Type 2 executions " + std::to_string(blocks2));
 		Check(std::memcmp(&e, &ef, sizeof(double)) == 0 && Same(warm, fused, dim), label + ": EnergyAndAllForce differs from Energy + AllForce");
 		for (int rep = 0; rep < 2; rep++) {
 			p->SetConfiguration(c);
@@ -510,7 +512,7 @@ void Mixed()
 		std::vector<GeometryVector> fm;
 		const double em = p->EnergyAndAllForce(fm);
 		Check(std::abs(em - edm) <= 1e-10 * std::abs(edm) && ForceDiff(fm, fdm, dim, scale) <= 1e-10 * std::max(1.0, scale), label + ": moved, differs from Direct");
-		std::cout << "  " << label << ": " << blocks1 << " Type 1 executions per evaluation, Type 2 species " << decided << '\n';
+		std::cout << "  " << label << ": " << blocks1 << " Type 1 and " << blocks2 << " Type 2 executions per evaluation, Type 2 species " << decided << '\n';
 		if (threads == 1) { e0 = e; f0 = warm; em0 = em; fm0 = fm; decided0 = decided; }
 		else if (decided == decided0)	// the same gate decisions: Type 1 blocks are fixed by the inputs, Type 2 blocks change no bit
 			Check(std::memcmp(&e, &e0, sizeof(double)) == 0 && Same(warm, f0, dim) && std::memcmp(&em, &em0, sizeof(double)) == 0 && Same(fm, fm0, dim),

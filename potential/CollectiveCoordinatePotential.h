@@ -293,46 +293,86 @@ public:
 	}
 
 	/** \brief Cost gate: choose which of the objects evaluated in one parallel region compute their forces with Type 2
-		instead of the direct loop, and in how many particle blocks. An accepted object's Type 2 work runs as blocks, one
-		task per block on one thread of a team of `threads`; the forces of the others are computed by the direct loop
-		over the whole team (the model of MultiStealthyPotential::AllForce; a single object is
-		ShiftedCCPotential::AllForce). With F the FINUFFT-eligible objects of exact type ShiftedCCPotential, each gets
-		blocks = min(FinufftBlocks(2), max(1, floor(threads/F))): the input-only rule caps the repeated per-block work,
-		and the share of the team keeps a busy team from paying for blocks it cannot run side by side. Every block
-		interpolates the same fine grid point by point, so the block count never changes a force. Per object the cost
-		model (FinufftForceCosts) predicts direct, its share of the direct loop over the team, and block, the time of
-		its largest block on one thread, with work = blocks * block. With K the summed blocks of the F objects,
-		candidates are those with direct >= FinufftForceMargin * work / min(K, threads). Taking candidates in order of
-		increasing work, the longest prefix A is accepted whose summed savings are at least FinufftForceMargin times the
-		wall time A adds to the region, estimated as min(sum_A work, ceil(K_A/threads) max_A block) with K_A the blocks
-		of A: with K_A <= threads every block has its own thread, so A adds at most its longest block. For one unsplit
-		object this is direct >= FinufftForceMargin * type2. Never measures time, so runs with the same inputs, settings
-		and team size decide alike and stay bitwise repeatable.
-		\param pots     Objects evaluated concurrently.
-		\param threads  Team size of the region and of the direct loop.
+		instead of the direct loop, and in how many particle blocks. Each object's rho runs as its Type 1 blocks
+		(FinufftBlocks(1)), its accepted Type 2 work as blocks, one task per block on one thread of a team of `threads`;
+		the forces of the others are computed by the direct loop over the whole team (the model of
+		MultiStealthyPotential::AllForce; a single object is ShiftedCCPotential::AllForce). Every block interpolates
+		the same fine grid point by point, so the Type 2 block count never changes a force.
+		Blocks: over the F FINUFFT-eligible objects of exact type ShiftedCCPotential, the uniform count b in
+		[1, max(1, floor(threads/F))] (the objects' share of the team), each object using min(b, FinufftBlocks(2)), that
+		minimizes the predicted region time max(longest chain, total work / threads): a chain is one object's largest
+		Type 1 block plus its largest Type 2 block, the total work every block's time plus otherWork. b > 1 is kept only
+		if it beats one block by FinufftSplitMargin, so a team already busy with other work pays for no extra blocks.
+		Acceptance: per object the cost model (FinufftForceCosts) predicts direct, its share of the direct loop over
+		the team, and block, the time of its largest Type 2 block on one thread, with work = blocks * block. With K the
+		summed blocks of the F objects, candidates are those with direct >= FinufftForceMargin * work / min(K, threads).
+		Taking candidates in order of increasing work, the longest prefix A is accepted whose summed savings are at least
+		FinufftForceMargin times the wall time A adds to the region, estimated as min(sum_A work, ceil(K_A/threads)
+		max_A block) with K_A the blocks of A: with K_A <= threads every block has its own thread, so A adds at most its
+		longest block. For one unsplit object this is direct >= FinufftForceMargin * type2. Never measures time, so runs
+		with the same inputs, settings and team size decide alike and stay bitwise repeatable.
+		\param pots       Objects evaluated concurrently.
+		\param threads    Team size of the region and of the direct loop.
+		\param otherWork  Predicted other work of the region that fills idle threads [us] (MultiStealthyPotential: the
+			contact walk), 0 by default.
 		\return Per object, the number of Type 2 blocks if its forces should use Type 2, else 0 (all 0 without FINUFFT);
 			the argument of PrepareFinufftForces. */
-	static std::vector<size_t> FinufftForceGate(const std::vector<const ShiftedCCPotential *> & pots, unsigned long threads)
+	static std::vector<size_t> FinufftForceGate(const std::vector<const ShiftedCCPotential *> & pots, unsigned long threads, double otherWork=0.0)
 	{
 		std::vector<size_t> accept(pots.size(), 0);
 #ifdef CCPOTENTIAL_USE_FINUFFT
+		const size_t count=pots.size();
 		const double team=static_cast<double>(std::max<unsigned long>(threads, 1));
-		std::vector<double> direct(pots.size(), 0.0), block(pots.size(), 0.0), work(pots.size(), 0.0);
-		std::vector<std::int64_t> grid(pots.size(), 0);
-		std::vector<size_t> blocks(pots.size(), 0), order;
-		for(size_t s=0; s<pots.size(); s++)
-			grid[s]=typeid(*pots[s])==typeid(ShiftedCCPotential) ? pots[s]->FinufftGridModes() : 0;
-		const double eligible=static_cast<double>(pots.size()-std::count(grid.begin(), grid.end(), 0));
-		const size_t share=static_cast<size_t>(std::max(1.0, std::floor(team/std::max(eligible, 1.0))));
-		double tasks=0.0;
-		for(size_t s=0; s<pots.size(); s++)
+		std::vector<double> direct(count, 0.0), block(count, 0.0), work(count, 0.0), rhoTime(count, 0.0), rhoWork(count, 0.0);
+		std::vector<double> fixed(count, 0.0), perParticle(count, 0.0), np(count, 0.0);
+		std::vector<std::int64_t> grid(count, 0);
+		std::vector<size_t> cap(count, 0), blocks(count, 0), order;
+		double eligible=0.0;
+		for(size_t s=0; s<count; s++)
 		{
+			const ShiftedCCPotential & pot=*pots[s];
+			grid[s]=typeid(pot)==typeid(ShiftedCCPotential) ? pot.FinufftGridModes() : 0;
 			if(grid[s]==0)
 				continue;
-			pots[s]->FinufftForceCosts(static_cast<double>(grid[s]), team, share, direct[s], block[s], blocks[s]);
-			work[s]=static_cast<double>(blocks[s])*block[s];
-			tasks+=static_cast<double>(blocks[s]);
+			eligible+=1.0;
+			const size_t n=pot.NumBoundParticle();
+			const double modes=static_cast<double>(grid[s]);
+			np[s]=static_cast<double>(n);
+			double fixed1=0.0, perParticle1=0.0;
+			pot.FinufftExecutionCosts(1, modes, fixed1, perParticle1);
+			const double rhoBlocks=static_cast<double>(pot.FinufftBlocks(1, n, modes));
+			rhoTime[s]=fixed1+perParticle1*std::ceil(np[s]/rhoBlocks);
+			rhoWork[s]=rhoBlocks*fixed1+perParticle1*np[s];
+			pot.FinufftExecutionCosts(2, modes, fixed[s], perParticle[s]);
+			cap[s]=pot.FinufftBlocks(2, n, modes);
 		}
+		auto span=[&](size_t b) {
+			double longest=0.0, total=otherWork;
+			for(size_t s=0; s<count; s++)
+				if(grid[s]!=0)
+				{
+					const double bs=static_cast<double>(std::min(cap[s], b));
+					longest=std::max(longest, rhoTime[s]+fixed[s]+perParticle[s]*std::ceil(np[s]/bs));
+					total+=rhoWork[s]+bs*fixed[s]+perParticle[s]*np[s];
+				}
+			return std::max(longest, total/team);
+		};
+		const size_t share=static_cast<size_t>(std::max(1.0, std::floor(team/std::max(eligible, 1.0))));
+		size_t best=1;
+		for(size_t b=2; b<=share; b++)
+			if(span(b)<span(best))
+				best=b;
+		if(span(1)<FinufftSplitMargin*span(best))
+			best=1;
+		double tasks=0.0;
+		for(size_t s=0; s<count; s++)
+			if(grid[s]!=0)
+			{
+				blocks[s]=std::min(cap[s], best);
+				pots[s]->FinufftForceCosts(static_cast<double>(grid[s]), team, blocks[s], direct[s], block[s]);
+				work[s]=static_cast<double>(blocks[s])*block[s];
+				tasks+=static_cast<double>(blocks[s]);
+			}
 		for(size_t s=0; s<pots.size(); s++)
 			if(blocks[s]>0 && direct[s]>=FinufftForceMargin*work[s]/std::min(tasks, team))
 				order.push_back(s);
@@ -1063,13 +1103,15 @@ protected:
 	// setpts and execute of RunRhoBlock) over the 142 calibration cases. FinufftBlockRatio and FinufftBlockMinWork were
 	// chosen with a thread-CPU schedule model of whole evaluations (2D/3D, N=2000/10000, S=2/5, T=4/8, chi 0.4): a
 	// Type 1 block must keep at least twice the work every block repeats, since its count cannot depend on the team
-	// (it changes rho in the last bits); Type 2 blocks are also limited to the species' share of the team by the gate.
+	// (it changes rho in the last bits); the gate splits Type 2 work only within the team share of the species and
+	// when the predicted region time drops by FinufftSplitMargin.
 	// Ceiling and upgrade as above: refit with tests/finufft_gate on the production node.
 	static constexpr double FinufftRhoCostCall[3]={3.04, 6.16, 84.4};	//< Type 1 fixed cost per execution, by dimension.
 	static constexpr double FinufftRhoCostParticle[3]={0.0123, 0.046, 0.561};	//< Type 1 cost per particle at kernel width 13.
 	static constexpr double FinufftRhoCostMode[3]={0.0375, 0.0282, 0.0477};	//< Type 1 cost per mode-grid point.
 	static constexpr double FinufftBlockRatio[2]={2.0, 1.0};	//< Least particle work of a Type 1 / Type 2 block, in units of the work every block repeats.
 	static constexpr double FinufftBlockMinWork=100.0;	//< Least particle work of a block [us].
+	static constexpr double FinufftSplitMargin=1.2;	//< Required predicted speedup of the region before Type 2 work is split.
 	static constexpr size_t FinufftMaxBlocks=16;	//< Most particle blocks of one transform.
 
 	/** \brief Cost model of one execution of a Type 1 or Type 2 plan on one thread with the persistent plan (no plan is
@@ -1117,23 +1159,20 @@ protected:
 
 	/** \brief Cost model of the two force paths of one object, in microseconds (see FinufftForceGate).
 		direct = FinufftCostPair * N * Nk / threads, the object's share of the direct force loop with ideal parallel
-		speedup (which favors the direct loop); the Type 2 path runs as blocks = min(FinufftBlocks(2), share) blocks, the
-		largest of which takes block = fixed + perParticle * ceil(N / blocks) on one thread (FinufftExecutionCosts).
+		speedup (which favors the direct loop); the Type 2 path runs as `blocks` blocks, the largest of which takes
+		block = fixed + perParticle * ceil(N / blocks) on one thread (FinufftExecutionCosts).
 		\param gridModes    Mode-grid size G (> 0, so the dimension is 1-3).
 		\param threads      Team size of the direct loop.
-		\param share        Most blocks (the object's share of the team).
+		\param blocks       Number of Type 2 blocks (>= 1).
 		\param[out] direct  Predicted direct-loop time.
-		\param[out] block   Predicted time of one Type 2 block.
-		\param[out] blocks  Number of Type 2 blocks. */
-	void FinufftForceCosts(double gridModes, double threads, size_t share, double & direct, double & block, size_t & blocks) const
+		\param[out] block   Predicted time of the largest Type 2 block. */
+	void FinufftForceCosts(double gridModes, double threads, size_t blocks, double & direct, double & block) const
 	{
 		const int d=static_cast<int>(this->Dimension)-1;
-		const size_t n=this->NumBoundParticle();
-		const double np=static_cast<double>(n);
+		const double np=static_cast<double>(this->NumBoundParticle());
 		direct=FinufftCostPair[d]*np*static_cast<double>(this->constraints.size())/threads;
 		double fixed=0.0, perParticle=0.0;
 		this->FinufftExecutionCosts(2, gridModes, fixed, perParticle);
-		blocks=std::min(this->FinufftBlocks(2, n, gridModes), share);
 		block=fixed+perParticle*std::ceil(np/static_cast<double>(blocks));
 	}
 #endif

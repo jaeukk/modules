@@ -342,24 +342,38 @@ MultiStealthyPotential::SpeciesWork MultiStealthyPotential::PrepareSpecies(bool 
 	std::vector<const ShiftedCCPotential *> pots;
 	for (size_t s = 0; s < numSpecies; s++) {
 		work.concurrent[s] = this->species_constraints[s].CCPotential->PrepareFinufft();
-		if (work.concurrent[s]) {
+		if (work.concurrent[s])
 			pots.push_back(this->species_constraints[s].CCPotential.get());
-			work.species.push_back(static_cast<long>(s));
-		}
 	}
 	std::vector<size_t> forceBlocks(numSpecies, 0);
 	if (forces) {
-		const std::vector<size_t> type2 = ShiftedCCPotential::FinufftForceGate(pots, this->ParallelNumThread);
+		// pots holds FINUFFT species only, so the dimension is 1-3 when the contact estimate is read.
+		const double contact = this->WithRepulsion && !pots.empty() ? ContactCostParticle[this->Dimension - 1] * double(this->pConfig->NumParticle()) : 0.0;
+		const std::vector<size_t> type2 = ShiftedCCPotential::FinufftForceGate(pots, this->ParallelNumThread, contact);
 		for (size_t s = 0, j = 0; s < numSpecies; s++)
 			forceBlocks[s] = this->species_constraints[s].CCPotential->PrepareFinufftForces(work.concurrent[s] ? type2[j++] : 0);
 	}
-	for (long s : work.species) {
+	work.forceBlocks.assign(numSpecies, 0);
+	work.rhoLeft.assign(numSpecies, 0);
+	work.forceLeft.assign(numSpecies, 0);
+	work.ready.assign(numSpecies, 0);
+	for (size_t s = 0; s < numSpecies; s++) {
+		if (!work.concurrent[s])
+			continue;
 		ShiftedCCPotential & pot = *this->species_constraints[s].CCPotential;
+		const long sp = static_cast<long>(s);
 		const size_t rhoBlocks = pot.StartRho(forces);
-		for (size_t b = 0; b < rhoBlocks; b++)
-			work.rho.push_back({s, b, pot.FinufftBlockTime(1)});
-		for (size_t b = 0; b < forceBlocks[s]; b++)
-			work.force.push_back({s, b, pot.FinufftBlockTime(2)});
+		work.forceBlocks[s] = forceBlocks[s];
+		// The species' last phase-1 task also runs a single Type 2 block; several go to phase 2.
+		const double tail = forceBlocks[s] == 1 && rhoBlocks <= 1 ? pot.FinufftBlockTime(2) : 0.0;
+		for (size_t b = 0; b < std::max<size_t>(rhoBlocks, 1); b++)
+			work.rho.push_back({sp, rhoBlocks == 0 ? SpeciesWork::NoBlock : b, pot.FinufftBlockTime(1) + tail});
+		work.rhoLeft[s] = static_cast<long>(std::max<size_t>(rhoBlocks, 1));
+		if (forceBlocks[s] > 1) {
+			for (size_t b = 0; b < forceBlocks[s]; b++)
+				work.force.push_back({sp, b, pot.FinufftBlockTime(2)});
+			work.forceLeft[s] = static_cast<long>(forceBlocks[s]);
+		}
 	}
 	auto largestFirst = [](const SpeciesWork::Task & x, const SpeciesWork::Task & y) {
 		if (x.cost != y.cost)
@@ -402,7 +416,7 @@ void MultiStealthyPotential::RunSpeciesWork(SpeciesWork & work, std::vector<doub
 	const Contact & contact)
 {
 	auto pot = [this](long s) -> ShiftedCCPotential & { return *this->species_constraints[s].CCPotential; };
-	/* Contact chunks from the shared counter; in phase 1 only while Type 1 blocks are still running. */
+	/* Contact chunks from the shared counter; in phase 1 before a phase 2, only while phase-1 tasks are running. */
 	auto fill = [&](bool whileRho) {
 		for (;;) {
 			if (whileRho) {
@@ -423,39 +437,54 @@ void MultiStealthyPotential::RunSpeciesWork(SpeciesWork & work, std::vector<doub
 		}
 	};
 	const long numRho = static_cast<long>(work.rho.size()), numForce = static_cast<long>(work.force.size());
-	const long numSpecies = static_cast<long>(work.species.size());
-	// Phase 1: Type 1 blocks.
-#pragma omp for schedule (dynamic, 1) nowait
-	for (long t = 0; t < numRho; t++) {
-		pot(work.rho[t].species).RunRhoBlock(work.rho[t].block);
-#pragma omp atomic update
-		work.pendingRho--;
-	}
-	fill(true);
-#pragma omp barrier
-	// Per species: rho from its blocks in block order, then energy and the Type 2 input.
-#pragma omp for schedule (dynamic, 1)
-	for (long j = 0; j < numSpecies; j++) {
-		const long s = work.species[j];
-		bulk[s] = OnOneThread(pot(s), [&](ShiftedCCPotential & p) {
+	const bool phase2 = numForce > 0;
+	/* After the last phase-1 task of species s, on this thread: rho, energy, Type 2 input, and a single Type 2 block. */
+	auto finishSpecies = [&](long s) {
+		const bool ready = OnOneThread(pot(s), [&](ShiftedCCPotential & p) {
 			p.FinishRho();
 			if (speciesEnergy)
 				(*speciesEnergy)[s] = p.Energy();
 			return speciesForce && p.StartForces((*speciesForce)[s]) > 0;
 		});
-	}
-	// Phase 2: Type 2 blocks of the species whose StartForces succeeded, then the remaining contact chunks.
+		work.ready[s] = ready;
+		if (ready && work.forceBlocks[s] == 1) {
+			pot(s).RunForceBlock(0, (*speciesForce)[s]);
+			bulk[s] = pot(s).FinishForces();
+		}
+	};
+	// Phase 1: Type 1 blocks; seq_cst countdowns make every block of a species visible to the thread finishing it.
 #pragma omp for schedule (dynamic, 1) nowait
-	for (long t = 0; t < numForce; t++)
-		if (bulk[work.force[t].species])
-			pot(work.force[t].species).RunForceBlock(work.force[t].block, (*speciesForce)[work.force[t].species]);
+	for (long t = 0; t < numRho; t++) {
+		const long s = work.rho[t].species;
+		if (work.rho[t].block != SpeciesWork::NoBlock)
+			pot(s).RunRhoBlock(work.rho[t].block);
+		long left;
+#pragma omp atomic capture seq_cst
+		left = --work.rhoLeft[s];
+		if (left == 0)
+			finishSpecies(s);
+#pragma omp atomic update
+		work.pendingRho--;
+	}
+	fill(phase2);
+#pragma omp barrier
+	if (!phase2)
+		return;
+	// Phase 2: several Type 2 blocks per species, then the remaining contact chunks.
+#pragma omp for schedule (dynamic, 1) nowait
+	for (long t = 0; t < numForce; t++) {
+		const long s = work.force[t].species;
+		if (!work.ready[s])
+			continue;
+		pot(s).RunForceBlock(work.force[t].block, (*speciesForce)[s]);
+		long left;
+#pragma omp atomic capture seq_cst
+		left = --work.forceLeft[s];
+		if (left == 0)
+			bulk[s] = pot(s).FinishForces();
+	}
 	fill(false);
 #pragma omp barrier
-	if (speciesForce) {
-#pragma omp for schedule (static)
-		for (long j = 0; j < numSpecies; j++)
-			bulk[work.species[j]] = pot(work.species[j]).FinishForces();
-	}
 }
 
 /** \brief Total force on particle i from its contact force and its species force (Force(i) arithmetic).
@@ -514,7 +543,7 @@ double MultiStealthyPotential::Energy()
 		);
 		return E;
 	};
-	if (work.species.empty()) {
+	if (work.rho.empty()) {
 		/* No species runs concurrently: the contact sum as before, statically split over the team. */
 		if (numContact > 0) {
 #pragma omp parallel for schedule (static) num_threads(this->ParallelNumThread)
@@ -685,7 +714,7 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 	const long chunk = std::clamp(end / (4L * static_cast<long>(std::max<unsigned long>(this->ParallelNumThread, 1))), 1L, 64L);
 	unsigned long tempNumThread = 1;
 	std::swap(tempNumThread, this->ParallelNumThread);
-	if (work.species.empty()) {
+	if (work.rho.empty()) {
 #pragma omp parallel for num_threads(tempNumThread) default(shared)
 		for (long i = 0; i<end; i++)
 			this->Force(results[i], i);
@@ -743,7 +772,7 @@ double MultiStealthyPotential::EnergyAndAllForce(std::vector<GeometryVector> &re
 	const long chunk = std::clamp(end / (4L * static_cast<long>(std::max<unsigned long>(this->ParallelNumThread, 1))), 1L, 64L);
 #pragma omp parallel num_threads(this->ParallelNumThread) default(shared)
 	{
-		if (work.species.empty()) {
+		if (work.rho.empty()) {
 			// No FINUFFT species: rho is ready, so each particle is finished in one pass.
 #pragma omp for schedule (static)
 			for (long i = 0; i < end; i++) {

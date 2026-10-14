@@ -27,8 +27,10 @@ them), then:
     make test-finufft-forces                     # Combined expects designed gate decisions at T=4 and 8
     make test-finufft-blocks                     # expects several Type 1 blocks in its large cases
 
-`FinufftBlockRatio` and `FinufftBlockMinWork` (same header) set how far the transforms split; they were chosen with
-a thread-CPU schedule model of whole evaluations (2D/3D, N = 2000 and 10000, S = 2 and 5, T = 4 and 8).
+`FinufftBlockRatio`, `FinufftBlockMinWork` and `FinufftSplitMargin` (same header) and
+`MultiStealthyPotential::ContactCostParticle` (the contact walk the gate counts as other work) set how far the
+transforms split; they were chosen with a thread-CPU schedule model of whole evaluations (2D/3D, N = 2000 and 10000,
+S = 2 and 5, T = 4 and 8, chi 0.4).
 
 If `test-finufft-forces` reports "gate decision differs from the expected one", the new constants moved a case
 across the threshold: update that case's expected decisions in `Combined` (tests/test_finufft_forces.cpp).
