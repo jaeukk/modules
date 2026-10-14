@@ -53,6 +53,30 @@ class ShiftedCCPotential : public Potential
 protected:
 	const Configuration * pConfig;
 	double Volume;
+	const Configuration * pViewConfig;	//< Full configuration of an indexed view (SetIndexedConfiguration), else nullptr.
+	std::vector<size_t> ViewIndices;	//< Local particle j of the indexed view is particle ViewIndices[j] of *pViewConfig.
+
+	/** \brief Configuration holding the bound particles and the cell.
+		\return *pViewConfig while an indexed view is bound, otherwise *pConfig. */
+	const Configuration & BoundConfig(void) const
+	{
+		return this->pViewConfig ? *this->pViewConfig : *this->pConfig;
+	}
+
+	/** \brief Number of bound particles.
+		\return ViewIndices.size() while an indexed view is bound, otherwise pConfig->NumParticle(). */
+	size_t NumBoundParticle(void) const
+	{
+		return this->pViewConfig ? this->ViewIndices.size() : this->pConfig->NumParticle();
+	}
+
+	/** \brief Index in BoundConfig() of a local particle.
+		\param j  Local particle index.
+		\return ViewIndices[j] while an indexed view is bound, otherwise j. */
+	size_t BoundIndex(size_t j) const
+	{
+		return this->pViewConfig ? this->ViewIndices[j] : j;
+	}
 public:
 	/** \brief A single k-point constraint: a wavevector and its weight. */
 	struct KPointConstraint
@@ -248,7 +272,7 @@ protected:
 	{
 		const DimensionType dim=this->Dimension;
 		const size_t nk=this->constraints.size();
-		const size_t np=this->pConfig->NumParticle();
+		const size_t np=this->NumBoundParticle();
 		if(dim<1 || dim>3 || nk==0 || np==0)
 			return false;
 		if(np>static_cast<size_t>(std::numeric_limits<std::int64_t>::max()))
@@ -263,7 +287,7 @@ protected:
 		{
 			GeometryVector basis[3];
 			for(DimensionType d=0; d<dim; d++)
-				basis[d]=this->pConfig->GetBasisVector(d);
+				basis[d]=this->BoundConfig().GetBasisVector(d);
 
 			//integer reciprocal-lattice indices of every constraint
 			std::vector<std::int64_t> modes(nk*dim);
@@ -312,7 +336,7 @@ protected:
 				angles[d].resize(np);
 			for(size_t j=0; j<np; j++)
 			{
-				const GeometryVector & s=this->pConfig->GetRelativeCoordinates(j);
+				const GeometryVector & s=this->BoundConfig().GetRelativeCoordinates(this->BoundIndex(j));
 				for(DimensionType d=0; d<dim; d++)
 					angles[d][j]=twopi*(s.x[d]-std::floor(s.x[d]));
 			}
@@ -370,12 +394,12 @@ public:
 		(see GetRho_FinufftType1), this falls back to the direct sum, so rho is always valid on return. */
 	virtual void GetRho(void)
 	{
-		assert(this->pConfig!=nullptr);
+		assert(this->pConfig!=nullptr || this->pViewConfig!=nullptr);
 		if(this->RhoValid)
 		{
 			return;
 		}
-		this->Volume=this->pConfig->PeriodicVolume();
+		this->Volume=this->BoundConfig().PeriodicVolume();
 		this->FinufftLastStatus=FinufftNotCalled;
 
 #ifdef CCPOTENTIAL_USE_FINUFFT
@@ -390,6 +414,12 @@ public:
 		signed long end=this->constraints.size();
 		this->RhoReal.resize(end);
 		this->RhoImag.resize(end);
+		//gather the bound coordinates once: the O(N*Nk) loop then reads them contiguously, as a sub-configuration would
+		const Configuration & config=this->BoundConfig();
+		std::vector<GeometryVector> coords(this->NumBoundParticle());
+		for(size_t j=0; j<coords.size(); j++)
+			coords[j]=config.GetCartesianCoordinates(this->BoundIndex(j));
+		const size_t np=coords.size();
 
 #pragma omp parallel for num_threads(this->ParallelNumThread)
 		for(signed long i=0; i<end; i++)
@@ -398,9 +428,9 @@ public:
 #ifdef HAVETWOFIXEDPARTICLES
 			tr+=2;
 #endif
-			for(size_t j=0; j<pConfig->NumParticle(); j++)
+			for(size_t j=0; j<np; j++)
 			{
-				GeometryVector c=pConfig->GetCartesianCoordinates(j);
+				const GeometryVector & c=coords[j];
 				tr+=std::cos(this->constraints[i].k.Dot(c));
 				ti+=std::sin(this->constraints[i].k.Dot(c));
 			}
@@ -417,6 +447,7 @@ public:
 	ShiftedCCPotential(DimensionType dimension):Potential(dimension)
 	{
 		this->pConfig=nullptr;
+		this->pViewConfig=nullptr;
 		this->RhoValid=false;
 		this->ParallelNumThread=1;
 		this->Shift=0.0;
@@ -479,11 +510,11 @@ public:
 		result=GeometryVector(this->Dimension);
 
 		signed long end=this->constraints.size();
+		const GeometryVector & r=this->BoundConfig().GetCartesianCoordinates(this->BoundIndex(i));
 
 			for(signed long j=0; j<end; j++)
 			{
 				GeometryVector k=this->constraints[j].k;
-				GeometryVector r=this->pConfig->GetCartesianCoordinates(i);
 				result.MinusFrom((2.0)*this->constraints[j].V*(this->RhoImag[j]*std::cos(k.Dot(r))-this->RhoReal[j]*std::sin(k.Dot(r)))*k);
 			}
 
@@ -496,7 +527,7 @@ public:
 	{
 		if(this->RhoValid==false)
 			this->GetRho();
-		long end=this->pConfig->NumParticle();
+		long end=this->NumBoundParticle();
 		results.resize(end);
 		unsigned long tempNumThread = 1;
 		std::swap(tempNumThread, this->ParallelNumThread);
@@ -511,12 +542,46 @@ public:
 	//{
 	//	std::cerr<<"Warning : CollectiveCoordinatePotential::EnergyDerivativeToBasisVectors is not implemented!\n";
 	//}
-	/** \brief Bind the configuration and invalidate the cached collective density.
+	/** \brief Bind the configuration, unbind any indexed view, and invalidate the cached collective density.
 		\param Position  Configuration to bind; must remain alive while energy and force are evaluated. */
 	virtual void SetConfiguration(const Configuration & Position)
 	{
 		assert(this->Dimension==Position.GetDimension());
 		this->pConfig=&Position;
+		this->pViewConfig=nullptr;
+		this->RhoValid=false;
+	}
+
+	/** \brief Report whether SetIndexedConfiguration may bind this object.
+		True only for ShiftedCCPotential itself: derived classes may read pConfig directly or cache state in their
+		SetConfiguration override. A derived class may override this to return true only if it reads particles
+		exclusively through the base-class GetRho, Force and AllForce and needs no SetConfiguration override.
+		\return true if an indexed view is supported. */
+	virtual bool SupportsIndexedView(void) const
+	{
+		return typeid(*this)==typeid(ShiftedCCPotential);
+	}
+
+	/** \brief Bind an indexed view and invalidate the cached collective density: local particle j is particle
+		indices[j] of full. The base-class GetRho (both backends), Force and AllForce read particles through the
+		view and use the cell of full, so they give the same bits as SetConfiguration on a sub-configuration of full
+		holding those particles in that order. pConfig is nullptr while the view is bound, so code that reads it
+		directly fails instead of reading the wrong particles. SetConfiguration unbinds the view.
+		\param full     Configuration holding the particles; must stay alive at the same address while bound.
+		\param indices  Local-to-global particle map (copied); every entry must be below full.NumParticle().
+		\throw std::logic_error if SupportsIndexedView() is false; std::out_of_range for an invalid index.
+			A failed check leaves the object unchanged. */
+	void SetIndexedConfiguration(const Configuration & full, const std::vector<size_t> & indices)
+	{
+		if(!this->SupportsIndexedView())
+			throw std::logic_error("ShiftedCCPotential::SetIndexedConfiguration: not supported by this derived class; use SetConfiguration.");
+		assert(this->Dimension==full.GetDimension());
+		for(size_t i : indices)
+			if(i>=full.NumParticle())
+				throw std::out_of_range("ShiftedCCPotential::SetIndexedConfiguration: particle index out of range.");
+		this->ViewIndices=indices;
+		this->pViewConfig=&full;
+		this->pConfig=nullptr;
 		this->RhoValid=false;
 	}
 };

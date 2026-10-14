@@ -181,6 +181,7 @@ void MultiStealthyPotential::GetRho(size_t s)
 {
 	assert(this->pConfig!=nullptr);
 	assert(s < this->species_constraints.size());
+	this->UpdateSubconfigs();
 	this->species_constraints[s].CCPotential->GetRho();
 
 	// double Volume=ptr_pot->pConfig->PeriodicVolume();
@@ -246,11 +247,11 @@ void MultiStealthyPotential::SetConfiguration(const Configuration &Position)
 		}
 	}
 	
+	// Invalidate the species views before their configuration is replaced.
+	this-> SubconfigValid = false;
 	pConfig = std::make_unique<Configuration>(Position, "a");
 	pConfig->PrepareIterateThroughNeighbors(this->rc);
 
-
-	this-> SubconfigValid = false;
 	this-> UpdateSubconfigs();
 	for (size_t s = 0; s < this->species_constraints.size(); s++){
 		this->species_constraints[s].CCPotential->RhoValid = false;
@@ -287,37 +288,31 @@ void MultiStealthyPotential::SetPacking(const SpherePacking &pck)
 		this->radii[i] = pck.GetCharacteristics(i);
 	}
 	this->rc *= 2.01;
+	// Invalidate the species views before their configuration is replaced.
+	this-> SubconfigValid = false;
 	pConfig = std::make_unique<Configuration>(pck, "a");
 	pConfig->PrepareIterateThroughNeighbors(this->rc);
 	
-	/* define sub-configurations for species. */
-	this-> SubconfigValid = false;
+	/* bind the species views. */
 	this-> UpdateSubconfigs();
 	for (size_t s = 0; s < this->species_constraints.size(); s++){
 		this->species_constraints[s].CCPotential->RhoValid = false;
 	}
 }
 
-/** \brief Rebuild sub-configurations for each species. */
+/** \brief Rebind every species potential, if stale, to an indexed view of *pConfig.
+ *  Replaces the former per-species sub-Configuration copies with the same particles and order, so
+ *  results are unchanged. The views point into *pConfig: every replacement of pConfig must first
+ *  clear SubconfigValid, and every read of a species potential must first call this function. */
 void MultiStealthyPotential::UpdateSubconfigs()
 {
 	if (! this->SubconfigValid){
-		Configuration temp (* this->pConfig);
-		temp.RemoveParticles();
-		this->subc.clear();
-		for (size_t s = 0; s < this->species_constraints.size(); s ++ )
-			this->subc.emplace_back(temp);
-		
-		// The local particle order must match idx and idx2species, including reassignment.
-		for (size_t s = 0; s < this->species_constraints.size(); s++)
-			for (size_t i : this->species_constraints[s].idx)
-				this->subc[s].Insert("a", this->pConfig->GetRelativeCoordinates(i));
-
 		for (size_t s = 0; s < this->species_constraints.size(); s ++ ){
 			//propagate the thread count to each species potential; otherwise only the wrapper is
 			//multi-threaded and every inner ShiftedCCPotential stays single-threaded.
 			this->species_constraints[s].CCPotential->ParallelNumThread = this->ParallelNumThread;
-			this->species_constraints[s].CCPotential->SetConfiguration(this->subc[s]);
+			// The local particle order must match idx and idx2species, including reassignment.
+			this->species_constraints[s].CCPotential->SetIndexedConfiguration(*this->pConfig, this->species_constraints[s].idx);
 		}
 		this->SubconfigValid = true;
 	}

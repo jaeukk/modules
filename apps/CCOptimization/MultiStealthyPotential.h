@@ -124,7 +124,6 @@ protected:
 	//	bool RhoValid;
 	//	double Volume;
 	std::vector<spec_index> idx2species;
-	std::vector<Configuration> subc;
 
 
 public :
@@ -242,7 +241,7 @@ public :
 	 *  \param pck  Input sphere packing. */
 	void SetPacking(const SpherePacking & pck);
 
-	/** \brief Rebuild species sub-configurations. */
+	/** \brief Rebind every species potential, if stale, to an indexed view of *pConfig in species idx order. */
 	void UpdateSubconfigs();
 
 	/** \brief Get the contact cutoff radius.
