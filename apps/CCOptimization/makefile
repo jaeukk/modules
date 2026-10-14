@@ -61,7 +61,7 @@ $(ODIR):
 	mkdir -p $(ODIR)
 
 clean:
-	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out test_indexed_view.out
+	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out test_indexed_view.out test_finufft_plan_cache.out
 
 # Offline archive management and multicomponent analysis stay local to this app.
 mspb_pack.out: $(ODIR)mspb_pack_main.o $(ODIR)MSPB_Pack.o $(ODIR)MultiStealthyPotential.o $(ODIR)MultiComponentPairStat.o deps
@@ -88,8 +88,22 @@ $(ODIR)test_finufft_multi.o: tests/test_finufft_multi.cpp | $(ODIR)
 
 .PHONY: test-finufft
 test-finufft:
-	$(MAKE) USE_FINUFFT=1 test_finufft_multi.out
+	$(MAKE) USE_FINUFFT=1 test_finufft_multi.out test_finufft_plan_cache.out
 	./test_finufft_multi.out
+	./test_finufft_plan_cache.out
+
+# Persistent Type 1 plan and mode-map checks; the wraps let the test observe every plan.
+test_finufft_plan_cache.out: $(ODIR)test_finufft_plan_cache.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT) \
+	  -Wl,--wrap=finufft_makeplan,--wrap=finufft_destroy,--wrap=finufft_setpts
+
+$(ODIR)test_finufft_plan_cache.o: tests/test_finufft_plan_cache.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-finufft-plan
+test-finufft-plan:
+	$(MAKE) USE_FINUFFT=1 test_finufft_plan_cache.out
+	./test_finufft_plan_cache.out
 
 # Indexed species views versus the former per-species sub-Configurations (bitwise; Direct and FINUFFT).
 test_indexed_view.out: $(ODIR)test_indexed_view.o $(ODIR)MultiStealthyPotential.o deps

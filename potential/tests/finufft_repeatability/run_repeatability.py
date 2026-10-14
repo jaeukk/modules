@@ -58,6 +58,8 @@ BACKENDS = ["direct", "finufft"]
 N, SPECIES, THREADS, MODE_PAIRS = 2000, 5, 4, 80
 TARGET_CHI = "0.1"  # The harness selects the complete-shell set nearest this: 80 modes, chi_i = 80/798.
 RUN_TIMEOUT = 660
+# finufft_observer.cpp wraps the guru calls; ShiftedCCPotential keeps persistent plans.
+OBSERVER_WRAP = "-Wl,--wrap=finufft_makeplan,--wrap=finufft_setpts,--wrap=finufft_execute"
 RECEIPT = re.compile(r"^FINUFFT_OBSERVER calls=(\d+) null_options=(\d+) nonzero_status=(\d+) nthreads=(\S+)$", re.M)
 
 
@@ -243,7 +245,7 @@ def build_all(root, env):
     relink = list(link)
     relink[relink.index("-o") + 1] = str(experiment)
     at = relink.index("-Wl,--wrap=nlopt_optimize")
-    relink[at:at] = [str(observer_obj), "-Wl,--wrap=finufft2d1"]
+    relink[at:at] = [str(observer_obj), OBSERVER_WRAP]
     step("experiment_observed_link", relink)
 
     core = [objects[name] for name in ("GeometryVector", "etc", "RandomGenerator", "PeriodicCellList",
@@ -252,7 +254,7 @@ def build_all(root, env):
     api_finufft = extra / "api_test_finufft"
     step("api_finufft_compile", common + ["-c", HERE / "api_test.cpp", "-o", extra / "api_test_finufft.o"])
     step("api_finufft_link", ["g++", "-fopenmp", extra / "api_test_finufft.o", *core, objects["MultiStealthyPotential"],
-                              observer_obj, "-Wl,--wrap=finufft2d1", *gsl, LIBFINUFFT,
+                              observer_obj, OBSERVER_WRAP, *gsl, LIBFINUFFT,
                               "-Wl,-rpath," + str(LIBFINUFFT.parent), "-o", api_finufft])
 
     # FINUFFT may share the GSL prefix; drop its include path only when it is separate.

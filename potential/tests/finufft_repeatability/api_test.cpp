@@ -1,8 +1,8 @@
 /** \file api_test.cpp
  * \brief API regression for ShiftedCCPotential::SetFinufftNumThreads / GetFinufftNumThreads.
  * run_repeatability.py builds this file twice: with -DCCPOTENTIAL_USE_FINUFFT (linked with
- * finufft_observer.o, -Wl,--wrap=finufft2d1, and libfinufft), and without the macro, the
- * FINUFFT include paths, or the library. Prints one JSON line; exits nonzero on the first failure.
+ * finufft_observer.o, -Wl,--wrap=finufft_makeplan,--wrap=finufft_setpts,--wrap=finufft_execute,
+ * and libfinufft), and without the macro, the FINUFFT include paths, or the library. Prints one JSON line; exits nonzero on the first failure.
  */
 #include "MultiStealthyPotential.h"
 
@@ -256,7 +256,7 @@ void testParallelIndependence(const Configuration& c) {
 }
 
 #ifdef CCPOTENTIAL_USE_FINUFFT
-/** \brief The option reaches finufft2d1 as opts.nthreads (1 by default, explicit 4), independent of ParallelNumThread.
+/** \brief The option reaches FINUFFT as the plan's opts.nthreads (1 by default, explicit 4), independent of ParallelNumThread.
  *  \param c  Configuration to bind. */
 void testForwarding(const Configuration& c) {
     auto direct=potential(c,Backend::Direct);

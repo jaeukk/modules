@@ -41,7 +41,7 @@ def main():
     compile_cmd=common+['-c',str(source),'-o',str(obj)]
     subprocess.run(compile_cmd,check=True,capture_output=True)
     link=commands[1].copy();link[link.index('-o')+1]=str(binary)
-    link.extend([str(obj),'-Wl,--wrap=finufft2d1'])
+    link.extend([str(obj),'-Wl,--wrap=finufft2d1,--wrap=finufft_makeplan,--wrap=finufft_setpts,--wrap=finufft_execute'])
     subprocess.run(link,check=True,capture_output=True)
     os.sched_setaffinity(0,build['cpu_affinity'])
     env=dict(os.environ,**build['thread_environment'])
@@ -87,7 +87,7 @@ def main():
     lines=['# Five-component FINUFFT internal-thread control','',
         'N=2000, five equal components, chi_i=80/798, phi_total=0.2. Fixed-order contact sum. '
         'OMP_NUM_THREADS=OMP_THREAD_LIMIT=4; CPU affinity 0,2,4,6. Only the options passed '
-        'to finufft2d1 are changed: opts.nthreads=1. The link wrapper records every override '
+        'to finufft2d1 or finufft_makeplan are changed: opts.nthreads=1. The link wrapper records every override '
         'and status. Original object files, optimizer, tolerance 1e-12, and other options are unchanged.', '',
         'Three seeds, two separate process repeats per backend. Initial files and mode files '
         'match the preceding four-thread FINUFFT experiment byte for byte. Times exclude '
