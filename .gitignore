@@ -1,5 +1,6 @@
 # Build / target files
 obj/
+obj_finufft/
 *.o
 *.out
 *.a

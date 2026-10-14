@@ -1312,6 +1312,10 @@ int GetMultiCCO(int argc, char ** argv){
 					ofile << "\nSave and load the progress of MD simulations.\n";
 					MDAllowRestore = true;
 				}
+				else if (tempstring2 == "finufft"){
+					ofile << "\nCollective densities use the FINUFFT backend.\n";
+					potential->SetRhoBackend(ShiftedCCPotential::RhoBackend::FinufftType1);
+				}
 				else {
 					ofile << tempstring2 << " is an undefined command\n";
 				}
@@ -1443,6 +1447,10 @@ int GetMultiCCO(int argc, char ** argv){
 				else if (tempstring2.compare("combined") == 0){
 				ofile << "\nWrite the configurations of all species\n";
 					split_species = false;
+				}
+				else if (tempstring2 == "finufft"){
+					ofile << "\nCollective densities use the FINUFFT backend.\n";
+					potential->SetRhoBackend(ShiftedCCPotential::RhoBackend::FinufftType1);
 				}
 				else if (tempstring2 == "export") {
 					std::string format;

@@ -191,6 +191,14 @@ public :
 	 *  \param V        Constraint coefficients (energy weights). */
 	void AddConstraint(size_t species, const GeometryVector & k, const std::vector<double> V);
 
+	/** \brief Select the collective-density backend of every species defined so far.
+	 *  \param backend  Backend passed to ShiftedCCPotential::SetRhoBackend.
+	 *  \throw std::invalid_argument if the backend is not compiled in (see USE_FINUFFT in the makefile). */
+	void SetRhoBackend(ShiftedCCPotential::RhoBackend backend){
+		for (auto & species : this->species_constraints)
+			species.CCPotential->SetRhoBackend(backend);
+	}
+
 	/** \brief Update rho values for selected species.
 	 *  \param species  Species id to evaluate. */
 	void GetRho(size_t species);

@@ -230,12 +230,17 @@ protected:
 		n_d = k.a_d/(2 pi), k.r_j = sum_d n_d (2 pi s_jd) for fractional coordinates s_j. The mapping from
 		constraints to integer modes is recomputed on every call because constraints is public and mutable.
 		Snapping n_d to the nearest integer changes each phase by at most 2 pi dim max_d|n_d-round(n_d)|,
-		so a mode is accepted only if both the rounding residual |n_d-round(n_d)| and the roundoff estimate
-		4*DBL_EPSILON*(1+sum_c|k_c a_dc|/(2 pi)) are within budget = min(1e-8, eps)/(8 pi dim), keeping the
-		snapping error below min(1e-8, eps)/4 in phase. This conservatively rejects large indices (e.g. at
-		eps=1e-12 sum_c|k_c a_dc|/(2 pi) > about 43/dim) and every eps below about 2e-14*dim, before FINUFFT is called.
+		so a mode is accepted only if the rounding residual |n_d-round(n_d)| is within
+		max(budget, roundoff), where budget = min(1e-8, eps)/(8 pi dim) keeps the snapping error below
+		min(1e-8, eps)/4 in phase and roundoff = 4*DBL_EPSILON*(1+sum_c|k_c a_dc|/(2 pi)) estimates the error
+		of computing n_d itself. A residual at roundoff level means k is a reciprocal-lattice vector to double
+		precision; snapping it is then no less accurate than the direct sum, whose phases k.r carry rounding
+		of the same order, so large indices are accepted (earlier builds rejected every mode with
+		roundoff > budget, i.e. indices above about 43/dim at eps=1e-12, silently falling back for large N).
+		Every eps below about 2e-14*dim (4*DBL_EPSILON > budget) is still rejected before FINUFFT is called.
 		Returns false, leaving the caller to use the direct sum, when: the dimension is not 1-3; there are
-		no constraints or no particles; some mode fails the budget above; |n_d| > 2^30; the mode grid exceeds
+		no constraints or no particles; eps is below that floor; some mode fails the residual test above;
+		|n_d| > 2^30; the mode grid exceeds
 		FinufftMaxModes or FinufftSparseGridFactor*(Nk+N); allocation fails; or FINUFFT returns nonzero.
 		All mapping checks run before the dense mode array is allocated.
 		\return true if RhoReal/RhoImag hold the FINUFFT result, false if a direct fallback is required. */
@@ -252,6 +257,8 @@ protected:
 		const double twopi=2.0*::pi;
 		const double maxIndex=static_cast<double>(std::int64_t(1)<<30);
 		const double budget=std::min(1e-8, this->FinufftTolerance)/(4.0*twopi*static_cast<double>(dim));
+		if(4.0*DBL_EPSILON>budget)
+			return false;	//eps below what double-precision phases resolve
 		try
 		{
 			GeometryVector basis[3];
@@ -278,7 +285,7 @@ protected:
 						return false;
 					double nr=std::round(n);
 					double roundoff=4.0*DBL_EPSILON*(1.0+scale/twopi);
-					if(std::abs(n-nr)>budget || roundoff>budget)
+					if(std::abs(n-nr)>std::max(budget, roundoff))
 						return false;
 					std::int64_t m=static_cast<std::int64_t>(nr);
 					modes[i*dim+d]=m;

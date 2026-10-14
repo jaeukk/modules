@@ -15,13 +15,26 @@
 #==============================================================================
 include ../../config.mk
 
-ODIR   := obj/
+# USE_FINUFFT=1 compiles the optional FINUFFT backend (select it at run time with the
+# `finufft` keyword). CCPOTENTIAL_USE_FINUFFT must match in every object of one program (ODR),
+# so FINUFFT builds keep their objects in a separate directory.
+USE_FINUFFT ?= 0
+ifeq ($(USE_FINUFFT),1)
+  ifeq ($(FINUFFT_PREFIX),)
+    $(error USE_FINUFFT=1 but finufft.h was not found; set FINUFFT_PREFIX=/path)
+  endif
+  ODIR    := obj_finufft/
+  FINUFFT := -DCCPOTENTIAL_USE_FINUFFT $(FINUFFT_INC)
+  LIBS_FINUFFT := $(FINUFFT_LIB)
+else
+  ODIR    := obj/
+endif
 TARGET := soft_core_stealthy.out
 
 SRCS := main.cpp MultiStealthyPotential.cpp MultiComponentPairStat.cpp MSPB_Pack.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
-INC := -I$(core) -I$(pairstat) -I$(potential) -I. $(NLOPT_INC)
+INC := -I$(core) -I$(pairstat) -I$(potential) -I. $(NLOPT_INC) $(FINUFFT)
 
 CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
@@ -39,22 +52,44 @@ deps:
 	$(MAKE) -C $(potential) objs
 
 $(TARGET): $(OBJS) deps
-	$(CC) -o $@ $(OBJS) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB)
+	$(CC) -o $@ $(OBJS) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
 
 $(ODIR)%.o: %.cpp | $(ODIR)
-	$(CC) $(CFLAGS) $(INC) -o $@ $<
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
 
 $(ODIR):
 	mkdir -p $(ODIR)
 
 clean:
-	rm -f $(ODIR)*.o $(TARGET) mspb_pack.out
+	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out
 
 # Offline archive management and multicomponent analysis stay local to this app.
 mspb_pack.out: $(ODIR)mspb_pack_main.o $(ODIR)MSPB_Pack.o $(ODIR)MultiStealthyPotential.o $(ODIR)MultiComponentPairStat.o deps
-	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB)
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
 
 .PHONY: test-mspb-pack
 test-mspb-pack: all
 	bash tests/run_mspb_pack_test.sh
 	python3 tests/test_mspb_pack_cli.py
+
+# Per-evaluation timing, backend agreement and optimization benchmark (see tests/bench_finufft.py).
+bench_finufft.out: $(ODIR)bench_finufft.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)bench_finufft.o: tests/bench_finufft.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+# Shared FINUFFT correctness oracle (Direct vs FINUFFT, repeatability, cache invalidation).
+test_finufft_multi.out: $(ODIR)test_finufft_multi.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_finufft_multi.o: tests/test_finufft_multi.cpp | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-finufft
+test-finufft:
+	$(MAKE) USE_FINUFFT=1 test_finufft_multi.out
+	./test_finufft_multi.out
+
+# Header dependencies (CollectiveCoordinatePotential.h changes must rebuild every object).
+-include $(wildcard $(ODIR)*.d)

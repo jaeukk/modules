@@ -74,6 +74,11 @@ FFTW_CANDIDATES  := $(HOME)/install /usr/local /usr
 FFTW_PREFIX      ?= $(firstword $(foreach d,$(FFTW_CANDIDATES),\
                       $(if $(wildcard $(d)/include/fftw3.h),$(d))))
 
+# FINUFFT (optional; apps/CCOptimization with USE_FINUFFT=1). Requires include/finufft.h.
+FINUFFT_CANDIDATES := $(HOME)/install /usr/local /usr
+FINUFFT_PREFIX   ?= $(firstword $(foreach d,$(FINUFFT_CANDIDATES),\
+                      $(if $(wildcard $(d)/include/finufft.h),$(d))))
+
 # voro++ (optional; used by apps/Tessellation-based with USE_VORO=1). Requires the
 # dev headers voro++/voro++.hh (the voro++-dev package), not just libvoro++.so.
 VORO_CANDIDATES  := $(HOME)/install /usr/local /usr
@@ -91,6 +96,9 @@ NLOPT_INC := $(if $(NLOPT_PREFIX),-I$(NLOPT_PREFIX)/include)
 NLOPT_LIB := $(if $(NLOPT_PREFIX),-L$(NLOPT_PREFIX)/lib -lnlopt)
 FFTW_INC  := $(if $(FFTW_PREFIX),-I$(FFTW_PREFIX)/include)
 FFTW_LIB  := $(if $(FFTW_PREFIX),-L$(FFTW_PREFIX)/lib -lfftw3 -lfftw3_omp)
+comma := ,
+FINUFFT_INC := $(if $(FINUFFT_PREFIX),-I$(FINUFFT_PREFIX)/include)
+FINUFFT_LIB := $(if $(FINUFFT_PREFIX),-L$(FINUFFT_PREFIX)/lib -lfinufft -Wl$(comma)-rpath$(comma)$(FINUFFT_PREFIX)/lib)
 # voro++ (header included as <voro++/voro++.hh>). Like NLOPT/FFTW, these are set
 # when the prefix is found; a consumer references them only under USE_VORO=1.
 VORO_INC  := $(if $(VORO_PREFIX),-I$(VORO_PREFIX)/include)
