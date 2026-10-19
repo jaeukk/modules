@@ -41,6 +41,9 @@ The implementation adds exception-safe contact joining, thread restoration,
 direct fallbacks, CLI selection, focused tests, and reproducible comparison tools.
 History input now rejects negative, fractional, malformed, and overflowing values
 before passing a correction-pair count to NLopt.
+The candidate energy in the optional MINOP optimizer is initialized within each
+iteration, removing a GCC 11 uninitialized-value diagnostic without changing the
+line search or the selected NLopt workflow.
 It does not migrate MSPB or SpherePack into core or alter scientific formulas,
 the three NLopt scaling phases, acceptance criteria, or storage formats.
 

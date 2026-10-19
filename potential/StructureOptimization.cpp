@@ -1495,7 +1495,6 @@ void runMINOP79(const OptimFunc& function,
 	double minStepSize = 1e-15;
 
 	double f_x;            // func(v_x)
-	double f_xa;           // func(v_xa)
 	double norm_g;         // Needed quite often, so...
 
 
@@ -1544,6 +1543,7 @@ void runMINOP79(const OptimFunc& function,
 	int iter;
 	for(iter = 1; iter <= maxIter && f_x > goal && norm_g > minG &&
 		stepSize >= minStepSize; iter++){
+			double f_xa = f_x; // Candidate energy belongs to this iteration.
 
 			// If verbose == 3, then print the information at every iteration.
 			// If verbose == 2, then print it up to 100 times.

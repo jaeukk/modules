@@ -66,8 +66,11 @@ Neither schedule requires a different optimizer.</p>
 restoration, direct fallbacks, CLI selection, focused tests, and
 reproducible comparison tools. History input now rejects negative,
 fractional, malformed, and overflowing values before passing a
-correction-pair count to NLopt. It does not migrate MSPB or SpherePack
-into core or alter scientific formulas, the three NLopt scaling phases,
+correction-pair count to NLopt. The candidate energy in the optional
+MINOP optimizer is initialized within each iteration, removing a GCC 11
+uninitialized-value diagnostic without changing the line search or the
+selected NLopt workflow. It does not migrate MSPB or SpherePack into
+core or alter scientific formulas, the three NLopt scaling phases,
 acceptance criteria, or storage formats.</p>
 <h2 id="a-versus-b-at-contact-strength-100">A versus B at contact
 strength 100</h2>

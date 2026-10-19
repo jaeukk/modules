@@ -26,6 +26,12 @@ Passed on the local AMD Ryzen 5 7500F / WSL2 host:
   390-pixel layout without page overflow, no JavaScript errors.
 - `git diff --check`.
 
+Della's GCC 11 build additionally diagnosed the preexisting MINOP candidate-energy
+declaration. The follow-up initializes it within each iteration. The CLI suite
+now exercises zero-iteration identity and decreasing energy after five MINOP
+iterations. Both direct and FINUFFT builds pass those checks. This does not change
+the NLopt workflow used by the scheduling and history comparisons.
+
 The two previous Opus audit reports are adjacent to this evidence directory.
 They reviewed the scheduling implementation before 856d6d1, not the later default
 and report changes or a new Della production protocol. No additional audit cycles

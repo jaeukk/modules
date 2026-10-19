@@ -48,4 +48,16 @@ with tempfile.TemporaryDirectory(prefix="cco-sequential-cli-") as temporary:
                                 input=text.replace("history 100", f"history {invalid}"),
                                 text=True, cwd=root, env=env, capture_output=True, timeout=30)
         assert result.returncode != 0 and "Expected: history N" in result.stdout, result.stdout + result.stderr
-print("PASS: schedule selection, history-40 default/override endpoints, and missing-backend behavior.")
+    # Exercise MINOP's zero-iteration and candidate-energy paths. The loose export
+    # threshold above captures bounded endpoints; it is not physical acceptance.
+    for steps in (0, 5):
+        commands = text.replace(str(prefix), str(root / f"minop-{steps}"))
+        commands = commands.replace("maxsteps 5", f"algorithm MINOP\nmaxsteps {steps}")
+        result = subprocess.run([str(binary), "multi", "1", "17"], input=commands,
+                                text=True, cwd=root, env=env, capture_output=True, timeout=30)
+        assert result.returncode == 0, result.stdout + result.stderr
+        initial = float(re.search(r"E_init=([^\s]+)", result.stdout).group(1))
+        final = float(re.search(r"E_relax=([^\s]+)", result.stdout).group(1))
+        assert final <= initial, result.stdout
+        assert (final == initial) if steps == 0 else (final < initial), result.stdout
+print("PASS: schedule selection, history defaults/overrides/rejections, MINOP candidate paths, and missing-backend behavior.")
