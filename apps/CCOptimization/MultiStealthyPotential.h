@@ -122,6 +122,20 @@ protected:
 	double rc;						//< the critical radius over which the contact potential become zero.
 	bool WithRepulsion = true;
 	bool SubconfigValid = false;
+	bool SequentialFinufftSpecies = false;
+
+	/** \brief Evaluate sequential species while a separate worker computes contact terms.
+	 *  A non-null forces pointer requests forces; energy is optional for AllForce.
+	 *  FINUFFT requests ParallelNumThread, capped by OMP_THREAD_LIMIT. The separate
+	 *  contact worker time-shares the CPUs assigned by the caller's affinity/scheduler.
+	 *  \param[out] forces Total forces, or nullptr for energy only.
+	 *  \param energy Whether to compute energy (false for AllForce).
+	 *  \return Total energy when requested, otherwise zero.
+	 *  \throw std::invalid_argument for a zero thread budget; std::runtime_error
+	 *  for unassigned particles. Species and contact exceptions propagate after
+	 *  the contact worker has joined and thread settings have been restored.
+	 */
+	double EvaluateSequentialSpecies(std::vector<GeometryVector> * forces, bool energy);
 	//	bool RhoValid;
 	//	double Volume;
 	std::vector<spec_index> idx2species;
@@ -217,6 +231,23 @@ protected:
 	double TotalEnergy(const std::vector<double> & speciesEnergy, const std::vector<double> & contactEnergy) const;
 
 public :
+	/** \brief Select sequential species with internally threaded FINUFFT (temporary Option B).
+	 *  FINUFFT uses the entire thread budget while an additional contact worker runs.
+	 *  Use process affinity or the job scheduler to enforce an allocation of that
+	 *  many CPUs: contact can add one runnable thread beyond the FINUFFT team.
+	 *  With no contact work no extra worker is launched. One-thread budgets
+	 *  run serially. Type 2 batches all spatial components and is attempted for
+	 *  eligible base potentials; unsupported or failed transforms fall back to direct sums.
+	 *  Disabling restores one internal FINUFFT thread (the default concurrent schedule).
+	 *  Changing the schedule invalidates densities. Internal multithreading need not
+	 *  reproduce density bits or optimizer trajectories between runs.
+	 *  \param enabled True for Option B, false to restore the concurrent schedule.
+	 */
+	void SetSequentialFinufftSpecies(bool enabled);
+	/** \brief Return whether the sequential species schedule is selected.
+	 *  \return True for Option B, false for the default concurrent schedule. */
+	bool GetSequentialFinufftSpecies() const { return SequentialFinufftSpecies; }
+
 	double e0 = 1.0;	//< energy scale for contact potential
 	double u0 = 1.0;	//< energy scale for collective-coordinate potential
 	
@@ -346,6 +377,8 @@ public :
 	 * -------------------------------------*/
 
 	/** \brief Compute total potential energy.
+	 *  SetSequentialFinufftSpecies(true) selects EvaluateSequentialSpecies instead
+	 *  of the following default schedule; internally threaded FINUFFT need not repeat bitwise.
 	 *  Species that run FINUFFT (see PrepareSpecies) are evaluated inside one parallel region as Type 1 block tasks
 	 *  while free threads take the contact sum (RunSpeciesWork); other species are evaluated first, one by one, with
 	 *  the full team. Species and particles own result slots that are summed in index order, so the result
@@ -359,6 +392,8 @@ public :
 	virtual void Force(GeometryVector & result, size_t i);
 
 	/** \brief Compute forces on all particles.
+	 *  SetSequentialFinufftSpecies(true) selects EvaluateSequentialSpecies instead
+	 *  of the following default schedule.
 	 *  Fills every species' rho first, so it is valid without a prior Energy call (MD order); species that
 	 *  run FINUFFT are filled inside the same parallel region as the force loop, as block tasks, together with
 	 *  their Type 2 forces where the joint cost gate accepted them (ShiftedCCPotential::FinufftForceGate), while
@@ -367,8 +402,10 @@ public :
 	 *  \param results  Output vector of per-particle forces. */
 	virtual void AllForce(std::vector<GeometryVector> & results);
 
-	/** \brief Compute the total energy and every force in one evaluation, bitwise equal to Energy() followed
+	/** \brief Compute total energy and forces. The default schedule is bitwise equal to Energy() followed
 	 *  by AllForce(results) (the optimizer's gradient callback, see CombinedEnergyForce). The species calls are
+	 *  those described below. SetSequentialFinufftSpecies(true) selects EvaluateSequentialSpecies instead;
+	 *  internally threaded FINUFFT need not repeat bitwise. For the default schedule the species calls are
 	 *  those of the two (FINUFFT species as block tasks, the others with the full team); the contact part walks each
 	 *  particle's neighbors once (ContactEnergyAndForce) instead of twice. With FINUFFT species, threads free
 	 *  from block tasks take the contact walk (RunSpeciesWork), and after the barrier each particle adds its species

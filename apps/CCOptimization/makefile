@@ -64,7 +64,7 @@ $(ODIR):
 clean:
 	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out test_indexed_view.out \
 	      test_finufft_plan_cache.out test_species_concurrent.out test_finufft_forces.out test_fused_contact.out test_finufft_blocks.out \
-	      calibrate_gate.out check_gate.out
+	      calibrate_gate.out check_gate.out test_sequential_species.out bench_threading.out
 
 # Offline archive management and multicomponent analysis stay local to this app.
 mspb_pack.out: $(ODIR)mspb_pack_main.o $(ODIR)MSPB_Pack.o $(ODIR)MultiStealthyPotential.o $(ODIR)MultiComponentPairStat.o deps
@@ -195,3 +195,23 @@ finufft-gate:
 
 # Header dependencies (CollectiveCoordinatePotential.h changes must rebuild every object).
 -include $(wildcard $(ODIR)*.d)
+
+# Option B: internally threaded species with a concurrent contact worker.
+test_sequential_species.out: $(ODIR)test_sequential_species.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT) \
+	  -Wl,--wrap=finufft_makeplan,--wrap=finufft_destroy,--wrap=finufft_execute
+
+$(ODIR)test_sequential_species.o: tests/threading/test_sequential.cpp tests/threading/fixtures.h | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-sequential-species
+test-sequential-species:
+	$(MAKE) USE_FINUFFT=1 test_sequential_species.out
+	OMP_NUM_THREADS=4 OMP_THREAD_LIMIT=4 OMP_DYNAMIC=false OMP_WAIT_POLICY=PASSIVE ./test_sequential_species.out
+	OMP_NUM_THREADS=4 OMP_THREAD_LIMIT=1 OMP_DYNAMIC=false OMP_WAIT_POLICY=PASSIVE ./test_sequential_species.out
+
+bench_threading.out: $(ODIR)bench_threading.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)bench_threading.o: tests/threading/bench_threading.cpp tests/threading/fixtures.h | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<

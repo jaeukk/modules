@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>GetMultiCCO · Current algorithm</title>
+<style>
+:root{--ink:#182e43;--muted:#536777;--bg:#f1f5f8;--line:#d3dfe7;--blue:#145ba3;--purple:#753ba0;--teal:#08746a;--gold:#936409;--serial:#526475}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:1240px;margin:auto;padding:40px 24px 65px}h1{font-size:clamp(30px,4vw,48px);line-height:1.15;letter-spacing:-1.3px;margin:12px 0 18px}h2{font-size:24px;line-height:1.3;margin:0 0 15px}h3{font-size:17px;margin:0 0 10px}p{margin:0 0 14px}.muted,.caption{color:var(--muted)}.caption{font-size:13px;margin-top:12px}.eyebrow{font-size:12px;font-weight:750;letter-spacing:2px;color:var(--blue);text-transform:uppercase}.lede{font-size:19px;max-width:900px}.tags,.controls,.legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.tag{font-size:12px;border:1px solid var(--line);border-radius:20px;padding:4px 10px;background:white}.panel{padding:25px;border:1px solid var(--line);background:white;border-radius:15px;margin:24px 0;box-shadow:0 4px 15px #12345605}.note{padding:14px 17px;border-left:4px solid var(--blue);background:#edf4ff;border-radius:0 8px 8px 0;margin:17px 0}.note.amber{border-color:var(--gold);background:#fff6de}.note p:last-child{margin-bottom:0}nav{display:flex;flex-wrap:wrap;gap:14px;margin:22px 0}a{color:var(--blue)}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{font-size:.88em;overflow-wrap:anywhere}pre{font-size:12px;line-height:1.6;padding:16px;background:#f0f4f7;overflow:auto;border-radius:8px;tab-size:3;max-height:430px}.formula{font-size:14px;background:#f1f5fa;padding:15px;border-radius:8px;overflow-wrap:anywhere}.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:20px 0}.box{border:1px solid var(--line);border-radius:9px;padding:15px;background:#f8fafc}.box strong{display:block;margin-bottom:6px}.box small{color:var(--muted)}.box.parallel{background:#edf4ff;border-color:#b8d0ee}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}.grid2>*{min-width:0}.phase-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}.phase-cards .box{text-align:center}.phase-cards strong{font-size:24px}button,select{font:inherit;border:1px solid #98aebb;border-radius:7px;background:white;color:var(--ink);padding:7px 12px}button{cursor:pointer}button:hover{background:#edf4ff}button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #2e73b8;outline-offset:3px}button.primary{background:var(--ink);color:white}.controls{margin:18px 0}.controls label{display:flex;gap:8px;align-items:center}.legend{font-size:13px;margin:15px 0}.dot{width:10px;height:10px;display:inline-block;border-radius:3px;margin-right:5px}.s1{background:#e4effd;color:#104c91;border-color:#bed3ef!important}.s2{background:#eee6f8;color:#66308d;border-color:#d7c6e8!important}.s3{background:#def2ee;color:#075f57;border-color:#b3dcd4!important}.contact{background:#fff1cd;color:#795200;border-color:#e7cf91!important}.serial{background:#e5ebf1;color:#334c62;border-color:#c5d1dc!important}.idle{background:repeating-linear-gradient(135deg,#f6f8fa,#f6f8fa 6px,#edf1f5 6px,#edf1f5 12px);color:#6a7b89}.dot.s1{background:var(--blue)}.dot.s2{background:var(--purple)}.dot.s3{background:var(--teal)}.dot.contact{background:#b47b0b}.dot.serial{background:var(--serial)}.scroll{overflow:auto;padding:4px 2px 12px}.lanes{display:grid;gap:6px;min-width:790px}.col-label{font-size:11px;color:var(--muted);text-align:center;align-self:center;line-height:1.3;padding:6px 1px}.worker{font-weight:700;font-size:12px;align-self:center}.cell{min-height:74px;border:1px solid transparent;border-radius:7px;padding:7px 4px;font-size:11px;line-height:1.4;text-align:center;white-space:normal}.cell strong{display:block;font-size:12px}.cell small{display:block;font-size:10px}.cell.selected{outline:3px solid #183b5f;outline-offset:-3px}.cell.dim{opacity:.45}.explain{background:#f1f5fa;padding:18px;border-radius:10px;margin-top:14px;min-height:110px}.explain p{margin:0}.phase-picker{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.phase-picker button{font-size:12px;padding:6px 9px}.phase-picker button[aria-pressed=true]{background:#dbeaff;border-color:var(--blue)}.small{font-size:13px}.state{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.state .box{border-width:2px}.state .done{background:#e5f4ed;border-color:#6ba28c}.state .active{background:#e7f0fc;border-color:var(--blue)}.state .stale{background:#fff1d5;border-color:#cca447}.table-scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left}th{background:#f4f7fa;font-size:12px}td.numeric{text-align:right;font-variant-numeric:tabular-nums}.util-track{background:#e9eef3;border-radius:4px;overflow:hidden;height:9px;margin-top:6px;min-width:110px}.util-bar{height:100%;background:var(--blue)}details{border-top:1px solid var(--line);padding:13px 0}summary{cursor:pointer;font-weight:650}summary span{display:block;font-size:12px;color:var(--muted);font-weight:400;overflow-wrap:anywhere}ul,ol{padding-left:22px}li{margin-bottom:7px}footer{font-size:13px;color:var(--muted);margin-top:25px}noscript{display:block;padding:18px;background:#fff1cd}.model-title{display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap}.math-sub{font-size:.8em;vertical-align:sub}.data-meta{font-size:13px;color:var(--muted)}@media(max-width:800px){.flow{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}.phase-cards{grid-template-columns:1fr}.state{grid-template-columns:1fr}main{padding:25px 14px}.panel{padding:18px}}@media(max-width:450px){.flow{grid-template-columns:1fr}.controls{align-items:flex-start}.controls label{flex-wrap:wrap}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}@media print{body{background:white}.panel{box-shadow:none;break-inside:avoid}.controls,.phase-picker{display:none}main{padding:0}.cell.dim{opacity:1}details pre{max-height:none}.scroll{overflow:visible}.lanes{min-width:0}.cell{font-size:9px}.cell strong{font-size:10px}}
+</style></head><body><main>
+<header><div class="note"><p><strong>Baseline / forecast snapshot:</strong> this report predates the implemented Option B. See <a href="tests/threading/README.md">the current A/B implementation notes</a> for the selected concurrent-contact schedule, full FINUFFT thread budget, and validation.</p></div><div class="eyebrow">Source-based algorithm report · October 19, 2026</div><h1>How GetMultiCCO works</h1><p class="lede">The current C++ ground-state path from random initial conditions: NLopt proposes coordinates; <code>MultiStealthyPotential</code> computes energy and forces using direct sums or FINUFFT.</p><div class="tags"><span class="tag">Source snapshot: ab13cfc</span><span class="tag">Driver: GetMultiCCO</span><span class="tag">Mode: ground · random · LBFGS</span><span class="tag">C++ / NLopt / OpenMP</span></div><nav aria-label="Report sections"><a href="#workflow">Optimization</a><a href="#physics">Energy and gradient</a><a href="#threads">Thread scheduling</a><a href="#plans">FINUFFT plans</a><a href="#measurements">Local measurements</a><a href="#sources">Source evidence</a><a href="THREADING_FORECAST.html">Proposed threading forecast</a></nav><div class="note"><p><strong>Scope:</strong> the restored checkout’s <code>soft_core_stealthy.out multi</code> executable. This call path uses NLopt directly from C++; it does not use SciPy or a Python optimization driver. The detailed trace follows random initial conditions; MD and alternative optimizers are outside its scope.</p></div></header>
+<noscript>The source explanations and measurement table remain readable. Enable JavaScript for the scheduling explorer and plan-state controls.</noscript>
+<section class="panel" id="workflow"><h2>1. One run, three optimizer phases, many evaluations</h2><div class="flow"><div class="box"><strong>Read the problem</strong>Build the cell, particles, radii, species, Fourier constraints, and thread setting.<br><small>main → GetMultiCCO</small></div><div class="box"><strong>Choose a start</strong>Copy an initial configuration and save it in the initial pack.<br><small>CollectiveCoordinateMultiRun</small></div><div class="box parallel"><strong>Relax coordinates</strong>Run three NLopt L-BFGS phases. Each phase repeatedly requests energy and a gradient.<br><small>RelaxStructure_NLOPT</small></div><div class="box"><strong>Check the result</strong>Save the relaxed state. Test total energy against the requested tolerance.<br><small>E &lt; tolerance</small></div><div class="box"><strong>Save accepted states</strong>Append successful states; optionally export or compute PairStat. Then advance to another start.<br><small>Not every relaxed state is accepted.</small></div></div>
+<p>The cell is fixed in this ground-state call (<code>Switch = 0</code>, pressure = 0). The optimized variables encode particle fractional coordinates. The default algorithm is <code>LBFGS</code>; the CLI also supports other named methods.</p>
+<div class="phase-cards"><div class="box"><strong>10,000</strong>Phase 1 coordinate scale</div><div class="box"><strong>1</strong>Phase 2 coordinate scale</div><div class="box"><strong>0.01</strong>Phase 3 coordinate scale</div></div><p>Each phase creates a fresh <code>NLOPT_LD_LBFGS</code> optimizer, so its L-BFGS history restarts. The physical coordinates carry forward. These numbers rescale optimizer variables and gradients; they do not resize the physical box or change particle radii.</p>
+<div class="note amber"><p><strong>Stopping and acceptance are separate.</strong> <code>maxsteps</code> sets the evaluation limit for <em>each</em> phase (default 10,000). This call supplies <code>−MaxEnergy</code> as NLopt’s stop value; the CLI’s <code>tolerance</code> (default 1e-14) is checked after relaxation. A normal process exit does not establish a ground state.</p></div>
+<p>NLopt uses previous gradients to update its search direction and line search. Its callback reconstructs a configuration, calls <code>SetConfiguration</code>, evaluates energy/forces, and returns the gradient. A line search can request multiple evaluations per accepted optimizer step. The callback also writes periodic configuration snapshots according to its save settings; these are configuration files, not a saved NLopt optimizer history. The requested sample count determines the attempted starts; the run can finish with fewer accepted states. The callback’s C++ preparation and gradient conversion run on the calling thread; the potential opens its own OpenMP teams.</p><p class="caption">Evidence: <a href="#source-entry">optimizer dispatch</a>, <a href="#source-phases">phase sequence</a>, <a href="#source-nlopt">NLopt options</a>, <a href="#source-accept">acceptance</a>.</p></section>
+<section class="panel" id="physics"><h2>2. What an energy/gradient evaluation computes</h2><div class="grid2"><div><h3>Collective-coordinate part</h3><div class="formula">ρₛ(k) = Σⱼ∈ₛ exp(i k · rⱼ)<br>Eₛ = (1 / V) Σₖ vₛ(k) |ρₛ(k)|² + Shiftₛ</div><p class="small">Here the sums use the species’ stored constraint list. The displayed quadratic form describes the <code>S(0) = 0</code> stealthy case with <code>ShiftedCCPotential</code>; other structure-factor targets are outside this formula’s scope.</p><p>Each particle belongs to one species. Indexed views give each species its own particle order without copying a separate species configuration. Every configuration update invalidates cached densities.</p></div><div><h3>Contact part</h3><div class="formula">Econtact = Σᵢ&lt;ⱼ max(0, 1 − rᵢⱼ / σᵢⱼ)²<br>σᵢⱼ = radiusᵢ + radiusⱼ</div><p class="small">Pairs include all species and periodic neighbors. The code traverses a cell list, counts each pair’s energy once, and accumulates its force on each endpoint’s traversal. Exactly coincident particles use an explicit deterministic force branch.</p><p>Contact cells have width <code>max(rc, (V/N)^(1/d))</code>. This keeps neighbor work local rather than scanning all pairs for every particle.</p></div></div>
+<div class="formula">Etotal = u₀ Σₛ (Nₛ / N) Eₛ + e₀ Econtact<br>Fᵢ = u₀ (Nₛ / N) Fₛ,ᵢ + Fcontact,ᵢ<br>gradientᵢⱼ = −Fᵢ · basisⱼ / coordinate_scale</div><p class="caption">The contact force above already includes e₀. In this CLI ground-state path u₀ defaults to 1; the input contact strength sets e₀.</p><p>When NLopt requests a gradient, the callback detects <code>CombinedEnergyForce</code> and calls <code>EnergyAndAllForce</code>. The fused contact walk computes energy and force together. If a callback requests energy alone, it uses <code>Energy()</code> instead.</p><p class="caption">Evidence: <a href="#source-callback">fused callback</a>, <a href="#source-gradient">gradient conversion</a>, <a href="#source-fused">evaluation implementation</a>.</p></section>
+<section class="panel" id="threads"><div class="model-title"><h2>3. How threads are assigned</h2><span class="tag">Schematic · not a timing trace</span></div><p>Switch the backend to see the two schedules implemented in the current code. The diagrams use <strong>five requested OpenMP workers</strong>. A colored cell means assigned work; it does not imply a measured duration or continuous CPU activity.</p>
+<div class="controls"><label>Backend <select id="backend"><option value="finufft">FINUFFT (opt-in)</option><option value="direct">Direct sums (default)</option></select></label><label>Species <select id="species"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option></select></label><label id="force-label">Force branch <select id="force"><option value="type2">Type 2 accepted</option><option value="direct">Type 2 declined</option></select></label><button id="reset" type="button">Show all stages</button></div>
+<div class="legend"><span><i class="dot s1"></i>Species 1</span><span><i class="dot s2"></i>Species 2</span><span><i class="dot s3"></i>Species 3</span><span><i class="dot contact"></i>Contact</span><span><i class="dot serial"></i>Calling thread / shared assembly</span><span>Hatching = waiting or no assigned work</span></div>
+<h3 id="schedule-title"></h3><div id="phase-picker" class="phase-picker" aria-label="Choose a stage"></div><div class="scroll"><div class="lanes" id="lanes" role="group" aria-label="Five worker scheduling diagram"></div></div><div class="explain" aria-live="polite"><h3 id="explain-title"></h3><p id="explain-text"></p></div><p class="caption" id="schedule-caption"></p>
+<div class="grid2"><div><h3>Direct density: one species uses the team</h3><p><code>GetRho_Direct</code> splits wavevectors across <code>ParallelNumThread</code> workers. Each wavevector’s particle sum remains sequential. Species are visited one after another. After their densities are ready, the particle loop computes contact and direct collective forces with the team.</p><p class="small">Thus “all threads for species 1 density, then species 2 density, then contact” already resembles the direct path. Contact and direct force evaluation share the final particle loop.</p></div><div><h3>FINUFFT density: tasks share the team</h3><p>The CLI leaves internal FINUFFT threads at <strong>one</strong>. Each density particle block is one outer task. Small species can have one block; larger species can have several. Multiple blocks repeat grid/FFT work and are combined in block order.</p><p class="small">A single block does not use all five workers internally. Multiple blocks of one species can run on different workers. The diagram assumes one density block and at most one accepted force block per species; it does not predict the actual cost gate.</p></div></div>
+<details><summary>Dependencies, barriers, and direct fallbacks</summary><ol><li><code>PrepareSpecies(true)</code> prepares persistent plans serially, selects eligible species, and applies the joint force cost gate.</li><li>Direct or ineligible species fill energy/density before the concurrent region, one species at a time.</li><li><code>RunSpeciesWork</code> dynamically assigns density blocks, followed by the queued multi-block force work. Tasks are ordered by predicted cost; actual worker assignment varies.</li><li>The last density worker for a species completes its density reduction and energy, then prepares forces. If exactly one Type 2 block is ready, that same worker executes it immediately. Multiple force blocks are released to waiting workers.</li><li>A worker waiting on a force dependency takes contact chunks; if no contact work remains, it yields. Workers with no transform tasks also take contact chunks.</li><li>There is <strong>no global barrier between all densities and all forces</strong>. There is a barrier after species/contact work, followed by a parallel particle loop that assembles total forces. Declined or failed Type 2 work uses direct collective forces in this loop.</li><li>Total energy is combined from species and particle slots in fixed index order on the calling thread.</li></ol><p class="small">A failed Type 1 block causes that species’ density to fall back to direct sums. Mixed direct/FINUFFT species and multi-block tasks are supported but are not drawn in the simplified example.</p></details>
+<p class="caption">Evidence: <a href="#source-direct">direct density loop</a>, <a href="#source-defaults">internal thread default</a>, <a href="#source-prepare">species preparation</a>, <a href="#source-schedule">task scheduler</a>, <a href="#source-fused">assembly and reduction</a>.</p></section>
+<section class="panel" id="plans"><h2>4. Particle motion updates points, while plans can persist</h2><p>A FINUFFT plan stores reusable transform machinery. It also receives position-dependent state through <code>setpts</code>. Moving particles changes the mathematical transform, so that state must be refreshed before execution.</p><div class="controls"><button id="move" class="primary" type="button">Move particles / next evaluation</button><button id="setpts" type="button">Update points with setpts</button><button id="execute" type="button">Execute transform</button></div><div class="state"><div class="box done" id="plan-state"><strong>Plan object</strong>Reusable grid / FFT setup</div><div class="box done" id="point-state"><strong>Point state</strong><span id="point-text">Matches the current positions</span></div><div class="box done" id="rho-state"><strong>Density cache</strong><span id="rho-text">Valid for current positions</span></div></div><p id="plan-explain" class="small" aria-live="polite">This explorer isolates a density transform’s lifecycle. Production code calls these operations automatically.</p><p><code>RunRhoBlock</code> reads current fractional positions, constructs angles, calls <code>finufft_setpts</code>, then <code>finufft_execute</code>. Type 2 force blocks also call <code>setpts</code>. Plans are created during serial preparation and retained while compatible; changed dimensions, grids, tolerance, thread settings, or block requirements can require plan changes.</p><p class="caption">Plan reuse does not mean unchanged particle positions or zero position-preparation cost. The same lifecycle works inside an NLopt objective callback. Evidence: <a href="#source-positions">current-position update and execution</a>.</p></section>
+<section class="panel" id="measurements"><div class="model-title"><h2>5. Measured CPU use of this C++ executable</h2><button id="download" type="button">Download measurement JSON</button></div><p>These measurements run the restored <code>GetMultiCCO</code> executable with NLopt, including initialization, optimization, and file I/O. They are separate from the schematic diagrams above.</p><div class="table-scroll"><table><thead><tr><th>Species</th><th>Density backend</th><th>Median active CPUs</th><th>Use of five CPUs</th><th>Median wall time</th></tr></thead><tbody><tr><td>2</td><td>Direct sums</td><td class="numeric">2.76</td><td>55.2%<div class="util-track"><div class="util-bar" style="width:55.18%"></div></div></td><td class="numeric">6.980 s</td></tr><tr><td>2</td><td>FINUFFT</td><td class="numeric">1.68</td><td>33.6%<div class="util-track"><div class="util-bar" style="width:33.59%"></div></div></td><td class="numeric">2.219 s</td></tr><tr><td>3</td><td>Direct sums</td><td class="numeric">2.74</td><td>54.8%<div class="util-track"><div class="util-bar" style="width:54.83%"></div></div></td><td class="numeric">10.702 s</td></tr><tr><td>3</td><td>FINUFFT</td><td class="numeric">1.70</td><td>34.0%<div class="util-track"><div class="util-bar" style="width:34.04%"></div></div></td><td class="numeric">2.971 s</td></tr></tbody></table></div><div class="formula" style="margin-top:18px">Active CPUs = process CPU seconds / wall seconds<br>Utilization = active CPUs / 5 × 100%</div><p class="data-meta" style="margin-top:15px">Measured October 19, 2026 · AMD Ryzen 5 7500F · WSL, eight visible logical CPUs · three seeds (17–19) · 2D · 300 particles/species · nominal per-species χ = 0.30, discrete χ ≈ 0.297659 · φ = 0.70 · contact strength 100 · default L-BFGS history 100 · maxsteps 1,000 per phase · five requested threads · OMP_WAIT_POLICY=PASSIVE · OMP_THREAD_LIMIT=5 · OMP_DYNAMIC=false · OMP_PROC_BIND=false · FINUFFT internal threads 1, default tolerance 1e-12 · build USE_FINUFFT=1, -O3 -g.</p><div class="note amber"><p><strong>Limits:</strong> all 12 processes exited normally, but these bounded runs did not reach ground states. Direct and FINUFFT runs follow different trajectories and sometimes use different evaluation counts. Wall times do not establish relative time to an accepted ground state. CPU accounting includes synchronization and does not identify which function causes idle time.</p></div><p>Low average CPU use is present in the current C++/NLopt executable. Possible contributors visible in the source include limited transform task counts, serial configuration/gradient work, ordered reductions, and optimizer work between callbacks. Their individual costs have not been profiled in these runs.</p><p class="caption">A process averaging 1.7 CPUs may appear near 170% in a monitor that counts one CPU as 100%. That equals about 34% of a five-CPU allocation, not 170% of the allocation. Embedded JSON preserves raw per-run times, evaluation counts, final energies, and settings.</p></section>
+<section class="panel" id="sources"><h2>6. Source evidence</h2><p>These excerpts were read from commit <code>ab13cfc</code> in this checkout. Line numbers refer to that snapshot. The report changes documentation only; it does not change optimization or thread scheduling.</p><details id="source-entry"><summary>CLI and optimizer dispatch <span>apps/CCOptimization/main.cpp:1788–1802</span></summary><pre>1788: 		pPotential-&gt;SetConfiguration(*pConfig);
+1789: 		double E_init=pPotential-&gt;Energy();
+1790: 
+1791: 		InitConfigPack.AddConfig(result);
+1792: 		if(AlgorithmName==&quot;LBFGS&quot;)
+1793: 			RelaxStructure_NLOPT(result, *pPotential, 0.0, 0, 0.0, max_num);
+1794: 		else if(AlgorithmName==&quot;LocalGradientDescent&quot;)
+1795: 			RelaxStructure_LocalGradientDescent(result, *pPotential, 0.0, 0, 0.0, max_num);
+1796: 		else if(AlgorithmName==&quot;ConjugateGradient&quot;)
+1797: 			RelaxStructure_ConjugateGradient(result, *pPotential, 0.0, 0, 0.0, max_num);
+1798: 		else if(AlgorithmName==&quot;SteepestDescent&quot;)
+1799: 			RelaxStructure_SteepestDescent(result, *pPotential, 0.0, 0, 0.0, max_num);
+1800: 		else if(AlgorithmName==&quot;MINOP&quot;)
+1801: 			RelaxStructure_MINOP_withoutPertubation(result, *pPotential, 0.0, 0, 0.0, max_num);
+1802: 		else {</pre></details><details id="source-phases"><summary>Three coordinate-scaling phases <span>potential/StructureOptimization.cpp:989–1014</span></summary><pre>989: void RelaxStructure_NLOPT(Configuration &amp; List, Potential &amp; pot, double Pressure, int Switch, double MinDistance, size_t MaxStep)//Switch==1: move Basis Vectors, Switch==0: move atoms, Switch==2:move both
+990: {
+991: 	if(Verbosity &gt;= 4)
+992: 	{
+993: 		pot.SetConfiguration(List);
+994: 		double E = pot.Energy();
+995: 		double V = List.PeriodicVolume();
+996: 		std::cout&lt;&lt;&quot;Initial E=&quot;&lt;&lt;E&lt;&lt;&quot;, V=&quot;&lt;&lt;V&lt;&lt;&quot;, H=&quot;&lt;&lt;E+Pressure*V&lt;&lt;&#x27;\n&#x27;;
+997: 	}
+998: 	RelaxStructure_NLOPT_inner(List, pot, Pressure, Switch, MinDistance, 10000, MaxStep, (-1.0)*MaxEnergy);
+999: 	if(Verbosity &gt;= 4)
+1000: 		std::cout &lt;&lt; &quot;---1---\n&quot;;
+1001: 
+1002: 	RelaxStructure_NLOPT_inner(List, pot, Pressure, Switch, MinDistance, 1, MaxStep, (-1.0)*MaxEnergy);
+1003: 	if(Verbosity &gt;= 4)
+1004: 		std::cout &lt;&lt; &quot;---2---\n&quot;;
+1005: 	
+1006: 	RelaxStructure_NLOPT_inner(List, pot, Pressure, Switch, MinDistance, 0.01, MaxStep, (-1.0)*MaxEnergy);
+1007: 	if(Verbosity &gt;= 4)
+1008: 	{
+1009: 		std::cout &lt;&lt; &quot;---3---\n&quot;;
+1010: 		pot.SetConfiguration(List);
+1011: 		double E = pot.Energy();
+1012: 		double V = List.PeriodicVolume();
+1013: 		std::cout&lt;&lt;&quot;Final E=&quot;&lt;&lt;E&lt;&lt;&quot;, V=&quot;&lt;&lt;V&lt;&lt;&quot;, H=&quot;&lt;&lt;E+Pressure*V&lt;&lt;&#x27;\n&#x27;;
+1014: 	}</pre></details><details id="source-nlopt"><summary>NLopt configuration <span>potential/StructureOptimization.cpp:869–896</span></summary><pre>869: 	nlopt_opt opt;
+870: 
+871: 	double * pParams=GetParam(List, Switch, rescale, NumParam);
+872: 	aux.NumParam=NumParam;
+873: 	if(pParams==nullptr)
+874: 		return;
+875: 
+876: 	opt = nlopt_create(NLOPT_LD_LBFGS, NumParam);
+877: 	nlopt_set_vector_storage(opt, StructureOptimization_LBFGSHistory);
+878: 	//nlopt_set_lower_bounds(opt, LBounds);
+879: 	//nlopt_set_upper_bounds(opt, UBounds);
+880: 	//nlopt_set_initial_step(opt, StepSizes);
+881: 	nlopt_set_min_objective(opt, Objective, reinterpret_cast&lt;void *&gt;(&amp;aux));
+882: 	//nlopt_set_xtol_abs(opt, Tolerences);
+883: 	//nlopt_set_ftol_rel(opt, ftol_rel);
+884: 	//if(xtol_rel &gt; 0)
+885: 	//	nlopt_set_xtol_rel(opt, xtol_rel);
+886: 	//nlopt_set_maxtime(opt, 300.0);
+887: 	//double TypicalLength = std::pow(List.PeriodicVolume()/List.NumParticle(), 1.0/List.GetDimension());
+888: 	//nlopt_set_initial_step1(opt, 0.1*TypicalLength);
+889: 	nlopt_set_stopval(opt, fmin);
+890: 	nlopt_set_maxeval(opt, MaxStep);
+891: 
+892: 	double minf; 
+893: 
+894: 	//std::cout&lt;&lt;&quot;NLopt fvalue before:&quot;&lt;&lt;Objective(NumParam, pParams, nullptr, reinterpret_cast&lt;void *&gt;(&amp;aux))&lt;&lt;&#x27;\n&#x27;;
+895: 
+896: 	status=nlopt_optimize(opt, pParams, &amp;minf);</pre></details><details id="source-callback"><summary>Energy and gradient callback <span>potential/StructureOptimization.cpp:459–465</span></summary><pre>459: 			pAux-&gt;pPot-&gt;SetConfiguration(list);
+460: 			//a gradient in the particle coordinates (Switch 0 or 2) needs the forces as well: one call if the potential offers it
+461: 			CombinedEnergyForce * combined = (grad != nullptr &amp;&amp; (pAux-&gt;Switch==0 || pAux-&gt;Switch==2)) ? dynamic_cast&lt;CombinedEnergyForce *&gt;(pAux-&gt;pPot) : nullptr;
+462: 			std::vector&lt;GeometryVector&gt; forces;
+463: 			double result=(combined != nullptr ? combined-&gt;EnergyAndAllForce(forces) : pAux-&gt;pPot-&gt;Energy())+ Pressure*Volume;
+464: 
+465: 			if(Verbosity&gt;=5 ||  (Verbosity==4&amp;&amp;pAux-&gt;NumEvaluation%1000==999) )</pre></details><details id="source-gradient"><summary>Convert physical forces to optimizer gradients <span>potential/StructureOptimization.cpp:492–505</span></summary><pre>492: 				else if(pAux-&gt;Switch==0)
+493: 				{
+494: 					if(combined == nullptr)
+495: 						pAux-&gt;pPot-&gt;AllForce(forces);
+496: 					for(size_t i=0; i&lt;list.NumParticle(); i++)
+497: 					{
+498: 						GeometryVector &amp; Force=forces[i];
+499: 
+500: 						for(DimensionType j=0; j&lt;dim; j++)
+501: 						{
+502: 							grad[i*dim+j] = (-1.0)*Force.Dot(list.GetBasisVector(j))/pAux-&gt;RelativeCoordinatesRescale;
+503: 						}
+504: 					}
+505: 				}</pre></details><details id="source-fused"><summary>Fused energy and force evaluation <span>apps/CCOptimization/MultiStealthyPotential.cpp:745–792</span></summary><pre>745: double MultiStealthyPotential::EnergyAndAllForce(std::vector&lt;GeometryVector&gt; &amp;results)
+746: {
+747: 	this-&gt;UpdateSubconfigs();
+748: 	for (size_t i = 0; i &lt; this-&gt;idx2species.size(); i++)
+749: 		if (this-&gt;idx2species[i].species &lt; 0)
+750: 			throw std::runtime_error(&quot;MultiStealthyPotential::EnergyAndAllForce: particle has no assigned species; assign every particle before evaluating.&quot;);
+751: 	// Plans are made here, serially; the parallel region below only executes them.
+752: 	SpeciesWork work = this-&gt;PrepareSpecies(true);
+753: 	const long numSpecies = static_cast&lt;long&gt;(this-&gt;species_constraints.size());
+754: 	const long end = static_cast&lt;long&gt;(this-&gt;pConfig-&gt;NumParticle());
+755: 	const long numContact = this-&gt;WithRepulsion ? end : 0;
+756: 	std::vector&lt;double&gt; speciesEnergy(numSpecies, 0.0), contactEnergy(numContact, 0.0);
+757: 	for (long s = 0; s &lt; numSpecies; s++)
+758: 		if (!work.concurrent[s]) {
+759: 			speciesEnergy[s] = this-&gt;species_constraints[s].CCPotential-&gt;Energy();
+760: 			this-&gt;species_constraints[s].CCPotential-&gt;GetRho();	// as AllForce; a no-op once Energy filled rho
+761: 		}
+762: 	results.resize(end);
+763: 	std::vector&lt;char&gt; bulk(numSpecies, 0);
+764: 	std::vector&lt;std::vector&lt;GeometryVector&gt;&gt; speciesForce(numSpecies);
+765: 	/* contact slot of particle i, from the same walk as its contact force */
+766: 	auto contact = [&amp;](long i, GeometryVector &amp; force) {
+767: 		const double E = this-&gt;ContactEnergyAndForce(i, force);
+768: 		if (numContact &gt; 0)
+769: 			contactEnergy[i] = E;
+770: 	};
+771: 	// As in Energy: team of ParallelNumThread; about four contact chunks per thread, at most 64 particles each.
+772: 	const long chunk = std::clamp(end / (4L * static_cast&lt;long&gt;(std::max&lt;unsigned long&gt;(this-&gt;ParallelNumThread, 1))), 1L, 64L);
+773: #pragma omp parallel num_threads(this-&gt;ParallelNumThread) default(shared)
+774: 	{
+775: 		if (work.rho.empty()) {
+776: 			// No FINUFFT species: rho is ready, so each particle is finished in one pass.
+777: #pragma omp for schedule (static)
+778: 			for (long i = 0; i &lt; end; i++) {
+779: 				GeometryVector contactForce;
+780: 				contact(i, contactForce);
+781: 				results[i] = this-&gt;WithSpeciesForce(i, contactForce, bulk, speciesForce);
+782: 			}
+783: 		}
+784: 		else {
+785: 			this-&gt;RunSpeciesWork(work, &amp;speciesEnergy, &amp;speciesForce, bulk, end, chunk,
+786: 				[&amp;](long i) { contact(i, results[i]); });
+787: #pragma omp for
+788: 			for (long i = 0; i &lt; end; i++)
+789: 				results[i] = this-&gt;WithSpeciesForce(i, results[i], bulk, speciesForce);
+790: 		}
+791: 	}
+792: 	return this-&gt;TotalEnergy(speciesEnergy, contactEnergy);</pre></details><details id="source-prepare"><summary>Prepare species and select Type 2 blocks <span>apps/CCOptimization/MultiStealthyPotential.cpp:338–363</span></summary><pre>338: MultiStealthyPotential::SpeciesWork MultiStealthyPotential::PrepareSpecies(bool forces)
+339: {
+340: 	const size_t numSpecies = this-&gt;species_constraints.size();
+341: 	SpeciesWork work;
+342: 	work.concurrent.assign(numSpecies, 0);
+343: 	std::vector&lt;const ShiftedCCPotential *&gt; pots;
+344: 	for (size_t s = 0; s &lt; numSpecies; s++) {
+345: 		work.concurrent[s] = this-&gt;species_constraints[s].CCPotential-&gt;PrepareFinufft();
+346: 		if (work.concurrent[s])
+347: 			pots.push_back(this-&gt;species_constraints[s].CCPotential.get());
+348: 	}
+349: 	std::vector&lt;size_t&gt; forceBlocks(numSpecies, 0);
+350: 	if (forces) {
+351: 		// pots holds FINUFFT species only, so the dimension is 1-3 when the contact estimate is read.
+352: 		const double contact = this-&gt;WithRepulsion &amp;&amp; !pots.empty() ? ContactCostParticle[this-&gt;Dimension - 1] * double(this-&gt;pConfig-&gt;NumParticle()) : 0.0;
+353: 		const std::vector&lt;size_t&gt; type2 = ShiftedCCPotential::FinufftForceGate(pots, this-&gt;ParallelNumThread, contact);
+354: 		for (size_t s = 0, j = 0; s &lt; numSpecies; s++)
+355: 			forceBlocks[s] = this-&gt;species_constraints[s].CCPotential-&gt;PrepareFinufftForces(work.concurrent[s] ? type2[j++] : 0);
+356: 	}
+357: 	work.forceBlocks.assign(numSpecies, 0);
+358: 	work.rhoLeft.assign(numSpecies, 0);
+359: 	work.forceLeft.assign(numSpecies, 0);
+360: 	work.state.assign(numSpecies, 0);
+361: 	for (size_t s = 0; s &lt; numSpecies; s++) {
+362: 		if (!work.concurrent[s])
+363: 			continue;</pre></details><details id="source-schedule"><summary>Dynamic tasks, dependency waits, and contact overlap <span>apps/CCOptimization/MultiStealthyPotential.cpp:423–490</span></summary><pre>423: 		next = work.nextChunk++;
+424: 		const long lo = next * chunk;
+425: 		for (long i = lo; i &lt; std::min(items, lo + chunk); i++)
+426: 			contact(i);
+427: 		return lo &lt; items;
+428: 	};
+429: 	const long numRho = static_cast&lt;long&gt;(work.rho.size()), numForce = static_cast&lt;long&gt;(work.force.size());
+430: 	/* After the last Type 1 task of species s, on this thread: rho, energy, Type 2 input, and a single Type 2 block;
+431: 	   species with several Type 2 blocks are released to the threads waiting for them (state 1, or 2 without Type 2). */
+432: 	auto finishSpecies = [&amp;](long s) {
+433: 		const bool ready = OnOneThread(pot(s), [&amp;](ShiftedCCPotential &amp; p) {
+434: 			p.FinishRho();
+435: 			if (speciesEnergy)
+436: 				(*speciesEnergy)[s] = p.Energy();
+437: 			return speciesForce &amp;&amp; p.StartForces((*speciesForce)[s]) &gt; 0;
+438: 		});
+439: 		if (work.forceBlocks[s] &gt; 1) {
+440: 			const int state = ready ? 1 : 2;
+441: #pragma omp atomic write seq_cst
+442: 			work.state[s] = state;
+443: 		}
+444: 		else if (ready) {
+445: 			pot(s).RunForceBlock(0, (*speciesForce)[s]);
+446: 			bulk[s] = pot(s).FinishForces();
+447: 		}
+448: 	};
+449: 	/* One dynamic loop over the Type 1 tasks, then the Type 2 tasks; monotonic, so a thread runs its tasks in order and
+450: 	   holds no unstarted Type 1 task while it waits: a thread holding a Type 2 block of a species not yet released
+451: 	   takes contact chunks (or yields) meanwhile, and the release cannot wait on it. seq_cst countdowns and releases
+452: 	   hand the species state between threads. */
+453: #pragma omp for schedule (monotonic: dynamic, 1) nowait
+454: 	for (long t = 0; t &lt; numRho + numForce; t++) {
+455: 		if (t &lt; numRho) {
+456: 			const long s = work.rho[t].species;
+457: 			if (work.rho[t].block != SpeciesWork::NoBlock)
+458: 				pot(s).RunRhoBlock(work.rho[t].block);
+459: 			long left;
+460: #pragma omp atomic capture seq_cst
+461: 			left = --work.rhoLeft[s];
+462: 			if (left == 0)
+463: 				finishSpecies(s);
+464: 			continue;
+465: 		}
+466: 		const long s = work.force[t - numRho].species;
+467: 		int state;
+468: 		for (;;) {
+469: #pragma omp atomic read seq_cst
+470: 			state = work.state[s];
+471: 			if (state != 0)
+472: 				break;
+473: 			if (!chunkDone())
+474: 				std::this_thread::yield();
+475: 		}
+476: 		if (state != 1)
+477: 			continue;
+478: 		pot(s).RunForceBlock(work.force[t - numRho].block, (*speciesForce)[s]);
+479: 		long left;
+480: #pragma omp atomic capture seq_cst
+481: 		left = --work.forceLeft[s];
+482: 		if (left == 0)
+483: 			bulk[s] = pot(s).FinishForces();
+484: 	}
+485: 	while (chunkDone())
+486: 		;
+487: #pragma omp barrier
+488: }
+489: 
+490: /** \brief Total force on particle i from its contact force and its species force (Force(i) arithmetic).</pre></details><details id="source-direct"><summary>Direct density sums <span>potential/CollectiveCoordinatePotential.h:1185–1215</span></summary><pre>1185: 		signed long end=this-&gt;constraints.size();
+1186: 		this-&gt;RhoReal.resize(end);
+1187: 		this-&gt;RhoImag.resize(end);
+1188: 		//gather the bound coordinates once: the O(N*Nk) loop then reads them contiguously, as a sub-configuration would
+1189: 		const Configuration &amp; config=this-&gt;BoundConfig();
+1190: 		std::vector&lt;GeometryVector&gt; coords(this-&gt;NumBoundParticle());
+1191: 		for(size_t j=0; j&lt;coords.size(); j++)
+1192: 			coords[j]=config.GetCartesianCoordinates(this-&gt;BoundIndex(j));
+1193: 		const size_t np=coords.size();
+1194: 
+1195: #pragma omp parallel for num_threads(this-&gt;ParallelNumThread)
+1196: 		for(signed long i=0; i&lt;end; i++)
+1197: 		{
+1198: 			double tr=0, ti=0;//real and imag parts of result
+1199: #ifdef HAVETWOFIXEDPARTICLES
+1200: 			tr+=2;
+1201: #endif
+1202: 			for(size_t j=0; j&lt;np; j++)
+1203: 			{
+1204: 				const GeometryVector &amp; c=coords[j];
+1205: 				tr+=std::cos(this-&gt;constraints[i].k.Dot(c));
+1206: 				ti+=std::sin(this-&gt;constraints[i].k.Dot(c));
+1207: 			}
+1208: 			this-&gt;RhoReal[i]=tr;
+1209: 			this-&gt;RhoImag[i]=ti;
+1210: 		}
+1211: 
+1212: 		this-&gt;RhoBackendLastUsed=RhoBackend::Direct;
+1213: 		this-&gt;RhoValid=true;
+1214: 	}
+1215: </pre></details><details id="source-positions"><summary>Update positions before Type 1 execution <span>potential/CollectiveCoordinatePotential.h:507–535</span></summary><pre>507: 	void RunRhoBlock(size_t b)
+508: 	{
+509: #ifdef CCPOTENTIAL_USE_FINUFFT
+510: 		FinufftPlanCache &amp; c=this-&gt;FinufftCache;
+511: 		const DimensionType dim=this-&gt;Dimension;
+512: 		const size_t blocks=c.plan.size(), lo=c.BlockStart(b, blocks), hi=c.BlockStart(b+1, blocks);
+513: 		const size_t total=static_cast&lt;size_t&gt;(c.ms[0]*c.ms[1]*c.ms[2]);
+514: 		const double twopi=2.0*::pi;
+515: 		for(size_t j=lo; j&lt;hi; j++)
+516: 		{
+517: 			const GeometryVector &amp; s=this-&gt;BoundConfig().GetRelativeCoordinates(this-&gt;BoundIndex(j));
+518: 			for(DimensionType d=0; d&lt;dim; d++)
+519: 			{
+520: 				if(!std::isfinite(s.x[d]))
+521: 					return;	//c.run1[b] stays FinufftNotCalled
+522: 				c.angles[d][j]=twopi*(s.x[d]-std::floor(s.x[d]));
+523: 			}
+524: 		}
+525: 		try
+526: 		{
+527: 			int status=finufft_setpts(c.plan[b], static_cast&lt;std::int64_t&gt;(hi-lo), c.Points(0, lo), c.Points(1, lo), c.Points(2, lo), 0, nullptr, nullptr, nullptr);
+528: 			if(status==0)
+529: 				status=finufft_execute(c.plan[b], c.strengths.data()+lo, c.f.data()+b*total);
+530: 			c.run1[b]=status;
+531: 		}
+532: 		catch(const std::bad_alloc &amp;)
+533: 		{
+534: 		}
+535: #endif</pre></details><details id="source-defaults"><summary>Default density backend and FINUFFT settings <span>potential/CollectiveCoordinatePotential.h:1246–1260</span></summary><pre>1246: 	ShiftedCCPotential(DimensionType dimension):Potential(dimension)
+1247: 	{
+1248: 		this-&gt;pConfig=nullptr;
+1249: 		this-&gt;pViewConfig=nullptr;
+1250: 		this-&gt;RhoValid=false;
+1251: 		this-&gt;ParallelNumThread=1;
+1252: 		this-&gt;Shift=0.0;
+1253: 		this-&gt;RhoBackendSelected=RhoBackend::Direct;
+1254: 		this-&gt;RhoBackendLastUsed=RhoBackend::Direct;
+1255: 		this-&gt;ForceBackendLastUsed=ForceBackend::Direct;
+1256: 		this-&gt;FinufftTolerance=1e-12;
+1257: 		this-&gt;FinufftMaxModes=std::int64_t(1)&lt;&lt;22;
+1258: 		this-&gt;FinufftNumThreads=1;
+1259: 		this-&gt;FinufftLastStatus=FinufftNotCalled;
+1260: 	}</pre></details><details id="source-accept"><summary>Acceptance and output after relaxation <span>apps/CCOptimization/main.cpp:1805–1824</span></summary><pre>1805: 		}
+1806: 		AfterRelaxPack.AddConfig(result);
+1807: 		pPotential-&gt;SetConfiguration(result);
+1808: 		double E=pPotential-&gt;Energy();
+1809: 		std::cout&lt;&lt;&quot; \tE_init=&quot;&lt;&lt;E_init&lt;&lt;&quot; \n&quot;;
+1810: 		std::cout&lt;&lt;&quot; \tE_relax=&quot;&lt;&lt;E&lt;&lt;&quot; \n&quot;;
+1811: 		if(E&lt;E_max)
+1812: 		{
+1813: 			std::cout&lt;&lt;&quot;Add to success pack\n&quot;;
+1814: 			SuccessPack.AddConfig(result);
+1815: 			if (onAccepted) onAccepted(result, static_cast&lt;size_t&gt;(SuccessPack.NumConfig() - 1));
+1816: 		}
+1817: 		if(std::time(nullptr) &gt; TimeLimit)
+1818: 		{
+1819: 			//std::fstream ofile2(&quot;continue.txt&quot;, std::fstream::out);
+1820: 			//ofile2&lt;&lt;&quot;Not Completed. Please run again\n&quot;;
+1821: 			return 0;
+1822: 		}
+1823: 
+1824: 		for(size_t n=0; n&lt;Num; n++)</pre></details></section><footer>Standalone HTML · no external scripts, fonts, or network requests · American English · source hashes and local measurement records are embedded in this file.</footer></main>
+<script id="report-data" type="application/json">{"settings":{"commit":"ab13cfc","driver":"GetMultiCCO","optimizer":"NLopt LD_LBFGS","history":100,"dimension":2,"particles_per_species":300,"threads":5,"phi":0.7,"contact_strength":100,"nominal_species_chi":0.3,"maxsteps_per_phase":1000,"seeds":[17,18,19],"environment":{"OMP_NUM_THREADS":"5","OMP_THREAD_LIMIT":"5","OMP_DYNAMIC":"false","OMP_WAIT_POLICY":"PASSIVE","OMP_PROC_BIND":"false","OPENBLAS_NUM_THREADS":"1","MKL_NUM_THREADS":"1"}},"measurements":[{"species":2,"backend":"direct","seed":17,"returncode":0,"wall_seconds":4.7255902419565246,"cpu_seconds":13.037747,"active_cores":2.7589668871929134,"allocation_utilization_percent":55.17933774385827,"evaluations":[1000,1000,12],"final_energy":["1.0754 "],"reported_chi":["0.297659","0.297659"]},{"species":2,"backend":"finufft","seed":17,"returncode":0,"wall_seconds":2.219110063975677,"cpu_seconds":3.6735229999999985,"active_cores":1.6554036952176443,"allocation_utilization_percent":33.108073904352885,"evaluations":[1000,1000,1000],"final_energy":["0.539946 "],"reported_chi":["0.297659","0.297659"]},{"species":3,"backend":"direct","seed":17,"returncode":0,"wall_seconds":13.090668560005724,"cpu_seconds":29.736446,"active_cores":2.271575807124934,"allocation_utilization_percent":45.43151614249868,"evaluations":[1000,1000,1000],"final_energy":["1.17366 "],"reported_chi":["0.297659","0.297659","0.297659"]},{"species":3,"backend":"finufft","seed":17,"returncode":0,"wall_seconds":3.0212101620272733,"cpu_seconds":5.135784999999998,"active_cores":1.699909878680474,"allocation_utilization_percent":33.99819757360948,"evaluations":[1000,1001,1000],"final_energy":["1.266 "],"reported_chi":["0.297659","0.297659","0.297659"]},{"species":2,"backend":"finufft","seed":18,"returncode":0,"wall_seconds":2.1691654970054515,"cpu_seconds":3.642843,"active_cores":1.6793753196927441,"allocation_utilization_percent":33.58750639385488,"evaluations":[1000,1000,1000],"final_energy":["0.718685 "],"reported_chi":["0.297659","0.297659"]},{"species":2,"backend":"direct","seed":18,"returncode":0,"wall_seconds":6.980387270974461,"cpu_seconds":19.359863999999998,"active_cores":2.773465604193815,"allocation_utilization_percent":55.4693120838763,"evaluations":[1000,1000,1000],"final_energy":["0.779429 "],"reported_chi":["0.297659","0.297659"]},{"species":3,"backend":"finufft","seed":18,"returncode":0,"wall_seconds":2.971358365030028,"cpu_seconds":5.057440999999995,"active_cores":1.7020636283799062,"allocation_utilization_percent":34.04127256759813,"evaluations":[1000,1000,1001],"final_energy":["1.49815 "],"reported_chi":["0.297659","0.297659","0.297659"]},{"species":3,"backend":"direct","seed":18,"returncode":0,"wall_seconds":10.702432730991859,"cpu_seconds":29.339724000000007,"active_cores":2.7414069994608523,"allocation_utilization_percent":54.82813998921704,"evaluations":[1000,1000,1000],"final_energy":["1.56306 "],"reported_chi":["0.297659","0.297659","0.297659"]},{"species":2,"backend":"direct","seed":19,"returncode":0,"wall_seconds":7.132039487012662,"cpu_seconds":19.567057000000005,"active_cores":2.743542998553405,"allocation_utilization_percent":54.87085997106809,"evaluations":[1000,1000,1001],"final_energy":["0.582381 "],"reported_chi":["0.297659","0.297659"]},{"species":2,"backend":"finufft","seed":19,"returncode":0,"wall_seconds":2.2196766849956475,"cpu_seconds":3.7466519999999903,"active_cores":1.6879269063491276,"allocation_utilization_percent":33.75853812698255,"evaluations":[1001,1000,1000],"final_energy":["0.661736 "],"reported_chi":["0.297659","0.297659"]},{"species":3,"backend":"direct","seed":19,"returncode":0,"wall_seconds":10.389405652997084,"cpu_seconds":29.10759600000002,"active_cores":2.8016613242551758,"allocation_utilization_percent":56.03322648510351,"evaluations":[1000,1000,1000],"final_energy":["1.49445 "],"reported_chi":["0.297659","0.297659","0.297659"]},{"species":3,"backend":"finufft","seed":19,"returncode":0,"wall_seconds":2.923784610000439,"cpu_seconds":5.047415999999981,"active_cores":1.7263296286381447,"allocation_utilization_percent":34.526592572762894,"evaluations":[1000,1000,1000],"final_energy":["1.58126 "],"reported_chi":["0.297659","0.297659","0.297659"]}],"source_sha256":{"apps/CCOptimization/main.cpp":"e299c7f656e915fbf92778ed07f710bd521cae395b01b841f1f9de90a8f601db","potential/StructureOptimization.cpp":"265d36177556533a882b5c9bfd0d66819b09eaa5c1aa457d05bef42f1063806d","apps/CCOptimization/MultiStealthyPotential.cpp":"bbf7dd7bc934a52440eeb94d15375f685a1f05f8b9600dd259d7304777e3899d","potential/CollectiveCoordinatePotential.h":"b7d3ef5493bee8998b0afb393ae79195ecf75b2174402334d76f5b3ce613f8c1"}}</script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);let chosen=-1,stages=[];
+const cell=(css,title,sub,description)=>({css,title,sub,description});
+const idle=()=>cell('idle','Waiting','No task in this snapshot','A worker can wait after it exhausts its assigned work. This cell is illustrative, not a sampled CPU state.');
+function build(){const backend=$('backend').value,n=Number($('species').value),type2=$('force').value==='type2';chosen=-1;$('force-label').hidden=backend==='direct';stages=[];
+ const serialStage=(label,title,description)=>({label,title,description,cells:Array.from({length:5},(_,t)=>t===0?cell('serial',title,'Calling thread',description):idle())});
+ stages.push(serialStage('Prepare','Prepare configuration','The NLopt callback reconstructs and binds the trial configuration, invalidates old densities, prepares contact cells, and prepares species plans/work. This stage has serial work.'));
+ if(backend==='direct'){
+  for(let s=1;s<=n;s++)stages.push({label:'Density '+s,title:'Species '+s+' uses the outer team',description:'The code finishes species '+s+' before the next species. Workers divide the wavevector list; every wavevector sums its particles in order. The species energy reduction also uses its team.',cells:Array.from({length:5},(_,t)=>cell('s'+s,'Density S'+s,'Wavevector slice '+(t+1),'Worker '+(t+1)+' computes a subset of wavevectors for species '+s+'. This is direct trigonometric summation, not FINUFFT.'))});
+  stages.push({label:'Contact + forces',title:'Particle work uses the outer team',description:'With all densities ready, a static particle loop evaluates contact energy/force and adds direct collective-coordinate forces. Contact and collective-force arithmetic occur within the same loop iteration.',cells:Array.from({length:5},(_,t)=>cell('contact','Contact + direct F','Particle slice '+(t+1),'Worker '+(t+1)+' owns a particle range, walks contact neighbors, and sums that particle’s collective force over its species constraints.'))});
+  $('schedule-title').textContent='Direct sums: species densities are sequential; each requests five workers.';
+  $('schedule-caption').textContent='Columns show sequential stages, not proportional durations. The diagram assumes enough wavevectors and particles to provide work for five workers.';
+ }else{
+  stages.push({label:'Work snapshot A',title:'Species density tasks overlap contact work',description:'Illustrative one-block example: each species density occupies one worker. Free workers take contact chunks. Every FINUFFT plan requests one internal thread; no single density block uses all five workers.',cells:Array.from({length:5},(_,t)=>t<n?cell('s'+(t+1),'Density S'+(t+1),'Type 1 · 1 thread','One Type 1 block calls setpts and execute on this outer worker. Other species blocks may run concurrently.'):cell('contact','Contact','Shared chunks','A worker with no pending transform task takes contact chunks from the shared counter.'))});
+  stages.push({label:'Work snapshot B',title:'Forces can start before other species densities finish',description:type2?'Example with different task lengths: species 1 can start its single Type 2 block immediately after its density finishes, while species 2 is still computing density. These are possible overlapping states, not measured timings.':'When the force cost gate declines Type 2, completed species leave their collective forces for direct summation in the later assembly loop. Free workers can continue contact work.',cells:Array.from({length:5},(_,t)=>{if(t>=n)return cell('contact','Contact / wait','As work remains','Continue remaining contact chunks; wait when no work remains. The diagram does not prescribe contact duration.');const s=t+1;if(s===2)return cell('s2','Density S2','Still running','Species 2 is shown as a longer density task to make the absence of a global density/force barrier explicit.');return type2?cell('s'+s,'Force S'+s,'Type 2 · 1 thread','The worker that finishes this species’ last density block runs its one ready Type 2 block. Other species need not have completed density.'):cell('contact','Contact / wait','Density S'+s+' done','No Type 2 execution for this species. Its direct collective force is added during final particle assembly.');})});
+  stages.push({label:'Barrier + assembly',title:'Synchronize, then assemble particle forces',description:'A barrier waits for all species and contact work. A parallel particle loop adds Type 2 force buffers, or computes direct collective forces where Type 2 was declined or failed. No worker reads an unfinished species buffer.',cells:Array.from({length:5},(_,t)=>cell('serial',type2?'Assemble F':'Direct F + assemble','Particle slice '+(t+1),'After the barrier, this worker adds scaled species forces to its particle range’s contact forces.'))});
+  $('schedule-title').textContent='FINUFFT: species tasks and contact share one outer team.';
+  $('schedule-caption').textContent='Example assumptions: one Type 1 block per species, all species eligible, and at most one accepted Type 2 block per species. Worker labels and relative task lengths are illustrative; intermediate progress before the barrier is omitted. Every species must complete before assembly. Actual blocks and force decisions come from deterministic cost models; the selector only illustrates a branch.';
+ }
+ stages.push(serialStage('Reduce + return','Return energy and gradient','TotalEnergy sums species and contact slots in fixed order. The callback converts physical forces to optimizer gradients. NLopt then updates its search or requests another evaluation; these operations do not reuse the potential’s outer worker team.'));
+ const lanes=$('lanes');lanes.style.gridTemplateColumns='44px repeat('+stages.length+',minmax(120px,1fr))';lanes.replaceChildren();let blank=document.createElement('div');lanes.append(blank);for(const stage of stages){const label=document.createElement('div');label.className='col-label';label.textContent=stage.label;lanes.append(label);}for(let t=0;t<5;t++){const worker=document.createElement('div');worker.className='worker';worker.textContent='T'+(t+1);lanes.append(worker);stages.forEach((stage,k)=>{const c=stage.cells[t],button=document.createElement('button');button.type='button';button.className='cell '+c.css;button.dataset.stage=k;button.innerHTML='<strong>'+c.title+'</strong><small>'+c.sub+'</small>';button.setAttribute('aria-label','Worker '+(t+1)+', '+stage.label+': '+c.title);button.onclick=()=>select(k,c.description);lanes.append(button);});}
+ $('phase-picker').replaceChildren();stages.forEach((stage,k)=>{const b=document.createElement('button');b.type='button';b.textContent=stage.label;b.onclick=()=>select(k);b.setAttribute('aria-pressed','false');$('phase-picker').append(b);});select(-1);
+}
+function select(k,detail){chosen=k;document.querySelectorAll('.cell').forEach(c=>{c.classList.toggle('selected',Number(c.dataset.stage)===k);c.classList.toggle('dim',k>=0&&Number(c.dataset.stage)!==k);});[...$('phase-picker').children].forEach((b,i)=>b.setAttribute('aria-pressed',String(i===k)));$('explain-title').textContent=k<0?'Click a stage or a worker cell':stages[k].title;$('explain-text').textContent=k<0?'The direct and FINUFFT paths expose different parallel work. Colors show tasks and dependencies, not measured occupancy.':detail||stages[k].description;}
+for(const id of ['backend','species','force'])$(id).addEventListener('change',build);$('reset').onclick=()=>select(-1);build();
+let pointState='ready';function updatePlan(){const dirty=pointState==='dirty',updated=pointState==='updated';$('point-state').className='box '+(dirty?'stale':'done');$('rho-state').className='box '+(pointState==='ready'?'done':'stale');$('point-text').textContent=dirty?'Old point state; update required':'Matches the current positions';$('rho-text').textContent=pointState==='ready'?'Valid for current positions':'Invalid after particle motion';$('setpts').disabled=!dirty;$('execute').disabled=!updated;$('plan-explain').textContent=dirty?'The plan object remains available. Its old position-dependent state and cached density cannot be used for the new configuration.':updated?'setpts has refreshed the position-dependent state. Execution can now compute density for the new positions.':'Density is valid for the current positions. A later coordinate update invalidates it again.';}
+$('move').onclick=()=>{pointState='dirty';updatePlan();};$('setpts').onclick=()=>{pointState='updated';updatePlan();};$('execute').onclick=()=>{pointState='ready';updatePlan();};updatePlan();
+$('download').onclick=()=>{const data=JSON.parse($('report-data').textContent),blob=new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='getmulticco-current-algorithm-data.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+</script></body></html>

@@ -12,6 +12,14 @@ parameters from standard input:
 `hours` is the time limit (default 144), `vtilde` the shape of v(k): `flat` (default), `overlap` or
 `power-law`.
 
+[Baseline algorithm report](CURRENT_ALGORITHM.html): the ab13cfc GetMultiCCO
+C++/NLopt call path, direct and FINUFFT schedules, plan updates, and bounded local
+CPU measurements. Its diagrams are schematic, not timing traces.
+The [historical threading forecast](THREADING_FORECAST.html) explores internally
+threaded transforms with a hypothetical simulator. The implemented Options A/B
+are defined in the [current threading notes](tests/threading/README.md), including
+concurrent contact and the full internal FINUFFT thread budget for Option B.
+
 ## Build
 
 ```sh
@@ -56,6 +64,7 @@ Keywords of the `ground` block (`GetMultiCCO`; `GetCCO` accepts `tolerance`, `ma
 | `tolerance E` | Energy below which a ground state is accepted (default 1e-14). |
 | `maxsteps N` | Evaluation limit of the optimizer (default 10000). |
 | `algorithm NAME` | `LBFGS` (default), `LocalGradientDescent`, `ConjugateGradient`, `SteepestDescent`, `MINOP`. |
+| `finufft-sequential` | Option B: sequential species with internally threaded FINUFFT and concurrent contact (multicomponent only; see [threading notes](tests/threading/README.md)). |
 | `finufft` | Collective densities and, where a cost gate predicts a win, forces with FINUFFT (needs `USE_FINUFFT=1`). |
 | `history N` | L-BFGS correction pairs (default 100; 40 was the best measured setting). |
 | `combined` | Write the configurations of all species together. |

@@ -8,6 +8,9 @@
 #include <cstring>
 #include <climits>
 #include <thread>
+#include <future>
+#include <typeinfo>
+#include <utility>
 
 SpherePacking MultiStealthyPotential::GetPackingSnapshot() const
 {
@@ -510,6 +513,8 @@ GeometryVector MultiStealthyPotential::WithSpeciesForce(size_t i, const Geometry
  *  \return Total potential energy. */
 double MultiStealthyPotential::Energy()
 {
+	if (this->SequentialFinufftSpecies)
+		return this->EvaluateSequentialSpecies(nullptr, true);
 	this->UpdateSubconfigs();
 	//every particle must belong to a species; an unassigned particle (species -1) is not in any
 	//species index list and would be silently dropped from the collective-coordinate sum below.
@@ -697,6 +702,10 @@ double MultiStealthyPotential::ContactEnergyAndForce(size_t i, GeometryVector &f
  *  \param results Output vector of forces. */
 void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 {
+	if (this->SequentialFinufftSpecies) {
+		this->EvaluateSequentialSpecies(&results, false);
+		return;
+	}
 	this->UpdateSubconfigs();
 	for (size_t i = 0; i < this->idx2species.size(); i++)
 		if (this->idx2species[i].species < 0)
@@ -744,6 +753,8 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
  *  \return Total potential energy. */
 double MultiStealthyPotential::EnergyAndAllForce(std::vector<GeometryVector> &results)
 {
+	if (this->SequentialFinufftSpecies)
+		return this->EvaluateSequentialSpecies(&results, true);
 	this->UpdateSubconfigs();
 	for (size_t i = 0; i < this->idx2species.size(); i++)
 		if (this->idx2species[i].species < 0)
@@ -790,4 +801,114 @@ double MultiStealthyPotential::EnergyAndAllForce(std::vector<GeometryVector> &re
 		}
 	}
 	return this->TotalEnergy(speciesEnergy, contactEnergy);
+}
+
+/** \brief Select the optional sequential schedule and invalidate species densities.
+ *  \param enabled True for sequential species, false for the default schedule. */
+void MultiStealthyPotential::SetSequentialFinufftSpecies(bool enabled)
+{
+	if (enabled == this->SequentialFinufftSpecies)
+		return;
+	this->SequentialFinufftSpecies = enabled;
+	for (auto & species : this->species_constraints) {
+		if (!enabled)
+			species.CCPotential->SetFinufftNumThreads(1);
+		species.CCPotential->RhoValid = false;
+	}
+}
+
+/** \brief Evaluate Option B, joining concurrent contact before assembly or exception propagation.
+ *  \param[out] forces Total forces, or nullptr for energy only.
+ *  \param energy Whether to compute the total energy.
+ *  \return Total energy when requested, otherwise zero. */
+double MultiStealthyPotential::EvaluateSequentialSpecies(std::vector<GeometryVector> * forces, bool energy)
+{
+	if (this->ParallelNumThread < 1)
+		throw std::invalid_argument("Sequential species require a positive thread budget.");
+	this->UpdateSubconfigs();
+	for (const auto & at : this->idx2species)
+		if (at.species < 0)
+			throw std::runtime_error("Sequential species: every particle must have an assigned species.");
+
+	const auto budget = std::min(this->ParallelNumThread, static_cast<unsigned long>(omp_get_thread_limit()));
+	const size_t count = this->species_constraints.size();
+	const long particles = static_cast<long>(this->pConfig->NumParticle());
+	const bool concurrentContact = this->WithRepulsion && particles > 0 && budget > 1;
+	const int transformThreads = static_cast<int>(budget);
+	std::vector<double> speciesEnergy(energy ? count : 0, 0.0);
+	std::vector<double> contactEnergy(energy && this->WithRepulsion ? particles : 0, 0.0);
+	std::vector<std::vector<GeometryVector>> speciesForce(forces ? count : 0);
+	std::vector<char> bulk(count, 0);
+	if (forces)
+		forces->resize(particles);
+
+	// Plan construction stays on the calling thread, before concurrent evaluation.
+	for (auto & species : this->species_constraints) {
+		auto & pot = *species.CCPotential;
+		if (pot.GetFinufftNumThreads() != transformThreads)
+			pot.SetFinufftNumThreads(transformThreads);
+		const bool eligible = pot.PrepareFinufft();
+		if (forces)
+			pot.PrepareFinufftForces(eligible && typeid(pot) == typeid(ShiftedCCPotential) ? 1 : 0);
+	}
+
+	auto contact = [&]() {
+		for (long i = 0; i < particles; ++i) {
+			GeometryVector force;
+			const double value = this->ContactEnergyAndForce(i, force);
+			if (!contactEnergy.empty())
+				contactEnergy[i] = value;
+			if (forces)
+				(*forces)[i] = force;
+		}
+	};
+	// This future is destroyed before the buffers it captures. Its async state joins
+	// the worker even if species evaluation throws; get() propagates contact errors.
+	std::future<void> contactWork;
+	if (concurrentContact)
+		contactWork = std::async(std::launch::async, contact);
+
+	for (size_t s = 0; s < count; ++s) {
+		auto & pot = *this->species_constraints[s].CCPotential;
+		// Keep the original deterministic Type 1 partition, but execute its blocks
+		// sequentially with internal threading. No species run concurrently here.
+		// A direct fallback may open its own team while contact is running.
+		struct RestoreThreads {
+			ShiftedCCPotential & potential;
+			unsigned long previous;
+			RestoreThreads(ShiftedCCPotential & p, unsigned long threads)
+				: potential(p), previous(std::exchange(p.ParallelNumThread, threads)) {}
+			~RestoreThreads() { potential.ParallelNumThread = previous; }
+			RestoreThreads(const RestoreThreads &) = delete;
+			RestoreThreads & operator=(const RestoreThreads &) = delete;
+			RestoreThreads(RestoreThreads &&) = delete;
+			RestoreThreads & operator=(RestoreThreads &&) = delete;
+		} restore(pot, static_cast<unsigned long>(transformThreads));
+		if (typeid(pot) == typeid(ShiftedCCPotential)) {
+			const size_t rhoBlocks = pot.StartRho(forces != nullptr);
+			for (size_t block = 0; block < rhoBlocks; ++block)
+				pot.RunRhoBlock(block);
+			pot.FinishRho();
+		}
+		else
+			pot.GetRho(); // Preserve derived density implementations and their weights.
+		if (energy)
+			speciesEnergy[s] = OnOneThread(pot, [](ShiftedCCPotential & p) { return p.Energy(); });
+		if (forces) {
+			const size_t forceBlocks = pot.StartForces(speciesForce[s]);
+			for (size_t block = 0; block < forceBlocks; ++block)
+				pot.RunForceBlock(block, speciesForce[s]);
+			bulk[s] = forceBlocks > 0 && pot.FinishForces();
+		}
+	}
+	if (concurrentContact)
+		contactWork.get();
+	else
+		contact();
+	if (forces) {
+#pragma omp parallel for num_threads(budget) schedule(static)
+		for (long i = 0; i < particles; ++i)
+			(*forces)[i] = this->WithSpeciesForce(i, (*forces)[i], bulk, speciesForce);
+	}
+	return energy ? this->TotalEnergy(speciesEnergy, contactEnergy) : 0.0;
 }
