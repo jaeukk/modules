@@ -1,0 +1,309 @@
+{
+  "summary": {
+    "100": {
+      "runs": 2,
+      "wall_seconds": 26.996801378,
+      "cpu_seconds": 37.072726,
+      "utilization_percent": 34.33076902362201,
+      "evaluations": 2081.0,
+      "direct_energy": 1.851470610846744e-20,
+      "accepted": 2,
+      "phase_status_counts": {
+        "1": 6
+      }
+    },
+    "40": {
+      "runs": 2,
+      "wall_seconds": 14.5539154455,
+      "cpu_seconds": 24.554205,
+      "utilization_percent": 42.17956006898872,
+      "evaluations": 2152.0,
+      "direct_energy": 1.2704510357481142e-20,
+      "accepted": 2,
+      "phase_status_counts": {
+        "1": 6
+      }
+    }
+  },
+  "structure": {
+    "diameter": 0.3568248232305542,
+    "translation_relative": [
+      -1.0581958461844509e-15,
+      3.839759233723481e-15
+    ],
+    "translation_cartesian": [
+      -1.1591954704269816e-13,
+      4.2062454953982043e-13
+    ],
+    "labeled_rms": 0.7114375872445978,
+    "labeled_rms_in_diameters": 1.993800713760653,
+    "labeled_max": 2.8701910921348017,
+    "labeled_median": 0.5374119475544354,
+    "labeled_p95": 1.3145584558980377,
+    "symmetric_same_species_nearest_rms": 0.5936031775338421,
+    "symmetric_same_species_nearest_within_1pct_diameter": 8.333333333333333e-05,
+    "symmetric_same_species_nearest_within_10pct_diameter": 0.0036666666666666666,
+    "by_species": [
+      {
+        "species": 0,
+        "labeled_rms": 0.6888193037001638,
+        "symmetric_nearest_rms": 0.5887466897040807
+      },
+      {
+        "species": 1,
+        "labeled_rms": 0.7087191426452809,
+        "symmetric_nearest_rms": 0.5876545925594637
+      },
+      {
+        "species": 2,
+        "labeled_rms": 0.735986049685321,
+        "symmetric_nearest_rms": 0.6042628669222356
+      }
+    ],
+    "byte_identical": false
+  },
+  "fingerprints_100": [
+    {
+      "orbit": [
+        40,
+        0
+      ],
+      "species_mean_S": 0.8580103226199117,
+      "combined_mean_S": 0.8239806424104625
+    },
+    {
+      "orbit": [
+        41,
+        0
+      ],
+      "species_mean_S": 2.1758452373601496,
+      "combined_mean_S": 2.946935019664773
+    },
+    {
+      "orbit": [
+        42,
+        0
+      ],
+      "species_mean_S": 0.7038765624313615,
+      "combined_mean_S": 0.6233045428882701
+    },
+    {
+      "orbit": [
+        40,
+        5
+      ],
+      "species_mean_S": 2.1002343104587693,
+      "combined_mean_S": 2.826204873267736
+    },
+    {
+      "orbit": [
+        35,
+        20
+      ],
+      "species_mean_S": 2.401933017176769,
+      "combined_mean_S": 1.78924696326605
+    },
+    {
+      "orbit": [
+        31,
+        31
+      ],
+      "species_mean_S": 1.5044799282920465,
+      "combined_mean_S": 1.858608307459515
+    },
+    {
+      "orbit": [
+        50,
+        0
+      ],
+      "species_mean_S": 0.785208150647568,
+      "combined_mean_S": 0.5865594385483535
+    },
+    {
+      "orbit": [
+        50,
+        50
+      ],
+      "species_mean_S": 0.26620690579153,
+      "combined_mean_S": 0.35634763326112306
+    },
+    {
+      "orbit": [
+        60,
+        0
+      ],
+      "species_mean_S": 0.757487647972814,
+      "combined_mean_S": 0.6282068694271411
+    }
+  ],
+  "fingerprints_40": [
+    {
+      "orbit": [
+        40,
+        0
+      ],
+      "species_mean_S": 0.5975452035293962,
+      "combined_mean_S": 0.3377421454962713
+    },
+    {
+      "orbit": [
+        41,
+        0
+      ],
+      "species_mean_S": 0.9486000434068118,
+      "combined_mean_S": 0.6207392820923047
+    },
+    {
+      "orbit": [
+        42,
+        0
+      ],
+      "species_mean_S": 1.076897307100533,
+      "combined_mean_S": 0.2741285597609283
+    },
+    {
+      "orbit": [
+        40,
+        5
+      ],
+      "species_mean_S": 2.44476941608823,
+      "combined_mean_S": 4.845275639730371
+    },
+    {
+      "orbit": [
+        35,
+        20
+      ],
+      "species_mean_S": 1.0349205605833052,
+      "combined_mean_S": 0.5135153506314787
+    },
+    {
+      "orbit": [
+        31,
+        31
+      ],
+      "species_mean_S": 1.68053917981074,
+      "combined_mean_S": 0.758650853646742
+    },
+    {
+      "orbit": [
+        50,
+        0
+      ],
+      "species_mean_S": 0.9160576593381925,
+      "combined_mean_S": 0.941773014051215
+    },
+    {
+      "orbit": [
+        50,
+        50
+      ],
+      "species_mean_S": 1.2194616935576343,
+      "combined_mean_S": 1.063012019648625
+    },
+    {
+      "orbit": [
+        60,
+        0
+      ],
+      "species_mean_S": 1.5743620209113782,
+      "combined_mean_S": 0.8073130531318031
+    }
+  ],
+  "max_combined_orbit_S_difference": 2.3261957375724682,
+  "max_species_orbit_S_difference": 1.3670124565934638,
+  "different_square_cell_invariants": true,
+  "repeat_checks": [
+    {
+      "history": 100,
+      "distinct_endpoint_hashes": 1,
+      "structure": {
+        "diameter": 0.3568248232305542,
+        "translation_relative": [
+          0.0,
+          0.0
+        ],
+        "translation_cartesian": [
+          0.0,
+          0.0
+        ],
+        "labeled_rms": 0.0,
+        "labeled_rms_in_diameters": 0.0,
+        "labeled_max": 0.0,
+        "labeled_median": 0.0,
+        "labeled_p95": 0.0,
+        "symmetric_same_species_nearest_rms": 0.0,
+        "symmetric_same_species_nearest_within_1pct_diameter": 1.0,
+        "symmetric_same_species_nearest_within_10pct_diameter": 1.0,
+        "by_species": [
+          {
+            "species": 0,
+            "labeled_rms": 0.0,
+            "symmetric_nearest_rms": 0.0
+          },
+          {
+            "species": 1,
+            "labeled_rms": 0.0,
+            "symmetric_nearest_rms": 0.0
+          },
+          {
+            "species": 2,
+            "labeled_rms": 0.0,
+            "symmetric_nearest_rms": 0.0
+          }
+        ],
+        "byte_identical": true
+      }
+    },
+    {
+      "history": 40,
+      "distinct_endpoint_hashes": 1,
+      "structure": {
+        "diameter": 0.3568248232305542,
+        "translation_relative": [
+          0.0,
+          0.0
+        ],
+        "translation_cartesian": [
+          0.0,
+          0.0
+        ],
+        "labeled_rms": 0.0,
+        "labeled_rms_in_diameters": 0.0,
+        "labeled_max": 0.0,
+        "labeled_median": 0.0,
+        "labeled_p95": 0.0,
+        "symmetric_same_species_nearest_rms": 0.0,
+        "symmetric_same_species_nearest_within_1pct_diameter": 1.0,
+        "symmetric_same_species_nearest_within_10pct_diameter": 1.0,
+        "by_species": [
+          {
+            "species": 0,
+            "labeled_rms": 0.0,
+            "symmetric_nearest_rms": 0.0
+          },
+          {
+            "species": 1,
+            "labeled_rms": 0.0,
+            "symmetric_nearest_rms": 0.0
+          },
+          {
+            "species": 2,
+            "labeled_rms": 0.0,
+            "symmetric_nearest_rms": 0.0
+          }
+        ],
+        "byte_identical": true
+      }
+    }
+  ],
+  "speedup_40": 1.8549510940265412,
+  "accepted_endpoints": 4,
+  "all_endpoints_also_pass_strength100": true,
+  "validation_maxima": {
+    "independent_energy": 1.8514690550316817e-20,
+    "max_S": 1.4316857107544043e-20,
+    "max_force_component": 1.0276239502989635e-12,
+    "max_relative_overlap": 0.0
+  }
+}

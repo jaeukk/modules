@@ -1,0 +1,53 @@
+{
+  "commit": "856d6d104dd8a114a63051f61a500899d53e5ac2",
+  "cpu_model": "AMD Ryzen 5 7500F 6-Core Processor",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "affinity": [
+    0,
+    2,
+    4,
+    6
+  ],
+  "species": 3,
+  "dimension": 2,
+  "particles_per_species": [
+    4000
+  ],
+  "threads": 4,
+  "chi_per_species": 0.3,
+  "contact_strength": 1,
+  "finufft_tolerance": 1e-12,
+  "environment": {
+    "OMP_NUM_THREADS": "4",
+    "OMP_THREAD_LIMIT": "4",
+    "OMP_DYNAMIC": "false",
+    "OMP_WAIT_POLICY": "PASSIVE",
+    "OMP_PROC_BIND": "false",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "histories": [
+    40,
+    100
+  ],
+  "option_A": "Concurrent species, internal FINUFFT threads=1",
+  "phi": 0.1,
+  "seeds": [
+    17
+  ],
+  "repetitions_per_history": 2,
+  "opt_maxsteps_per_phase": 10000,
+  "source_dirty": false,
+  "binary_sha256": "1b7e7aa43f20c280c740e533cae1cfc1439fdab6fc596be62785be9e4cb9a7cb",
+  "source_sha256": "a5207e634531856cf6ed69f880e63c50b5f0512c62be14f604d68b99125c35a4",
+  "fixture_sha256": "29bb856ae80defe2ad72a19241d009428c4e4d2ec96cc54aa96645509f1148b4",
+  "started_unix": 1792390853.7835577,
+  "acceptance": {
+    "independent_total_energy_less_than": 1e-14,
+    "max_constrained_species_S_less_than": 1e-10,
+    "max_force_component_less_than": 1e-07,
+    "max_relative_overlap_less_than": 1e-06
+  },
+  "initial_conditions": "Uniform random, same original seed-17 coordinates; no reference/lattice starts or continuation",
+  "completed_unix": 1792390945.112443
+}

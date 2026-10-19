@@ -1,0 +1,920 @@
+[
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 0,
+    "wall_seconds": 28.69029931,
+    "cpu_seconds": 44.194235,
+    "active_cpus": 1.5403894718029694,
+    "utilization_percent": 38.50973679507423,
+    "evaluations": 2160,
+    "energy": 27.249933916725272,
+    "direct_energy": 27.249933916725407,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "direct_force_max_abs": 0.10348966717675166,
+    "direct_force_rms_component": 0.00747547375284961,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 157
+      }
+    ],
+    "initial_sha256": "e2f35ad7330b50284ad657c7dedcff2066831dc897f3644324b2d25377525fe2",
+    "endpoint_sha256": "664f1f12311559be0fb59ff6c3d833214a73176f86c84df24fed5f144de670e7"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 0,
+    "wall_seconds": 14.677136919,
+    "cpu_seconds": 28.645487,
+    "active_cpus": 1.951708099344467,
+    "utilization_percent": 48.79270248361168,
+    "evaluations": 2015,
+    "energy": 27.515103302820425,
+    "direct_energy": 27.515103302819746,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "direct_force_max_abs": 0.3191871518896768,
+    "direct_force_rms_component": 0.02024668510487009,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 12
+      }
+    ],
+    "initial_sha256": "e2f35ad7330b50284ad657c7dedcff2066831dc897f3644324b2d25377525fe2",
+    "endpoint_sha256": "7c9dadadb0acdc559a7b0059dd0d32dbb71594bc58072a3584b58fa6f1d48f41"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 1,
+    "wall_seconds": 14.815586913,
+    "cpu_seconds": 28.788145,
+    "active_cpus": 1.94309851975825,
+    "utilization_percent": 48.577462993956246,
+    "evaluations": 2015,
+    "energy": 27.515103302820425,
+    "direct_energy": 27.515103302819746,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "direct_force_max_abs": 0.3191871518896768,
+    "direct_force_rms_component": 0.02024668510487009,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 12
+      }
+    ],
+    "initial_sha256": "e2f35ad7330b50284ad657c7dedcff2066831dc897f3644324b2d25377525fe2",
+    "endpoint_sha256": "7c9dadadb0acdc559a7b0059dd0d32dbb71594bc58072a3584b58fa6f1d48f41"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 1,
+    "wall_seconds": 29.190608118,
+    "cpu_seconds": 44.84437,
+    "active_cpus": 1.5362602183113587,
+    "utilization_percent": 38.406505457783965,
+    "evaluations": 2160,
+    "energy": 27.249933916725272,
+    "direct_energy": 27.249933916725407,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "direct_force_max_abs": 0.10348966717675166,
+    "direct_force_rms_component": 0.00747547375284961,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 157
+      }
+    ],
+    "initial_sha256": "e2f35ad7330b50284ad657c7dedcff2066831dc897f3644324b2d25377525fe2",
+    "endpoint_sha256": "664f1f12311559be0fb59ff6c3d833214a73176f86c84df24fed5f144de670e7"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 2,
+    "wall_seconds": 29.261651783,
+    "cpu_seconds": 44.80894,
+    "active_cpus": 1.5313195691171622,
+    "utilization_percent": 38.28298922792906,
+    "evaluations": 2160,
+    "energy": 27.249933916725272,
+    "direct_energy": 27.249933916725407,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "direct_force_max_abs": 0.10348966717675166,
+    "direct_force_rms_component": 0.00747547375284961,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 157
+      }
+    ],
+    "initial_sha256": "e2f35ad7330b50284ad657c7dedcff2066831dc897f3644324b2d25377525fe2",
+    "endpoint_sha256": "664f1f12311559be0fb59ff6c3d833214a73176f86c84df24fed5f144de670e7"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 2,
+    "wall_seconds": 15.369603548,
+    "cpu_seconds": 29.257264,
+    "active_cpus": 1.9035796147004167,
+    "utilization_percent": 47.58949036751042,
+    "evaluations": 2015,
+    "energy": 27.515103302820425,
+    "direct_energy": 27.515103302819746,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "direct_force_max_abs": 0.3191871518896768,
+    "direct_force_rms_component": 0.02024668510487009,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 12
+      }
+    ],
+    "initial_sha256": "e2f35ad7330b50284ad657c7dedcff2066831dc897f3644324b2d25377525fe2",
+    "endpoint_sha256": "7c9dadadb0acdc559a7b0059dd0d32dbb71594bc58072a3584b58fa6f1d48f41"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 0,
+    "wall_seconds": 14.895252098,
+    "cpu_seconds": 29.07504,
+    "active_cpus": 1.9519669629427712,
+    "utilization_percent": 48.799174073569276,
+    "evaluations": 2035,
+    "energy": 28.17461851876143,
+    "direct_energy": 28.17461851876192,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "direct_force_max_abs": 0.23456799361203673,
+    "direct_force_rms_component": 0.01413913319092445,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 32
+      }
+    ],
+    "initial_sha256": "ded4c80d16afb70a46e843636648bb8b77222a048441e397e097bb47dc0c451f",
+    "endpoint_sha256": "566ea6a4cf51e2e5f393f0bb21c902f300d00b8d9a9200ca60bbc5d799f3817d"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 0,
+    "wall_seconds": 28.412881723,
+    "cpu_seconds": 43.800821,
+    "active_cpus": 1.5415831955033124,
+    "utilization_percent": 38.5395798875828,
+    "evaluations": 2136,
+    "energy": 28.40210878298818,
+    "direct_energy": 28.40210878298818,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "direct_force_max_abs": 0.29400227880998425,
+    "direct_force_rms_component": 0.013579489836025093,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 133
+      }
+    ],
+    "initial_sha256": "ded4c80d16afb70a46e843636648bb8b77222a048441e397e097bb47dc0c451f",
+    "endpoint_sha256": "32a45b675b2d123765cce532e9251c87e52b3f4d49cbf22b97f95a076dc32e9e"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 1,
+    "wall_seconds": 28.817914529,
+    "cpu_seconds": 44.151767,
+    "active_cpus": 1.5320944531072593,
+    "utilization_percent": 38.30236132768149,
+    "evaluations": 2136,
+    "energy": 28.40210878298818,
+    "direct_energy": 28.40210878298818,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "direct_force_max_abs": 0.29400227880998425,
+    "direct_force_rms_component": 0.013579489836025093,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 133
+      }
+    ],
+    "initial_sha256": "ded4c80d16afb70a46e843636648bb8b77222a048441e397e097bb47dc0c451f",
+    "endpoint_sha256": "32a45b675b2d123765cce532e9251c87e52b3f4d49cbf22b97f95a076dc32e9e"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 1,
+    "wall_seconds": 14.553982277,
+    "cpu_seconds": 28.666422,
+    "active_cpus": 1.969661736176649,
+    "utilization_percent": 49.241543404416234,
+    "evaluations": 2035,
+    "energy": 28.17461851876143,
+    "direct_energy": 28.17461851876192,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "direct_force_max_abs": 0.23456799361203673,
+    "direct_force_rms_component": 0.01413913319092445,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 32
+      }
+    ],
+    "initial_sha256": "ded4c80d16afb70a46e843636648bb8b77222a048441e397e097bb47dc0c451f",
+    "endpoint_sha256": "566ea6a4cf51e2e5f393f0bb21c902f300d00b8d9a9200ca60bbc5d799f3817d"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 2,
+    "wall_seconds": 15.057240421,
+    "cpu_seconds": 29.142754,
+    "active_cpus": 1.9354644798893725,
+    "utilization_percent": 48.38661199723431,
+    "evaluations": 2035,
+    "energy": 28.17461851876143,
+    "direct_energy": 28.17461851876192,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "direct_force_max_abs": 0.23456799361203673,
+    "direct_force_rms_component": 0.01413913319092445,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 32
+      }
+    ],
+    "initial_sha256": "ded4c80d16afb70a46e843636648bb8b77222a048441e397e097bb47dc0c451f",
+    "endpoint_sha256": "566ea6a4cf51e2e5f393f0bb21c902f300d00b8d9a9200ca60bbc5d799f3817d"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 2,
+    "wall_seconds": 29.34274516,
+    "cpu_seconds": 45.676862,
+    "active_cpus": 1.5566662815947654,
+    "utilization_percent": 38.916657039869136,
+    "evaluations": 2136,
+    "energy": 28.40210878298818,
+    "direct_energy": 28.40210878298818,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "direct_force_max_abs": 0.29400227880998425,
+    "direct_force_rms_component": 0.013579489836025093,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 133
+      }
+    ],
+    "initial_sha256": "ded4c80d16afb70a46e843636648bb8b77222a048441e397e097bb47dc0c451f",
+    "endpoint_sha256": "32a45b675b2d123765cce532e9251c87e52b3f4d49cbf22b97f95a076dc32e9e"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 0,
+    "wall_seconds": 28.083699161,
+    "cpu_seconds": 42.811354,
+    "active_cpus": 1.5244200471799807,
+    "utilization_percent": 38.110501179499515,
+    "evaluations": 2035,
+    "energy": 26.981289370736913,
+    "direct_energy": 26.98128937073668,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "direct_force_max_abs": 0.23252019100599142,
+    "direct_force_rms_component": 0.013151857661593392,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 32
+      }
+    ],
+    "initial_sha256": "1c83467abacee29e2d09c0d14577b6579bc06a027a0dc0f7d0f992bdb96f46ae",
+    "endpoint_sha256": "7b41643543aac37f7ac16b004fa05a298401d144f5d8b64ef09deff620e017c5"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 0,
+    "wall_seconds": 14.676844493,
+    "cpu_seconds": 28.991395,
+    "active_cpus": 1.9753152671084855,
+    "utilization_percent": 49.38288167771214,
+    "evaluations": 2059,
+    "energy": 26.961825307697147,
+    "direct_energy": 26.96182530769672,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "direct_force_max_abs": 0.21056244278925831,
+    "direct_force_rms_component": 0.009551432875985009,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1001
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 55
+      }
+    ],
+    "initial_sha256": "1c83467abacee29e2d09c0d14577b6579bc06a027a0dc0f7d0f992bdb96f46ae",
+    "endpoint_sha256": "5b50a449f28b1d95a6236917521d8925e0cde0bd2e37537d45f813f7c5efb68b"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 1,
+    "wall_seconds": 15.071221961,
+    "cpu_seconds": 29.328955,
+    "active_cpus": 1.9460236917679885,
+    "utilization_percent": 48.65059229419971,
+    "evaluations": 2059,
+    "energy": 26.961825307697147,
+    "direct_energy": 26.96182530769672,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "direct_force_max_abs": 0.21056244278925831,
+    "direct_force_rms_component": 0.009551432875985009,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1001
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 55
+      }
+    ],
+    "initial_sha256": "1c83467abacee29e2d09c0d14577b6579bc06a027a0dc0f7d0f992bdb96f46ae",
+    "endpoint_sha256": "5b50a449f28b1d95a6236917521d8925e0cde0bd2e37537d45f813f7c5efb68b"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 1,
+    "wall_seconds": 28.200064828,
+    "cpu_seconds": 42.966062,
+    "active_cpus": 1.5236157172709321,
+    "utilization_percent": 38.0903929317733,
+    "evaluations": 2035,
+    "energy": 26.981289370736913,
+    "direct_energy": 26.98128937073668,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "direct_force_max_abs": 0.23252019100599142,
+    "direct_force_rms_component": 0.013151857661593392,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 32
+      }
+    ],
+    "initial_sha256": "1c83467abacee29e2d09c0d14577b6579bc06a027a0dc0f7d0f992bdb96f46ae",
+    "endpoint_sha256": "7b41643543aac37f7ac16b004fa05a298401d144f5d8b64ef09deff620e017c5"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 2,
+    "wall_seconds": 28.302650809,
+    "cpu_seconds": 43.176584,
+    "active_cpus": 1.5255314525616879,
+    "utilization_percent": 38.1382863140422,
+    "evaluations": 2035,
+    "energy": 26.981289370736913,
+    "direct_energy": 26.98128937073668,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "direct_force_max_abs": 0.23252019100599142,
+    "direct_force_rms_component": 0.013151857661593392,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 32
+      }
+    ],
+    "initial_sha256": "1c83467abacee29e2d09c0d14577b6579bc06a027a0dc0f7d0f992bdb96f46ae",
+    "endpoint_sha256": "7b41643543aac37f7ac16b004fa05a298401d144f5d8b64ef09deff620e017c5"
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 2,
+    "wall_seconds": 15.03942745,
+    "cpu_seconds": 29.37661,
+    "active_cpus": 1.9533064072861364,
+    "utilization_percent": 48.83266018215341,
+    "evaluations": 2059,
+    "energy": 26.961825307697147,
+    "direct_energy": 26.96182530769672,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "direct_force_max_abs": 0.21056244278925831,
+    "direct_force_rms_component": 0.009551432875985009,
+    "nlopt_phases": [
+      {
+        "status": 5,
+        "evaluations": 1001
+      },
+      {
+        "status": 5,
+        "evaluations": 1000
+      },
+      {
+        "status": -1,
+        "evaluations": 55
+      }
+    ],
+    "initial_sha256": "1c83467abacee29e2d09c0d14577b6579bc06a027a0dc0f7d0f992bdb96f46ae",
+    "endpoint_sha256": "5b50a449f28b1d95a6236917521d8925e0cde0bd2e37537d45f813f7c5efb68b"
+  }
+]

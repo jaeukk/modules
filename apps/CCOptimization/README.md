@@ -19,6 +19,8 @@ The [historical threading forecast](THREADING_FORECAST.html) explores internally
 threaded transforms with a hypothetical simulator. The implemented Options A/B
 are defined in the [current threading notes](tests/threading/README.md), including
 concurrent contact and the full internal FINUFFT thread budget for Option B.
+The [final comparison report](THREADING_RESULTS.html) summarizes measured scheduling
+and history effects, the selected defaults, and the limits of the ground-state tests.
 
 ## Build
 
@@ -65,14 +67,24 @@ Keywords of the `ground` block (`GetMultiCCO`; `GetCCO` accepts `tolerance`, `ma
 | `maxsteps N` | Evaluation limit of the optimizer (default 10000). |
 | `algorithm NAME` | `LBFGS` (default), `LocalGradientDescent`, `ConjugateGradient`, `SteepestDescent`, `MINOP`. |
 | `finufft-sequential` | Option B: sequential species with internally threaded FINUFFT and concurrent contact (multicomponent only; see [threading notes](tests/threading/README.md)). |
-| `finufft` | Collective densities and, where a cost gate predicts a win, forces with FINUFFT (needs `USE_FINUFFT=1`). |
-| `history N` | L-BFGS correction pairs (default 100; 40 was the best measured setting). |
+| `finufft` | Option A (default schedule): concurrent species with one internal FINUFFT thread each; a cost gate selects FINUFFT forces (needs `USE_FINUFFT=1`). |
+| `history N` | L-BFGS correction pairs (default 40; `history 100` restores the previous setting). |
 | `combined` | Write the configurations of all species together. |
 | `export txt\|binary\|pack\|off` | Output format of accepted configurations. |
 | `pairstat Kmax dK Rmax dR samples seed` | Pair statistics of each accepted configuration. |
 
 The `MD` blocks of both drivers accept `timestep`, `samplesteps`, `temperature`,
 `numequilibration`, `autotimestep`, `restore` and `finufft`.
+
+The selected production settings are Option A, L-BFGS history 40, and **relative
+contact strength 100**. Enter `100` in the required contact-strength input field
+(the small wiring example above disables contact only to illustrate the input).
+Enter `finufft` in the ground block; `history 40` is optional but records the choice
+explicitly. FINUFFT remains opt-in. The shared `RelaxStructure_NLOPT` history default
+is now 40, including callers outside this application; callers can override
+`StructureOptimization_LBFGSHistory`. Potential formulas, stopping rules, and file
+formats are unchanged. History changes can change the optimizer trajectory and final
+ground-state coordinates. GetMultiCCO uses C++ NLopt; it does not call SciPy.
 
 ## Performance notes
 
@@ -90,7 +102,9 @@ The `MD` blocks of both drivers accept `timestep`, `samplesteps`, `temperature`,
 - **Contact cells.** Both drivers size the contact cell list to max(cutoff, (V/N)^(1/d)). Random
   packings start with 10 cells per side, which made the contact sum O(N²) (80% of a 2D N = 10⁴
   FINUFFT evaluation before the fix).
-- **Repeatability.** A run with the same build, settings, thread count and input repeats bitwise.
+- **Repeatability.** Option A repeated bitwise for the tested build, settings, thread count and input.
+  Option B did not repeat bitwise in the bounded endpoint test. Neither schedule promises
+  identical endpoints across different history settings or machines.
   Endpoints are not bitwise identical to builds before October 2026 (valid ground states either way),
   and direct and FINUFFT endpoints differ because L-BFGS amplifies rounding-level differences.
 - **Machine-specific constants.** The cost-gate and block constants were fitted on the development

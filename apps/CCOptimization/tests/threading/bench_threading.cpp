@@ -21,11 +21,16 @@ struct CountingPotential : MultiStealthyPotential {
 int main(int argc, char ** argv)
 {
     try {
-        if (argc != 8) throw std::invalid_argument("Usage: bench_threading.out eval|opt A|B N_PER_SPECIES THREADS SEED EVALUATIONS REPETITION");
+        if (argc != 8 && argc != 9) throw std::invalid_argument("Usage: bench_threading.out eval|opt A|B N_PER_SPECIES THREADS SEED EVALUATIONS REPETITION [HISTORY]");
         const std::string mode = argv[1], option = argv[2];
         const int particles = std::stoi(argv[3]), threads = std::stoi(argv[4]);
         const int seed = std::stoi(argv[5]), iterations = std::stoi(argv[6]);
         const int repetition = std::stoi(argv[7]);
+        if (argc == 9) {
+            const int history = std::stoi(argv[8]);
+            Require(history > 0, "History must be positive");
+            StructureOptimization_LBFGSHistory = static_cast<size_t>(history);
+        }
         Require((mode == "eval" || mode == "opt") && (option == "A" || option == "B") &&
             particles > 1 && threads > 0 && iterations > 0, "Invalid benchmark arguments");
         omp_set_num_threads(threads);
@@ -45,7 +50,6 @@ int main(int argc, char ** argv)
             for (int i = 0; i < iterations; ++i) Evaluate(*potential, config);
         }
         else {
-            StructureOptimization_LBFGSHistory = 100;
             QuietOutput quiet;
             RelaxStructure_NLOPT(config, *potential, 0.0, 0, 0.0, iterations);
         }
@@ -58,6 +62,7 @@ int main(int argc, char ** argv)
         std::cout << std::setprecision(17) << "{\"mode\":\"" << mode << "\",\"option\":\"" << option
                   << "\",\"particles_per_species\":" << particles << ",\"species\":3,\"threads\":" << threads
                   << ",\"seed\":" << seed << ",\"repetition\":" << repetition
+                  << ",\"history\":" << StructureOptimization_LBFGSHistory << ",\"contact_strength\":100"
                   << ",\"wall_seconds\":" << wall << ",\"cpu_seconds\":" << cpu
                   << ",\"active_cpus\":" << cpu / wall
                   << ",\"utilization_percent\":" << 100 * cpu / (threads * wall)

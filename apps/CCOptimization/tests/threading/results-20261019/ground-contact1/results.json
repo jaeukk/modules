@@ -1,0 +1,358 @@
+[
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 0,
+    "wall_seconds": 26.799233078,
+    "cpu_seconds": 36.816737,
+    "active_cpus": 1.3737981565682773,
+    "utilization_percent": 34.34495391420693,
+    "evaluations": 2081,
+    "energy": 1.830958301663207e-20,
+    "direct_energy": 1.851470610846744e-20,
+    "accepted": true,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "phi": 0.1,
+    "chi_nominal_per_species": 0.3,
+    "contact_strength": 1,
+    "direct_force_max_abs": 1.0276134529627197e-12,
+    "direct_force_rms_component": 1.8903985914350847e-13,
+    "nlopt_phases": [
+      {
+        "status": 1,
+        "evaluations": 1758
+      },
+      {
+        "status": 1,
+        "evaluations": 198
+      },
+      {
+        "status": 1,
+        "evaluations": 122
+      }
+    ],
+    "initial_sha256": "8fbc730119ce424e56b2cdef20904263232ac7f004e3056c8ca44fd516e7d05f",
+    "endpoint_sha256": "ddaeaeff4bdd6463f617356f3a785cc0c9d5f901cbc926cf30d29a96dd66e314",
+    "physical": {
+      "independent_energy": 1.8514690550316817e-20,
+      "cc_energy": 1.8514690550316817e-20,
+      "contact_energy": 0.0,
+      "species_max_S": [
+        7.268873473411387e-21,
+        1.3636419852520694e-20,
+        1.4316857107544043e-20
+      ],
+      "max_S": 1.4316857107544043e-20,
+      "mode_counts": [
+        2404,
+        2404,
+        2404
+      ],
+      "chi_actual": [
+        0.30057514378594646,
+        0.30057514378594646,
+        0.30057514378594646
+      ],
+      "max_force_component": 1.0276239502989635e-12,
+      "max_relative_overlap": 0.0,
+      "criteria": {
+        "energy_below_1e_minus14": true,
+        "max_species_S_below_1e_minus10": true,
+        "max_force_component_below_1e_minus7": true,
+        "max_relative_overlap_below_1e_minus6": true
+      },
+      "ground_state": true,
+      "validation_at_contact_strength100": {
+        "independent_energy": 1.8514690550316817e-20,
+        "max_force_component": 1.0276239502989635e-12,
+        "ground_state": true
+      }
+    }
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 0,
+    "wall_seconds": 14.443356632,
+    "cpu_seconds": 24.48681,
+    "active_cpus": 1.6953683706561817,
+    "utilization_percent": 42.38420926640455,
+    "evaluations": 2152,
+    "energy": 1.2495334746882858e-20,
+    "direct_energy": 1.2704510357481142e-20,
+    "accepted": true,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "phi": 0.1,
+    "chi_nominal_per_species": 0.3,
+    "contact_strength": 1,
+    "direct_force_max_abs": 8.908390988073226e-13,
+    "direct_force_rms_component": 1.7602243812226407e-13,
+    "nlopt_phases": [
+      {
+        "status": 1,
+        "evaluations": 1809
+      },
+      {
+        "status": 1,
+        "evaluations": 209
+      },
+      {
+        "status": 1,
+        "evaluations": 131
+      }
+    ],
+    "initial_sha256": "8fbc730119ce424e56b2cdef20904263232ac7f004e3056c8ca44fd516e7d05f",
+    "endpoint_sha256": "392cb20813c2add663a64c9868c08b9d2767deb38a57340fe115926cb2a554f8",
+    "physical": {
+      "independent_energy": 1.2704483955337458e-20,
+      "cc_energy": 1.2704483955337458e-20,
+      "contact_energy": 0.0,
+      "species_max_S": [
+        1.044115979144807e-20,
+        1.2599107337514385e-20,
+        4.337442469432877e-21
+      ],
+      "max_S": 1.2599107337514385e-20,
+      "mode_counts": [
+        2404,
+        2404,
+        2404
+      ],
+      "chi_actual": [
+        0.30057514378594646,
+        0.30057514378594646,
+        0.30057514378594646
+      ],
+      "max_force_component": 8.908110955312967e-13,
+      "max_relative_overlap": 0.0,
+      "criteria": {
+        "energy_below_1e_minus14": true,
+        "max_species_S_below_1e_minus10": true,
+        "max_force_component_below_1e_minus7": true,
+        "max_relative_overlap_below_1e_minus6": true
+      },
+      "ground_state": true,
+      "validation_at_contact_strength100": {
+        "independent_energy": 1.2704483955337458e-20,
+        "max_force_component": 8.908110955312967e-13,
+        "ground_state": true
+      }
+    }
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 1,
+    "wall_seconds": 14.664474259,
+    "cpu_seconds": 24.6216,
+    "active_cpus": 1.6789964348629158,
+    "utilization_percent": 41.974910871572895,
+    "evaluations": 2152,
+    "energy": 1.2495334746882858e-20,
+    "direct_energy": 1.2704510357481142e-20,
+    "accepted": true,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 40,
+    "phi": 0.1,
+    "chi_nominal_per_species": 0.3,
+    "contact_strength": 1,
+    "direct_force_max_abs": 8.908390988073226e-13,
+    "direct_force_rms_component": 1.7602243812226407e-13,
+    "nlopt_phases": [
+      {
+        "status": 1,
+        "evaluations": 1809
+      },
+      {
+        "status": 1,
+        "evaluations": 209
+      },
+      {
+        "status": 1,
+        "evaluations": 131
+      }
+    ],
+    "initial_sha256": "8fbc730119ce424e56b2cdef20904263232ac7f004e3056c8ca44fd516e7d05f",
+    "endpoint_sha256": "392cb20813c2add663a64c9868c08b9d2767deb38a57340fe115926cb2a554f8",
+    "physical": {
+      "independent_energy": 1.2704483955337458e-20,
+      "cc_energy": 1.2704483955337458e-20,
+      "contact_energy": 0.0,
+      "species_max_S": [
+        1.044115979144807e-20,
+        1.2599107337514385e-20,
+        4.337442469432877e-21
+      ],
+      "max_S": 1.2599107337514385e-20,
+      "mode_counts": [
+        2404,
+        2404,
+        2404
+      ],
+      "chi_actual": [
+        0.30057514378594646,
+        0.30057514378594646,
+        0.30057514378594646
+      ],
+      "max_force_component": 8.908110955312967e-13,
+      "max_relative_overlap": 0.0,
+      "criteria": {
+        "energy_below_1e_minus14": true,
+        "max_species_S_below_1e_minus10": true,
+        "max_force_component_below_1e_minus7": true,
+        "max_relative_overlap_below_1e_minus6": true
+      },
+      "ground_state": true,
+      "validation_at_contact_strength100": {
+        "independent_energy": 1.2704483955337458e-20,
+        "max_force_component": 8.908110955312967e-13,
+        "ground_state": true
+      }
+    }
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 1,
+    "wall_seconds": 27.194369678,
+    "cpu_seconds": 37.328715,
+    "active_cpus": 1.372663365321484,
+    "utilization_percent": 34.3165841330371,
+    "evaluations": 2081,
+    "energy": 1.830958301663207e-20,
+    "direct_energy": 1.851470610846744e-20,
+    "accepted": true,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ],
+    "history": 100,
+    "phi": 0.1,
+    "chi_nominal_per_species": 0.3,
+    "contact_strength": 1,
+    "direct_force_max_abs": 1.0276134529627197e-12,
+    "direct_force_rms_component": 1.8903985914350847e-13,
+    "nlopt_phases": [
+      {
+        "status": 1,
+        "evaluations": 1758
+      },
+      {
+        "status": 1,
+        "evaluations": 198
+      },
+      {
+        "status": 1,
+        "evaluations": 122
+      }
+    ],
+    "initial_sha256": "8fbc730119ce424e56b2cdef20904263232ac7f004e3056c8ca44fd516e7d05f",
+    "endpoint_sha256": "ddaeaeff4bdd6463f617356f3a785cc0c9d5f901cbc926cf30d29a96dd66e314",
+    "physical": {
+      "independent_energy": 1.8514690550316817e-20,
+      "cc_energy": 1.8514690550316817e-20,
+      "contact_energy": 0.0,
+      "species_max_S": [
+        7.268873473411387e-21,
+        1.3636419852520694e-20,
+        1.4316857107544043e-20
+      ],
+      "max_S": 1.4316857107544043e-20,
+      "mode_counts": [
+        2404,
+        2404,
+        2404
+      ],
+      "chi_actual": [
+        0.30057514378594646,
+        0.30057514378594646,
+        0.30057514378594646
+      ],
+      "max_force_component": 1.0276239502989635e-12,
+      "max_relative_overlap": 0.0,
+      "criteria": {
+        "energy_below_1e_minus14": true,
+        "max_species_S_below_1e_minus10": true,
+        "max_force_component_below_1e_minus7": true,
+        "max_relative_overlap_below_1e_minus6": true
+      },
+      "ground_state": true,
+      "validation_at_contact_strength100": {
+        "independent_energy": 1.8514690550316817e-20,
+        "max_force_component": 1.0276239502989635e-12,
+        "ground_state": true
+      }
+    }
+  }
+]

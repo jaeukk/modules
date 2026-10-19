@@ -1,0 +1,770 @@
+[
+  {
+    "mode": "eval",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 0,
+    "wall_seconds": 1.066703923,
+    "cpu_seconds": 3.530726,
+    "active_cpus": 3.3099400160357337,
+    "utilization_percent": 82.74850040089335,
+    "evaluations": 400,
+    "energy": 276691.86591084796,
+    "direct_energy": 276691.86591084796,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 0,
+    "wall_seconds": 2.716475166,
+    "cpu_seconds": 4.526213,
+    "active_cpus": 1.6662081275953031,
+    "utilization_percent": 41.65520318988258,
+    "evaluations": 400,
+    "energy": 276691.86591084796,
+    "direct_energy": 276691.86591084796,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 1,
+    "wall_seconds": 2.659542887,
+    "cpu_seconds": 4.453725,
+    "active_cpus": 1.6746204852608568,
+    "utilization_percent": 41.86551213152142,
+    "evaluations": 400,
+    "energy": 276691.86591084796,
+    "direct_energy": 276691.86591084796,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 1,
+    "wall_seconds": 1.096978403,
+    "cpu_seconds": 3.651863,
+    "active_cpus": 3.329019960660064,
+    "utilization_percent": 83.2254990165016,
+    "evaluations": 400,
+    "energy": 276691.86591084796,
+    "direct_energy": 276691.86591084796,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 2,
+    "wall_seconds": 1.055678586,
+    "cpu_seconds": 3.508793,
+    "active_cpus": 3.3237322860691236,
+    "utilization_percent": 83.0933071517281,
+    "evaluations": 400,
+    "energy": 276691.86591084796,
+    "direct_energy": 276691.86591084796,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 2,
+    "wall_seconds": 2.712206635,
+    "cpu_seconds": 4.507434,
+    "active_cpus": 1.6619065604490715,
+    "utilization_percent": 41.547664011226786,
+    "evaluations": 400,
+    "energy": 276691.86591084796,
+    "direct_energy": 276691.86591084796,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 0,
+    "wall_seconds": 2.717126251,
+    "cpu_seconds": 4.506478,
+    "active_cpus": 1.6585456779350813,
+    "utilization_percent": 41.46364194837703,
+    "evaluations": 400,
+    "energy": 283958.96704374015,
+    "direct_energy": 283958.96704374015,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 0,
+    "wall_seconds": 1.084129801,
+    "cpu_seconds": 3.588532,
+    "active_cpus": 3.3100575195792445,
+    "utilization_percent": 82.7514379894811,
+    "evaluations": 400,
+    "energy": 283958.96704374015,
+    "direct_energy": 283958.96704374015,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 1,
+    "wall_seconds": 1.068061861,
+    "cpu_seconds": 3.568344,
+    "active_cpus": 3.340952551811042,
+    "utilization_percent": 83.52381379527606,
+    "evaluations": 400,
+    "energy": 283958.96704374015,
+    "direct_energy": 283958.96704374015,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 1,
+    "wall_seconds": 2.708097312,
+    "cpu_seconds": 4.530797,
+    "active_cpus": 1.673055462196035,
+    "utilization_percent": 41.82638655490087,
+    "evaluations": 400,
+    "energy": 283958.96704374015,
+    "direct_energy": 283958.96704374015,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 2,
+    "wall_seconds": 2.717351334,
+    "cpu_seconds": 4.497332,
+    "active_cpus": 1.655042520166073,
+    "utilization_percent": 41.376063004151824,
+    "evaluations": 400,
+    "energy": 283958.96704374015,
+    "direct_energy": 283958.96704374015,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 2,
+    "wall_seconds": 1.058044109,
+    "cpu_seconds": 3.530826,
+    "active_cpus": 3.3371255224294245,
+    "utilization_percent": 83.4281380607356,
+    "evaluations": 400,
+    "energy": 283958.96704374015,
+    "direct_energy": 283958.96704374015,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 0,
+    "wall_seconds": 1.063159899,
+    "cpu_seconds": 3.553421,
+    "active_cpus": 3.342320382232551,
+    "utilization_percent": 83.55800955581377,
+    "evaluations": 400,
+    "energy": 277274.6391716559,
+    "direct_energy": 277274.6391716559,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 0,
+    "wall_seconds": 2.725069939,
+    "cpu_seconds": 4.518012,
+    "active_cpus": 1.6579435027850857,
+    "utilization_percent": 41.44858756962714,
+    "evaluations": 400,
+    "energy": 277274.6391716559,
+    "direct_energy": 277274.6391716559,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 1,
+    "wall_seconds": 2.69748421,
+    "cpu_seconds": 4.489746,
+    "active_cpus": 1.6644197520622375,
+    "utilization_percent": 41.61049380155593,
+    "evaluations": 400,
+    "energy": 277274.6391716559,
+    "direct_energy": 277274.6391716559,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 1,
+    "wall_seconds": 1.082170737,
+    "cpu_seconds": 3.624702,
+    "active_cpus": 3.349473309589224,
+    "utilization_percent": 83.73683273973062,
+    "evaluations": 400,
+    "energy": 277274.6391716559,
+    "direct_energy": 277274.6391716559,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 2,
+    "wall_seconds": 1.087380841,
+    "cpu_seconds": 3.620835,
+    "active_cpus": 3.3298683069219166,
+    "utilization_percent": 83.24670767304792,
+    "evaluations": 400,
+    "energy": 277274.6391716559,
+    "direct_energy": 277274.6391716559,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "eval",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 2,
+    "wall_seconds": 2.805062655,
+    "cpu_seconds": 4.507613,
+    "active_cpus": 1.6069562624439846,
+    "utilization_percent": 40.173906561099614,
+    "evaluations": 400,
+    "energy": 277274.6391716559,
+    "direct_energy": 277274.6391716559,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 0,
+    "wall_seconds": 28.836741511,
+    "cpu_seconds": 44.372227,
+    "active_cpus": 1.5387392845018175,
+    "utilization_percent": 38.46848211254544,
+    "evaluations": 2160,
+    "energy": 27.249933916725272,
+    "direct_energy": 27.249933916725407,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "opt",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 17,
+    "repetition": 0,
+    "wall_seconds": 35.408645376,
+    "cpu_seconds": 45.11103,
+    "active_cpus": 1.274011742640013,
+    "utilization_percent": 31.850293566000325,
+    "evaluations": 2015,
+    "energy": 28.026057743331773,
+    "direct_energy": 28.02605774333265,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "opt",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 0,
+    "wall_seconds": 35.813349419,
+    "cpu_seconds": 45.509141,
+    "active_cpus": 1.2707312144296705,
+    "utilization_percent": 31.768280360741763,
+    "evaluations": 2016,
+    "energy": 28.218852464873404,
+    "direct_energy": 28.218852464873407,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 18,
+    "repetition": 0,
+    "wall_seconds": 29.321190149,
+    "cpu_seconds": 44.802594,
+    "active_cpus": 1.5279937059965485,
+    "utilization_percent": 38.19984264991371,
+    "evaluations": 2136,
+    "energy": 28.40210878298818,
+    "direct_energy": 28.40210878298818,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "opt",
+    "option": "A",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 0,
+    "wall_seconds": 28.82573773,
+    "cpu_seconds": 43.623835,
+    "active_cpus": 1.5133640432244369,
+    "utilization_percent": 37.83410108061092,
+    "evaluations": 2035,
+    "energy": 26.981289370736913,
+    "direct_energy": 26.98128937073668,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "mode": "opt",
+    "option": "B",
+    "particles_per_species": 4000,
+    "species": 3,
+    "threads": 4,
+    "seed": 19,
+    "repetition": 0,
+    "wall_seconds": 36.284246526,
+    "cpu_seconds": 45.939314,
+    "active_cpus": 1.2660953002587922,
+    "utilization_percent": 31.652382506469806,
+    "evaluations": 2025,
+    "energy": 26.630631767494314,
+    "direct_energy": 26.630631767495576,
+    "accepted": false,
+    "rho_backends": [
+      1,
+      1,
+      1
+    ],
+    "force_backends": [
+      1,
+      1,
+      1
+    ],
+    "internal_threads": [
+      4,
+      4,
+      4
+    ]
+  }
+]

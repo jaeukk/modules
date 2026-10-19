@@ -1,0 +1,221 @@
+{
+  "summary": {
+    "100": {
+      "runs": 9,
+      "wall_seconds": 28.69029931,
+      "cpu_seconds": 44.151767,
+      "utilization_percent": 38.30236132768149,
+      "active_cpus": 1.5320944531072593,
+      "evaluations": 2136,
+      "milliseconds_per_evaluation": 13.547061010648148,
+      "direct_energy": 27.249933916725407,
+      "direct_force_rms_component": 0.013151857661593392,
+      "direct_force_max_abs": 0.23252019100599142,
+      "accepted": 0,
+      "phase_status_counts": {
+        "NLOPT_MAXEVAL_REACHED": 18,
+        "NLOPT_FAILURE": 9
+      }
+    },
+    "40": {
+      "runs": 9,
+      "wall_seconds": 14.895252098,
+      "cpu_seconds": 29.07504,
+      "utilization_percent": 48.79270248361168,
+      "active_cpus": 1.951708099344467,
+      "evaluations": 2035,
+      "milliseconds_per_evaluation": 7.319534200491401,
+      "direct_energy": 27.515103302819746,
+      "direct_force_rms_component": 0.01413913319092445,
+      "direct_force_max_abs": 0.23456799361203673,
+      "accepted": 0,
+      "phase_status_counts": {
+        "NLOPT_MAXEVAL_REACHED": 18,
+        "NLOPT_FAILURE": 9
+      }
+    }
+  },
+  "paired": [
+    {
+      "seed": 17,
+      "100": {
+        "wall_seconds": 29.190608118,
+        "evaluations": 2160,
+        "direct_energy": 27.249933916725407,
+        "force_rms": 0.00747547375284961,
+        "phases": [
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": -1,
+            "evaluations": 157
+          }
+        ]
+      },
+      "40": {
+        "wall_seconds": 14.815586913,
+        "evaluations": 2015,
+        "direct_energy": 27.515103302819746,
+        "force_rms": 0.02024668510487009,
+        "phases": [
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": -1,
+            "evaluations": 12
+          }
+        ]
+      },
+      "speedup_40": 1.9702633644831562
+    },
+    {
+      "seed": 18,
+      "100": {
+        "wall_seconds": 28.817914529,
+        "evaluations": 2136,
+        "direct_energy": 28.40210878298818,
+        "force_rms": 0.013579489836025093,
+        "phases": [
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": -1,
+            "evaluations": 133
+          }
+        ]
+      },
+      "40": {
+        "wall_seconds": 14.895252098,
+        "evaluations": 2035,
+        "direct_energy": 28.17461851876192,
+        "force_rms": 0.01413913319092445,
+        "phases": [
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": -1,
+            "evaluations": 32
+          }
+        ]
+      },
+      "speedup_40": 1.9347047192890015
+    },
+    {
+      "seed": 19,
+      "100": {
+        "wall_seconds": 28.200064828,
+        "evaluations": 2035,
+        "direct_energy": 26.98128937073668,
+        "force_rms": 0.013151857661593392,
+        "phases": [
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": -1,
+            "evaluations": 32
+          }
+        ]
+      },
+      "40": {
+        "wall_seconds": 15.03942745,
+        "evaluations": 2059,
+        "direct_energy": 26.96182530769672,
+        "force_rms": 0.009551432875985009,
+        "phases": [
+          {
+            "status": 5,
+            "evaluations": 1001
+          },
+          {
+            "status": 5,
+            "evaluations": 1000
+          },
+          {
+            "status": -1,
+            "evaluations": 55
+          }
+        ]
+      },
+      "speedup_40": 1.8750756916613869
+    }
+  ],
+  "repeat_checks": [
+    {
+      "seed": 17,
+      "history": 100,
+      "distinct_endpoint_hashes": 1,
+      "distinct_direct_energies": 1,
+      "distinct_evaluation_counts": 1
+    },
+    {
+      "seed": 17,
+      "history": 40,
+      "distinct_endpoint_hashes": 1,
+      "distinct_direct_energies": 1,
+      "distinct_evaluation_counts": 1
+    },
+    {
+      "seed": 18,
+      "history": 100,
+      "distinct_endpoint_hashes": 1,
+      "distinct_direct_energies": 1,
+      "distinct_evaluation_counts": 1
+    },
+    {
+      "seed": 18,
+      "history": 40,
+      "distinct_endpoint_hashes": 1,
+      "distinct_direct_energies": 1,
+      "distinct_evaluation_counts": 1
+    },
+    {
+      "seed": 19,
+      "history": 100,
+      "distinct_endpoint_hashes": 1,
+      "distinct_direct_energies": 1,
+      "distinct_evaluation_counts": 1
+    },
+    {
+      "seed": 19,
+      "history": 40,
+      "distinct_endpoint_hashes": 1,
+      "distinct_direct_energies": 1,
+      "distinct_evaluation_counts": 1
+    }
+  ],
+  "wall_speedup_40": 1.9261372094435565,
+  "elapsed_reduction_percent": 48.08261866822608,
+  "per_evaluation_speedup_40": 1.8508091689411956,
+  "accepted_endpoints": 0,
+  "validation": "All 18 processes completed with empty stderr; initial/final energy and force checks against direct sums passed; initial snapshots match per seed; endpoint hashes verified."
+}

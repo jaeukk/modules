@@ -1,0 +1,46 @@
+[
+  {
+    "mode": "eval",
+    "particles_per_species": 4000,
+    "option": "A",
+    "runs": 9,
+    "wall_seconds": 1.068061861,
+    "cpu_seconds": 3.568344,
+    "active_cpus": 3.3298683069219166,
+    "utilization_percent": 83.24670767304792,
+    "evaluations": 400
+  },
+  {
+    "mode": "eval",
+    "particles_per_species": 4000,
+    "option": "B",
+    "runs": 9,
+    "wall_seconds": 2.716475166,
+    "cpu_seconds": 4.507434,
+    "active_cpus": 1.6619065604490715,
+    "utilization_percent": 41.547664011226786,
+    "evaluations": 400
+  },
+  {
+    "mode": "opt",
+    "particles_per_species": 4000,
+    "option": "A",
+    "runs": 3,
+    "wall_seconds": 28.836741511,
+    "cpu_seconds": 44.372227,
+    "active_cpus": 1.5279937059965485,
+    "utilization_percent": 38.19984264991371,
+    "evaluations": 2136
+  },
+  {
+    "mode": "opt",
+    "particles_per_species": 4000,
+    "option": "B",
+    "runs": 3,
+    "wall_seconds": 35.813349419,
+    "cpu_seconds": 45.509141,
+    "active_cpus": 1.2707312144296705,
+    "utilization_percent": 31.768280360741763,
+    "evaluations": 2016
+  }
+]

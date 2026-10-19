@@ -81,7 +81,7 @@ are shared between policies, with policy and size order rotated.
 
 The evaluator benchmark performs 400 warm `SetConfiguration + EnergyAndAllForce`
 calls per batch, three repetitions per seed. The optimization benchmark calls
-`RelaxStructure_NLOPT`, as GetMultiCCO does, with default history 100 and a cap of
+`RelaxStructure_NLOPT`, as GetMultiCCO does, with history 40 by default and a cap of
 1,000 evaluations per coordinate-scaling phase. It includes that optimizer's
 configuration handling and progress I/O, but excludes fixture setup and the
 post-run independent direct check. Each process gets a separate output directory.
@@ -91,3 +91,10 @@ CPU utilization is process CPU time / wall time / four. CPU accounting includes
 contact and FINUFFT workers, as well as synchronization. Research datasets are not read or changed. Warm evaluation timing isolates
 scheduling; complete optimizer trajectories can differ between policies, so a
 bounded optimization is not a measurement of time to an accepted ground state.
+
+Use `--history 100` to reproduce the original A/B comparison, which explicitly
+used history 100. `bench_threading.out` also accepts an optional final `HISTORY`
+argument and records history and contact strength in each JSON measurement.
+Contact strength stays 100. See the [final report](../../THREADING_RESULTS.html)
+for historical results; the separate strength-1 ground-state test does not establish
+time to a ground state at strength 100.

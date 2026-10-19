@@ -267,7 +267,7 @@ try {
 	else if (mode == "opt") {
 		const std::string backend = argc > 8 ? argv[8] : "direct";
 		if (argc > 9)
-			StructureOptimization_LBFGSHistory = std::stoul(argv[9]);  // L-BFGS correction pairs (default 100)
+			StructureOptimization_LBFGSHistory = std::stoul(argv[9]);  // L-BFGS correction pairs (default 40)
 		if (backend != "direct" && backend != "finufft")
 			throw std::invalid_argument("backend must be direct or finufft");
 		Opt(s, backend == "direct" ? Backend::Direct : Backend::FinufftType1);

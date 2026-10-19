@@ -1,0 +1,9 @@
+{
+  "source": "/home/jaeukk/orca/workspaces/modules/ccoptimization-improvements/apps/CCOptimization/tests/threading/bench_threading.cpp",
+  "changes": [
+    "Write initial and endpoint MSPB v1 snapshots outside timed intervals",
+    "Evaluate both A and B on each final configuration against the direct reference",
+    "Record evaluator agreement and final direct force residuals"
+  ],
+  "unchanged": "Potential implementation, optimizer, settings, warmup, and timing path"
+}

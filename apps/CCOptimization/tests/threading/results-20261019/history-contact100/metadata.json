@@ -1,0 +1,52 @@
+{
+  "commit": "856d6d104dd8a114a63051f61a500899d53e5ac2",
+  "dirty": false,
+  "binary_sha256": "b93fc1ae4fe0430db5682e7066d6cf93bcac61936020e27b3a6276123a5f1b1c",
+  "cpu_model": "AMD Ryzen 5 7500F 6-Core Processor",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "affinity": [
+    0,
+    2,
+    4,
+    6
+  ],
+  "species": 3,
+  "dimension": 2,
+  "particles_per_species": [
+    4000
+  ],
+  "seeds": [
+    17,
+    18,
+    19
+  ],
+  "threads": 4,
+  "phi": 0.7,
+  "chi_per_species": 0.3,
+  "contact_strength": 100,
+  "finufft_tolerance": 1e-12,
+  "opt_maxsteps_per_phase": 1000,
+  "environment": {
+    "OMP_NUM_THREADS": "4",
+    "OMP_THREAD_LIMIT": "4",
+    "OMP_DYNAMIC": "false",
+    "OMP_WAIT_POLICY": "PASSIVE",
+    "OMP_PROC_BIND": "false",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "option_A": "Concurrent species, internal FINUFFT threads=1",
+  "comparison": "Option A, L-BFGS history 40 versus 100",
+  "histories": [
+    40,
+    100
+  ],
+  "repetitions_per_seed": 3,
+  "benchmark_binary_sha256": "5b36caebf3cdd5d9a4a4bbb7a9ab0d00d702617efb5e35484d188187a1845673",
+  "benchmark_source_sha256": "86b8294930d11e6249fa2f51b679162bbe247d4f1653da7bd74eaf9a9f75da5d",
+  "source_dirty": false,
+  "started_unix": 1792387820.7412739,
+  "timing": "Warm bounded C++ optimization, including callback/configuration/optimizer/progress work; excludes setup, warmup, snapshots, and direct checks",
+  "cap": "1000 objective evaluations per each of three scaling phases; early exits remain unchanged",
+  "completed_unix": 1792388225.483935
+}

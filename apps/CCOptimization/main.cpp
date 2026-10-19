@@ -1490,11 +1490,19 @@ int GetMultiCCO(int argc, char ** argv){
 					ofile << "Species schedule: " << (potential->GetSequentialFinufftSpecies() ? "sequential" : "concurrent") << '\n';
 				}
 				else if (tempstring2 == "history"){
-					// L-BFGS correction pairs kept by RelaxStructure_NLOPT (default 100).
-					if (!(ifile >> StructureOptimization_LBFGSHistory) || StructureOptimization_LBFGSHistory < 1) {
+					// L-BFGS correction pairs kept by RelaxStructure_NLOPT (default 40).
+					// NLopt takes an unsigned int. Reject negative, fractional, trailing,
+					// and overflowing input before changing the active setting.
+					std::string token;
+					ifile >> token;
+					std::istringstream value(token);
+					unsigned int history = 0;
+					if (token.empty() || token.find_first_not_of("0123456789") != std::string::npos ||
+						!(value >> history) || !value.eof() || history == 0) {
 						ofile << "Expected: history N (N >= 1)\n";
 						return 1;
 					}
+					StructureOptimization_LBFGSHistory = history;
 					ofile << "\nL-BFGS history = " << StructureOptimization_LBFGSHistory << "\n";
 				}
 				else if (tempstring2 == "export") {
@@ -1524,6 +1532,7 @@ int GetMultiCCO(int argc, char ** argv){
 			ofile << "\nNumerical optimizer is "<< algorithm <<std::endl;
 			ofile << "Energy tolerance is "<< tolerance <<std::endl;
 			ofile << "Max. steps of evaluations is "<< max_steps <<std::endl;
+			ofile << "L-BFGS history in use = " << StructureOptimization_LBFGSHistory << '\n';
 
 
 			if (strcmp (InitCondition.c_str(), "random") == 0){

@@ -1,0 +1,406 @@
+{
+  "pairs": [
+    {
+      "diameter": 0.9440697438826297,
+      "translation_relative": [
+        6.870124910532183e-16,
+        -1.3794919433592288e-15
+      ],
+      "translation_cartesian": [
+        7.525844772753276e-14,
+        -1.511157710548977e-13
+      ],
+      "labeled_rms": 0.5496297222263926,
+      "labeled_rms_in_diameters": 0.5821918621880172,
+      "labeled_max": 2.6633047936676615,
+      "labeled_median": 0.3966741722582362,
+      "labeled_p95": 1.0320687257993197,
+      "symmetric_same_species_nearest_rms": 0.4890686948616244,
+      "symmetric_same_species_nearest_within_1pct_diameter": 0.00016666666666666666,
+      "symmetric_same_species_nearest_within_10pct_diameter": 0.04683333333333333,
+      "by_species": [
+        {
+          "species": 0,
+          "labeled_rms": 0.5536239089118843,
+          "symmetric_nearest_rms": 0.4893113099267291
+        },
+        {
+          "species": 1,
+          "labeled_rms": 0.5495612112189235,
+          "symmetric_nearest_rms": 0.4908488226480206
+        },
+        {
+          "species": 2,
+          "labeled_rms": 0.5456753038838207,
+          "symmetric_nearest_rms": 0.4870384380762965
+        }
+      ],
+      "byte_identical": false,
+      "seed": 17,
+      "energy_A": 27.249933916725407,
+      "energy_B": 27.137165264751548,
+      "energy_relative_difference": 0.004138309190711247
+    },
+    {
+      "diameter": 0.9440697438826297,
+      "translation_relative": [
+        -1.7013384153630806e-15,
+        -2.254494841030155e-15
+      ],
+      "translation_cartesian": [
+        -1.8637228560889064e-13,
+        -2.469675360422479e-13
+      ],
+      "labeled_rms": 0.5027452046290052,
+      "labeled_rms_in_diameters": 0.5325297287479943,
+      "labeled_max": 2.3071460733552502,
+      "labeled_median": 0.35266229714424685,
+      "labeled_p95": 0.9589186737980229,
+      "symmetric_same_species_nearest_rms": 0.45250785469846244,
+      "symmetric_same_species_nearest_within_1pct_diameter": 0.0005833333333333334,
+      "symmetric_same_species_nearest_within_10pct_diameter": 0.0605,
+      "by_species": [
+        {
+          "species": 0,
+          "labeled_rms": 0.5054169444505588,
+          "symmetric_nearest_rms": 0.45091478724663464
+        },
+        {
+          "species": 1,
+          "labeled_rms": 0.5036767909405008,
+          "symmetric_nearest_rms": 0.45232280731618
+        },
+        {
+          "species": 2,
+          "labeled_rms": 0.4991208519612464,
+          "symmetric_nearest_rms": 0.45427965870743836
+        }
+      ],
+      "byte_identical": false,
+      "seed": 18,
+      "energy_A": 28.40210878298818,
+      "energy_B": 28.164066533586674,
+      "energy_relative_difference": 0.008381147020466464
+    },
+    {
+      "diameter": 0.9440697438826297,
+      "translation_relative": [
+        -1.476375498977226e-16,
+        2.180240085394322e-15
+      ],
+      "translation_cartesian": [
+        -1.617288328275544e-14,
+        2.3883333510949196e-13
+      ],
+      "labeled_rms": 0.5485484876256569,
+      "labeled_rms_in_diameters": 0.5810465711671557,
+      "labeled_max": 2.864836078038355,
+      "labeled_median": 0.3888899724717908,
+      "labeled_p95": 1.0494448937567218,
+      "symmetric_same_species_nearest_rms": 0.4832540827567238,
+      "symmetric_same_species_nearest_within_1pct_diameter": 0.00075,
+      "symmetric_same_species_nearest_within_10pct_diameter": 0.04741666666666667,
+      "by_species": [
+        {
+          "species": 0,
+          "labeled_rms": 0.5491046698833152,
+          "symmetric_nearest_rms": 0.4870059158502943
+        },
+        {
+          "species": 1,
+          "labeled_rms": 0.5548466023185867,
+          "symmetric_nearest_rms": 0.4842348919364961
+        },
+        {
+          "species": 2,
+          "labeled_rms": 0.5416139208301811,
+          "symmetric_nearest_rms": 0.4784823224124309
+        }
+      ],
+      "byte_identical": false,
+      "seed": 19,
+      "energy_A": 26.98128937073668,
+      "energy_B": 26.213170995107973,
+      "energy_relative_difference": 0.02846855704612066
+    }
+  ],
+  "repeat_controls": [
+    {
+      "diameter": 0.9440697438826297,
+      "translation_relative": [
+        0.0,
+        0.0
+      ],
+      "translation_cartesian": [
+        0.0,
+        0.0
+      ],
+      "labeled_rms": 0.0,
+      "labeled_rms_in_diameters": 0.0,
+      "labeled_max": 0.0,
+      "labeled_median": 0.0,
+      "labeled_p95": 0.0,
+      "symmetric_same_species_nearest_rms": 0.0,
+      "symmetric_same_species_nearest_within_1pct_diameter": 1.0,
+      "symmetric_same_species_nearest_within_10pct_diameter": 1.0,
+      "by_species": [
+        {
+          "species": 0,
+          "labeled_rms": 0.0,
+          "symmetric_nearest_rms": 0.0
+        },
+        {
+          "species": 1,
+          "labeled_rms": 0.0,
+          "symmetric_nearest_rms": 0.0
+        },
+        {
+          "species": 2,
+          "labeled_rms": 0.0,
+          "symmetric_nearest_rms": 0.0
+        }
+      ],
+      "byte_identical": true,
+      "seed": 17,
+      "option": "A",
+      "energy_difference": 0.0
+    },
+    {
+      "diameter": 0.9440697438826297,
+      "translation_relative": [
+        -2.3893658172945565e-15,
+        1.933075751142132e-15
+      ],
+      "translation_cartesian": [
+        -2.617419112527992e-13,
+        2.1175783885335771e-13
+      ],
+      "labeled_rms": 0.5579349803774498,
+      "labeled_rms_in_diameters": 0.5909891551898039,
+      "labeled_max": 2.661195218059107,
+      "labeled_median": 0.4048030871206756,
+      "labeled_p95": 1.039816819358599,
+      "symmetric_same_species_nearest_rms": 0.4947952587174213,
+      "symmetric_same_species_nearest_within_1pct_diameter": 0.00075,
+      "symmetric_same_species_nearest_within_10pct_diameter": 0.04125,
+      "by_species": [
+        {
+          "species": 0,
+          "labeled_rms": 0.5517136067976534,
+          "symmetric_nearest_rms": 0.49300616446979595
+        },
+        {
+          "species": 1,
+          "labeled_rms": 0.5682784176005419,
+          "symmetric_nearest_rms": 0.5009401682363172
+        },
+        {
+          "species": 2,
+          "labeled_rms": 0.5536660213071635,
+          "symmetric_nearest_rms": 0.4903783373986563
+        }
+      ],
+      "byte_identical": false,
+      "seed": 17,
+      "option": "B",
+      "energy_difference": 0.3512118703478109
+    }
+  ],
+  "replay_vs_original": [
+    {
+      "seed": 17,
+      "option": "A",
+      "repetition": 0,
+      "prior_energy": 27.249933916725407,
+      "replay_energy": 27.249933916725407,
+      "energy_difference": 0.0,
+      "prior_evaluations": 2160,
+      "replay_evaluations": 2160
+    },
+    {
+      "seed": 17,
+      "option": "B",
+      "repetition": 0,
+      "prior_energy": 28.02605774333265,
+      "replay_energy": 27.137165264751548,
+      "energy_difference": -0.8888924785811021,
+      "prior_evaluations": 2015,
+      "replay_evaluations": 2015
+    },
+    {
+      "seed": 18,
+      "option": "B",
+      "repetition": 0,
+      "prior_energy": 28.218852464873407,
+      "replay_energy": 28.164066533586674,
+      "energy_difference": -0.05478593128673381,
+      "prior_evaluations": 2016,
+      "replay_evaluations": 2015
+    },
+    {
+      "seed": 18,
+      "option": "A",
+      "repetition": 0,
+      "prior_energy": 28.40210878298818,
+      "replay_energy": 28.40210878298818,
+      "energy_difference": 0.0,
+      "prior_evaluations": 2136,
+      "replay_evaluations": 2136
+    },
+    {
+      "seed": 19,
+      "option": "A",
+      "repetition": 0,
+      "prior_energy": 26.98128937073668,
+      "replay_energy": 26.98128937073668,
+      "energy_difference": 0.0,
+      "prior_evaluations": 2035,
+      "replay_evaluations": 2035
+    },
+    {
+      "seed": 19,
+      "option": "B",
+      "repetition": 0,
+      "prior_energy": 26.630631767495576,
+      "replay_energy": 26.213170995107973,
+      "energy_difference": -0.41746077238760293,
+      "prior_evaluations": 2025,
+      "replay_evaluations": 2016
+    },
+    {
+      "seed": 17,
+      "option": "B",
+      "repetition": 1,
+      "prior_energy": 28.02605774333265,
+      "replay_energy": 27.48837713509936,
+      "energy_difference": -0.5376806082332912,
+      "prior_evaluations": 2015,
+      "replay_evaluations": 2075
+    },
+    {
+      "seed": 17,
+      "option": "A",
+      "repetition": 1,
+      "prior_energy": 27.249933916725407,
+      "replay_energy": 27.249933916725407,
+      "energy_difference": 0.0,
+      "prior_evaluations": 2160,
+      "replay_evaluations": 2160
+    }
+  ],
+  "all_initial_snapshots_identical_within_seed": true,
+  "max_same_endpoint_AB_energy_error": 1.7763568394002505e-14,
+  "max_same_endpoint_AB_force_component_error": 2.0469737016526324e-16,
+  "max_direct_force_component": 1.0999646176615623,
+  "accepted_endpoints": 0,
+  "original_endpoint_pairs": [
+    {
+      "particles_per_species": 300,
+      "seed": 17,
+      "energy_A": 1.342292951725501,
+      "energy_B": 2.203207462483343,
+      "relative_energy_difference": 0.39075508113405866,
+      "evaluations_A": 3004,
+      "evaluations_B": 2015
+    },
+    {
+      "particles_per_species": 300,
+      "seed": 18,
+      "energy_A": 1.4661668772316532,
+      "energy_B": 1.9988389699952267,
+      "relative_energy_difference": 0.2664907482591484,
+      "evaluations_A": 3003,
+      "evaluations_B": 2015
+    },
+    {
+      "particles_per_species": 300,
+      "seed": 19,
+      "energy_A": 1.1704949867521361,
+      "energy_B": 1.2934006450443265,
+      "relative_energy_difference": 0.09502520256434403,
+      "evaluations_A": 3003,
+      "evaluations_B": 3003
+    },
+    {
+      "particles_per_species": 600,
+      "seed": 17,
+      "energy_A": 2.3751540590267934,
+      "energy_B": 3.9984601856252313,
+      "relative_energy_difference": 0.4059828161936805,
+      "evaluations_A": 3003,
+      "evaluations_B": 2015
+    },
+    {
+      "particles_per_species": 600,
+      "seed": 18,
+      "energy_A": 2.782229107553616,
+      "energy_B": 2.7675619612795836,
+      "relative_energy_difference": 0.005271724831794629,
+      "evaluations_A": 3003,
+      "evaluations_B": 3003
+    },
+    {
+      "particles_per_species": 600,
+      "seed": 19,
+      "energy_A": 2.926110068434613,
+      "energy_B": 2.7974160170191285,
+      "relative_energy_difference": 0.04398127493691047,
+      "evaluations_A": 3003,
+      "evaluations_B": 3003
+    },
+    {
+      "particles_per_species": 1000,
+      "seed": 17,
+      "energy_A": 4.196505479503842,
+      "energy_B": 4.190122488577204,
+      "relative_energy_difference": 0.001521025281109042,
+      "evaluations_A": 3003,
+      "evaluations_B": 3003
+    },
+    {
+      "particles_per_species": 1000,
+      "seed": 18,
+      "energy_A": 4.827885896892229,
+      "energy_B": 4.7932361217378014,
+      "relative_energy_difference": 0.007177007885942827,
+      "evaluations_A": 3003,
+      "evaluations_B": 3003
+    },
+    {
+      "particles_per_species": 1000,
+      "seed": 19,
+      "energy_A": 7.501764755338781,
+      "energy_B": 4.683829819463066,
+      "relative_energy_difference": 0.37563627063488975,
+      "evaluations_A": 2015,
+      "evaluations_B": 3003
+    },
+    {
+      "particles_per_species": 4000,
+      "seed": 17,
+      "energy_A": 27.249933916725407,
+      "energy_B": 28.02605774333265,
+      "relative_energy_difference": 0.027692936113780816,
+      "evaluations_A": 2160,
+      "evaluations_B": 2015
+    },
+    {
+      "particles_per_species": 4000,
+      "seed": 18,
+      "energy_A": 28.40210878298818,
+      "energy_B": 28.218852464873407,
+      "relative_energy_difference": 0.006452208162252225,
+      "evaluations_A": 2136,
+      "evaluations_B": 2016
+    },
+    {
+      "particles_per_species": 4000,
+      "seed": 19,
+      "energy_A": 26.98128937073668,
+      "energy_B": 26.630631767495576,
+      "relative_energy_difference": 0.012996324913271896,
+      "evaluations_A": 2035,
+      "evaluations_B": 2025
+    }
+  ]
+}

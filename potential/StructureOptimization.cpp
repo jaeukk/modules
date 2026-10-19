@@ -10,7 +10,7 @@ const double MaxLength2=4000000;
 const double MinVolumeCoeff = 0.0;//structure is invalid if Volume < MinVolumeCoeff*|a1|*|a2|*...*|ad|
 size_t StructureOptimization_SaveConfigurationInterval=std::numeric_limits<size_t>::max();
 bool StructureOptimization_SaveNumberedConfiguration = false;
-size_t StructureOptimization_LBFGSHistory = 100;
+size_t StructureOptimization_LBFGSHistory = 40;
 
 //codes related to elastic constants
 //\epsilon_{ij}=C_{ijkl}*e_{kl}

@@ -1,0 +1,134 @@
+[
+  {
+    "mode": "eval",
+    "particles_per_species": 300,
+    "option": "A",
+    "runs": 9,
+    "wall_seconds": 0.163859595,
+    "cpu_seconds": 0.390719,
+    "active_cpus": 2.3794078495335254,
+    "utilization_percent": 59.48519623833813,
+    "evaluations": 400
+  },
+  {
+    "mode": "eval",
+    "particles_per_species": 300,
+    "option": "B",
+    "runs": 9,
+    "wall_seconds": 1.234998655,
+    "cpu_seconds": 1.474153,
+    "active_cpus": 1.1946043478285597,
+    "utilization_percent": 29.865108695713992,
+    "evaluations": 400
+  },
+  {
+    "mode": "eval",
+    "particles_per_species": 600,
+    "option": "A",
+    "runs": 9,
+    "wall_seconds": 0.24153008,
+    "cpu_seconds": 0.648371,
+    "active_cpus": 2.7072850620910325,
+    "utilization_percent": 67.6821265522758,
+    "evaluations": 400
+  },
+  {
+    "mode": "eval",
+    "particles_per_species": 600,
+    "option": "B",
+    "runs": 9,
+    "wall_seconds": 1.319685034,
+    "cpu_seconds": 1.63622,
+    "active_cpus": 1.237975960951422,
+    "utilization_percent": 30.94939902378555,
+    "evaluations": 400
+  },
+  {
+    "mode": "eval",
+    "particles_per_species": 1000,
+    "option": "A",
+    "runs": 9,
+    "wall_seconds": 0.322155236,
+    "cpu_seconds": 0.949561,
+    "active_cpus": 2.953056410477071,
+    "utilization_percent": 73.82641026192677,
+    "evaluations": 400
+  },
+  {
+    "mode": "eval",
+    "particles_per_species": 1000,
+    "option": "B",
+    "runs": 9,
+    "wall_seconds": 1.423358446,
+    "cpu_seconds": 1.846492,
+    "active_cpus": 1.2963141952950625,
+    "utilization_percent": 32.40785488237656,
+    "evaluations": 400
+  },
+  {
+    "mode": "opt",
+    "particles_per_species": 300,
+    "option": "A",
+    "runs": 3,
+    "wall_seconds": 2.81463737,
+    "cpu_seconds": 4.591021,
+    "active_cpus": 1.6316198337763081,
+    "utilization_percent": 40.79049584440771,
+    "evaluations": 3003
+  },
+  {
+    "mode": "opt",
+    "particles_per_species": 300,
+    "option": "B",
+    "runs": 3,
+    "wall_seconds": 7.203516776,
+    "cpu_seconds": 8.415499,
+    "active_cpus": 1.1698841167742284,
+    "utilization_percent": 29.247102919355708,
+    "evaluations": 2015
+  },
+  {
+    "mode": "opt",
+    "particles_per_species": 600,
+    "option": "A",
+    "runs": 3,
+    "wall_seconds": 5.077426929,
+    "cpu_seconds": 8.301175,
+    "active_cpus": 1.6328662363700164,
+    "utilization_percent": 40.82165590925041,
+    "evaluations": 3003
+  },
+  {
+    "mode": "opt",
+    "particles_per_species": 600,
+    "option": "B",
+    "runs": 3,
+    "wall_seconds": 12.927072071,
+    "cpu_seconds": 15.321833,
+    "active_cpus": 1.1841287599327563,
+    "utilization_percent": 29.60321899831891,
+    "evaluations": 3003
+  },
+  {
+    "mode": "opt",
+    "particles_per_species": 1000,
+    "option": "A",
+    "runs": 3,
+    "wall_seconds": 8.092510389,
+    "cpu_seconds": 13.324337,
+    "active_cpus": 1.6465023039218494,
+    "utilization_percent": 41.162557598046234,
+    "evaluations": 3003
+  },
+  {
+    "mode": "opt",
+    "particles_per_species": 1000,
+    "option": "B",
+    "runs": 3,
+    "wall_seconds": 16.213157916,
+    "cpu_seconds": 19.507578,
+    "active_cpus": 1.202263871171191,
+    "utilization_percent": 30.05659677927978,
+    "evaluations": 3003
+  }
+]

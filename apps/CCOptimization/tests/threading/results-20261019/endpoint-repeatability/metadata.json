@@ -1,0 +1,47 @@
+{
+  "commit": "856d6d104dd8a114a63051f61a500899d53e5ac2",
+  "dirty": false,
+  "binary_sha256": "b93fc1ae4fe0430db5682e7066d6cf93bcac61936020e27b3a6276123a5f1b1c",
+  "cpu_model": "AMD Ryzen 5 7500F 6-Core Processor",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "affinity": [
+    0,
+    2,
+    4,
+    6
+  ],
+  "species": 3,
+  "dimension": 2,
+  "particles_per_species": [
+    4000
+  ],
+  "seeds": [
+    17,
+    18,
+    19
+  ],
+  "threads": 4,
+  "phi": 0.7,
+  "chi_per_species": 0.3,
+  "contact_strength": 100,
+  "history": 100,
+  "finufft_tolerance": 1e-12,
+  "eval_calls": 400,
+  "opt_maxsteps_per_phase": 1000,
+  "environment": {
+    "OMP_NUM_THREADS": "4",
+    "OMP_THREAD_LIMIT": "4",
+    "OMP_DYNAMIC": "false",
+    "OMP_WAIT_POLICY": "PASSIVE",
+    "OMP_PROC_BIND": "false"
+  },
+  "option_A": "Concurrent species, internal FINUFFT threads=1",
+  "option_B": "Sequential species, internal FINUFFT threads=4, extra contact worker time-shares affinity",
+  "purpose": "Compare bounded endpoints; these are not accepted ground states",
+  "capture_sha256": "8d325d3aeb72f00b38c5292922fca3dd162344a389e1cc2a941591d4d805359d",
+  "capture_source_sha256": "d9f9489c89d2ea6bd0c52b1669e0b32eb4e4df8f5379ba944f9f7dd55af847f2",
+  "source_dirty": false,
+  "started_unix": 1792386516.4254174,
+  "original_results": "/tmp/cco-options-ab-4000-856d6d1-20261019/results.json",
+  "repeats": "Two runs per option for seed 17; one per option for seeds 18 and 19"
+}

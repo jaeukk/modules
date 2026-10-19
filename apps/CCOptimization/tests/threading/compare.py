@@ -61,9 +61,10 @@ def main():
     parser.add_argument("--output", required=True, type=Path, help="New directory for metadata, logs, and measurements")
     parser.add_argument("--eval-calls", type=int, default=400)
     parser.add_argument("--opt-maxsteps", type=int, default=1000, help="Evaluation cap per NLopt scaling phase")
+    parser.add_argument("--history", type=int, default=40, help="L-BFGS correction pairs; use 100 to reproduce the original A/B comparison")
     args = parser.parse_args()
-    if args.eval_calls < 1 or args.opt_maxsteps < 1:
-        parser.error("Evaluation counts must be positive")
+    if args.eval_calls < 1 or args.opt_maxsteps < 1 or args.history < 1:
+        parser.error("Evaluation counts and history must be positive")
     binary = Path(__file__).resolve().parents[2] / "bench_threading.out"
     if not binary.is_file():
         parser.error("Build bench_threading.out with USE_FINUFFT=1 first")
@@ -80,7 +81,7 @@ def main():
                     cpu_model=next(line.split(":", 1)[1].strip() for line in Path("/proc/cpuinfo").read_text().splitlines() if line.startswith("model name")),
                     platform=platform.platform(), affinity=cpus, species=3, dimension=2,
                     particles_per_species=[300, 600, 1000], seeds=[17, 18, 19], threads=4,
-                    phi=.70, chi_per_species=.30, contact_strength=100, history=100,
+                    phi=.70, chi_per_species=.30, contact_strength=100, history=args.history,
                     finufft_tolerance=1e-12, eval_calls=args.eval_calls,
                     opt_maxsteps_per_phase=args.opt_maxsteps,
                     environment={k: env[k] for k in ("OMP_NUM_THREADS", "OMP_THREAD_LIMIT", "OMP_DYNAMIC", "OMP_WAIT_POLICY", "OMP_PROC_BIND")},
@@ -102,7 +103,7 @@ def main():
                         folder = args.output / name
                         folder.mkdir()
                         iterations = args.eval_calls if mode == "eval" else args.opt_maxsteps
-                        command = [str(binary), mode, option, str(size), "4", str(seed), str(iterations), str(repetition)]
+                        command = [str(binary), mode, option, str(size), "4", str(seed), str(iterations), str(repetition), str(args.history)]
                         (folder / "command.json").write_text(json.dumps(command) + "\n")
                         process = subprocess.run(command, cwd=folder, env=env, capture_output=True, text=True, timeout=300)
                         (folder / "stdout.log").write_text(process.stdout)
