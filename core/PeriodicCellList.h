@@ -650,6 +650,17 @@ public:
 	//allocate and generate internal cell lists, so that calling IterateThroughNeighbors with the same Rc is thread-safe
 	void PrepareIterateThroughNeighbors(double Rc) const
 	{
+		double newRc2;
+		this->SelectVicinityLattices(Rc, newRc2);
+	}
+
+	/** \brief Prepare the vicinity lattices for a cutoff (the body of PrepareIterateThroughNeighbors) and report the
+	 *  selection it makes, which is the one every later IterateThroughNeighbors call with this Rc makes.
+	 *  \param Rc Neighbor cutoff radius.
+	 *  \param[out] newRc2 Square of the enlarged cutoff that members of the list are tested against.
+	 *  \return Number of leading members of VicinityLattices that are iterated. */
+	size_t SelectVicinityLattices(double Rc, double & newRc2) const
+	{
 		//debug temp
 		//std::cerr<<"IterateThroughNeighbors for Rc="<<Rc<<'\n';
 
@@ -664,7 +675,7 @@ public:
 				maxdist.MinusFrom(this->BasisVector[i] * (1.0 / this->CellRank[i]));
 		}
 		double newRc = Rc + std::sqrt(maxdist.Modulus2());
-		double newRc2 = newRc*newRc;
+		newRc2 = newRc*newRc;
 
 		auto IterationEnd = this->VicinityLattices.end();
 		//Get new VicinityLattice if necessary
@@ -703,6 +714,56 @@ public:
 			else
 				IterationEnd = ub->second + this->VicinityLattices.begin();
 		}
+		return static_cast<size_t>(IterationEnd - this->VicinityLattices.begin());
+	}
+
+	/** \brief Flat copy of what IterateThroughNeighbors walks for one cutoff, for callers that run their own inner
+	 *  loop over neighbors and need its exact visiting order (ExportNeighborCells). */
+	struct NeighborCells
+	{
+		signed long rank[::MaxDimension];	//< cells along each basis vector (0 beyond the dimension)
+		std::vector<size_t> start;	//< first entry in particle of each cell, then the particle count; cell (i_0, i_1, ...) is cell (i_0 rank_1 + i_1) rank_2 + ...
+		std::vector<size_t> particle;	//< particle indices, cell after cell, each cell in the order of the cell list
+		std::vector<signed long> offset;	//< Dimension cell-index offsets per visited cell image, in the order of the visits
+	};
+
+	/** \brief Export the cells and the cell offsets that IterateThroughNeighbors(point, Rc, ...) visits.
+	 *  For a point in cell (i_0, i_1, ...), IterateThroughNeighbors visits the cell images (i_d + offset_d) in the
+	 *  order of result.offset: image index n_d = i_d + offset_d lies in cell n_d mod rank_d (floored), shifted by
+	 *  floor(n_d / rank_d) basis vectors, and within a cell the particles come in the order of result.particle.
+	 *  Prepares the lists as PrepareIterateThroughNeighbors(Rc) does and exports the selection that makes
+	 *  (SelectVicinityLattices); export again after anything that changes the cells or the basis vectors.
+	 *  \param Rc Neighbor cutoff radius.
+	 *  \param[out] result Receives the cell ranks, the cell contents and the offsets. */
+	void ExportNeighborCells(double Rc, NeighborCells & result) const
+	{
+		double newRc2 = 0.0;
+		const size_t count = this->SelectVicinityLattices(Rc, newRc2);
+		result.offset.clear();
+		for (size_t m = 0; m<count; m++)
+		{
+			//the test IterateThroughNeighbors applies to each member
+			if (this->VicinityLattices[m].CartesianCoordinates.Modulus2()>newRc2)
+			{
+				if (this->SortedVicinityList)
+					break;
+				else
+					continue;
+			}
+			for (DimensionType i = 0; i<this->Dimension; i++)
+				result.offset.push_back(this->VicinityLattices[m].LatticeShift[i]);
+		}
+		for (DimensionType i = 0; i< ::MaxDimension; i++)
+			result.rank[i] = i<this->Dimension ? this->CellRank[i] : 0;
+		result.start.resize(this->Cells.size() + 1);
+		result.particle.clear();
+		result.particle.reserve(this->NumParticle());
+		for (size_t c = 0; c<this->Cells.size(); c++)
+		{
+			result.start[c] = result.particle.size();
+			result.particle.insert(result.particle.end(), this->Cells[c].begin(), this->Cells[c].end());
+		}
+		result.start[this->Cells.size()] = result.particle.size();
 	}
 
 	/** \brief Iterate over neighbors within Rc of a point in relative coordinates.

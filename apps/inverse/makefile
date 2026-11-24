@@ -43,7 +43,7 @@ INC := -I$(core) -I$(pairstat) -I$(potential) -I$(misc) -I$(visualization) -I. $
 CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o $(core)/obj/ConfigurationIO.o \
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
 PAIRSTAT_OBJS := $(pairstat)/obj/StructureFactor.o
-POTENTIAL_OBJS := $(potential)/obj/Potential.o $(potential)/obj/StructureOptimization.o
+POTENTIAL_OBJS := $(potential)/obj/Potential.o $(potential)/obj/StructureOptimization.o $(potential)/obj/LuksanPLIS.o
 
 .PHONY: all objs clean core-objs pairstat-objs potential-objs
 all: $(TARGET)

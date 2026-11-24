@@ -237,6 +237,31 @@ public:
 		return this->FinufftNumThreads;
 	}
 
+	/** \brief Choose how the Type 2 force transforms carry the Cartesian components (off by default).
+		Off: one transform per component (ntransf = dimension), each force component the imaginary part of its
+		output. On: the mode coefficients are made Hermitian, so each transform's output is real, and two components
+		share one transform as its real and imaginary parts (ntransf = (dimension + 1) / 2, see StartForces); in 2D
+		this halves the Type 2 work. Both give the forces of Force() within the FINUFFT tolerance; they differ from
+		each other at rounding level. Destroys the Type 2 plans, which depend on ntransf.
+		\param paired  True to pair components. */
+	void SetFinufftPairedForces(bool paired)
+	{
+		if(paired==this->FinufftPairedForces)
+			return;
+		this->FinufftPairedForces=paired;
+#ifdef CCPOTENTIAL_USE_FINUFFT
+		FinufftPlanCache::Keep(this->FinufftCache.plan2, 0);
+		this->FinufftCache.status2=FinufftNotCalled;
+#endif
+	}
+
+	/** \brief Return whether two force components share one Type 2 transform.
+		\return The value set with SetFinufftPairedForces (false by default). */
+	bool GetFinufftPairedForces(void) const
+	{
+		return this->FinufftPairedForces;
+	}
+
 	/** \brief Return the backend that actually produced the cached rho in the last ShiftedCCPotential::GetRho.
 		Direct means either Direct was selected or the FINUFFT path fell back. Not updated by derived GetRho overrides.
 		\return The backend used by the most recent base-class evaluation. */
@@ -611,14 +636,40 @@ public:
 			const DimensionType dim=this->Dimension;
 			const size_t nk=this->constraints.size();
 			const size_t total=static_cast<size_t>(c.ms[0]*c.ms[1]*c.ms[2]);
-			c.coef.assign(dim*total, std::complex<double>(0.0, 0.0));
+			const size_t transforms=static_cast<size_t>(this->FinufftForceTransforms());
+			c.coef.assign(transforms*total, std::complex<double>(0.0, 0.0));
 			for(size_t i=0; i<nk; i++)
 			{
 				const std::complex<double> w=this->constraints[i].V*std::complex<double>(this->RhoReal[i], -this->RhoImag[i]);
+				const size_t slot=static_cast<size_t>(c.slot[i]);
+				if(!this->FinufftPairedForces)
+				{
+					for(DimensionType a=0; a<dim; a++)
+						c.coef[a*total+slot]+=this->constraints[i].k.x[a]*w;
+					continue;
+				}
+				//Paired: 2 Im[w e^{ik.r}] = b e^{ik.r} + conj(b) e^{-ik.r} with b = -i w, a real function of r, so mode k
+				//gets b and mode -k (the mirrored slot: every grid size 2K+1 is odd) gets conj(b). Component a = 2t is
+				//the real part of transform t, component 2t+1 its imaginary part (coefficients times i).
+				const std::complex<double> b(w.imag(), -w.real());
+				const size_t mirror=total-1-slot;
 				for(DimensionType a=0; a<dim; a++)
-					c.coef[a*total+static_cast<size_t>(c.slot[i])]+=this->constraints[i].k.x[a]*w;
+				{
+					const std::complex<double> forward=this->constraints[i].k.x[a]*b, backward=std::conj(forward);
+					const size_t t=(a/2)*total;
+					if(a%2==0)
+					{
+						c.coef[t+slot]+=forward;
+						c.coef[t+mirror]+=backward;
+					}
+					else
+					{
+						c.coef[t+slot]+=std::complex<double>(-forward.imag(), forward.real());
+						c.coef[t+mirror]+=std::complex<double>(-backward.imag(), backward.real());
+					}
+				}
 			}
-			c.out.resize(dim*c.np);
+			c.out.resize(transforms*c.np);
 			results.resize(c.np);
 			c.run2.assign(c.plan2.size(), FinufftNotCalled);
 			return c.plan2.size();
@@ -646,7 +697,7 @@ public:
 		FinufftPlanCache & c=this->FinufftCache;
 		const DimensionType dim=this->Dimension;
 		const size_t blocks=c.plan2.size(), lo=c.BlockStart(b, blocks), n=c.BlockStart(b+1, blocks)-lo;
-		std::complex<double> * out=c.out.data()+dim*lo;
+		std::complex<double> * out=c.out.data()+static_cast<size_t>(this->FinufftForceTransforms())*lo;
 		try
 		{
 			int status=finufft_setpts(c.plan2[b], static_cast<std::int64_t>(n), c.Points(0, lo), c.Points(1, lo), c.Points(2, lo), 0, nullptr, nullptr, nullptr);
@@ -658,6 +709,18 @@ public:
 		}
 		catch(const std::bad_alloc &)
 		{
+			return;
+		}
+		if(this->FinufftPairedForces)
+		{
+			//the transforms already hold 2 Im[...]: components 2t and 2t+1 are the real and imaginary parts of transform t
+			const double scale=1.0/this->Volume;
+			for(size_t j=0; j<n; j++)
+			{
+				results[lo+j]=GeometryVector(dim);
+				for(DimensionType a=0; a<dim; a++)
+					results[lo+j].x[a]=scale*(a%2==0 ? out[(a/2)*n+j].real() : out[(a/2)*n+j].imag());
+			}
 			return;
 		}
 		const double scale=2.0/this->Volume;
@@ -713,6 +776,15 @@ protected:
 	double FinufftTolerance;	//< FINUFFT requested tolerance.
 	std::int64_t FinufftMaxModes;	//< Cap on the FINUFFT mode-grid size.
 	int FinufftNumThreads;	//< FINUFFT opts.nthreads (default 1, independent of ParallelNumThread).
+	bool FinufftPairedForces=false;	//< SetFinufftPairedForces: two force components per Type 2 transform.
+
+	/** \brief Number of transforms of one Type 2 force execution (the ntransf of the Type 2 plans).
+		\return The dimension, or (dimension + 1) / 2 with paired components. */
+	int FinufftForceTransforms(void) const
+	{
+		const int dim=static_cast<int>(this->Dimension);
+		return this->FinufftPairedForces ? (dim+1)/2 : dim;
+	}
 	int FinufftLastStatus;	//< Last FINUFFT return code, or FinufftNotCalled.
 
 #ifdef CCPOTENTIAL_USE_FINUFFT
@@ -900,7 +972,7 @@ protected:
 		opts.nthreads=this->FinufftNumThreads;
 		opts.upsampfac=2.0;
 		opts.spread_sort=1;
-		const int ntransf=type==1 ? 1 : static_cast<int>(this->Dimension);
+		const int ntransf=type==1 ? 1 : this->FinufftForceTransforms();
 		plans.reserve(count);	//push_back below cannot throw, so no made plan is lost
 		while(plans.size()<count)
 		{

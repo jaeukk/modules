@@ -98,3 +98,40 @@ argument and records history and contact strength in each JSON measurement.
 Contact strength stays 100. See the [final report](../../THREADING_RESULTS.html)
 for historical results; the separate strength-1 ground-state test does not establish
 time to a ground state at strength 100.
+
+## Time per optimizer step (November 2026)
+
+`bench_step.out` measures one variant per process on the fixture above (three equal species, 2D, chi 0.30,
+packing fraction 0.70, contact strength 100, history 40); `bench_step.py` runs a set of variants on the same
+random initial states (seeds 17-19) on four pinned CPUs, interleaved, and writes raw results, provenance and a
+summary table to a new directory outside the repository.
+
+```sh
+make -C apps/CCOptimization USE_FINUFFT=1 bench_step.out
+python3 apps/CCOptimization/tests/threading/bench_step.py --round r1 \
+  --variants direct,A,B,A+grid,A+fast --output <new directory outside the repository>
+```
+
+A variant is a schedule (`direct`: direct sums; `A`: concurrent species; `B`: sequential species with internally
+threaded FINUFFT) followed by any of `+grid` (contact grid, bitwise the generic walk), `+plis` (in-repository L-BFGS with
+NLopt's iterates), `+fast` (the same with reordered dot products), `+team` (`+fast` on all threads) and `+reuse`
+(no configuration copies per evaluation) and `+pair` (two force components per FINUFFT Type 2 transform). The
+suffix `+active` changes no code: the runner sets `OMP_WAIT_POLICY=ACTIVE` for that run instead of `PASSIVE`, and
+its CPU utilization then counts spinning threads. Without a suffix a variant runs the code paths of commit 2459bdf.
+
+- `opt`: `RelaxStructure_NLOPT` with a cap of evaluations per scaling phase. `ms_per_step` is wall time per
+  objective evaluation; `potential_ms_per_step` is the part inside `SetConfiguration` and the energy and force
+  calls, `optimizer_ms_per_step` the rest (the optimizer's own work, the configuration rebuild and the gradient
+  conversion). Capped runs do not reach ground states: this is time per step, not time to a ground state.
+- `eval`: `SetConfiguration + EnergyAndAllForce` cycling over three states with different positions: the initial
+  one and two reached by the unmodified schedule, identical in every process (`state_hash`).
+
+Every run checks its initial and final energy and forces against direct sums with the generic contact walk.
+`--reuse results.json ...` merges earlier rounds (the controls) into the summary instead of measuring them again.
+
+`--contact` and `--phi` change the fixture; `--contact 1 --phi 0.10 --opt-maxsteps 10000 --modes opt` is the
+ground-state check, whose summary counts the runs that end below 1e-14 by direct sums.
+
+`make -C apps/CCOptimization USE_FINUFFT=1 test-contact-grid test-step-options` checks the contact kernel, the
+paired forces, the configuration reuse and the L-BFGS implementations through the optimizer;
+`bash potential/tests/luksan_plis/run_tests.sh` checks the L-BFGS against the NLopt library.

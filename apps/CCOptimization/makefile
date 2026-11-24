@@ -40,7 +40,7 @@ CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)
              $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
 PAIR_OBJS := $(pairstat)/obj/StructureFactor.o $(pairstat)/obj/PairCorrelation.o \
              $(pairstat)/obj/NumberVariance.o $(pairstat)/obj/VolumeFractionVariance.o
-POT_OBJS  := $(potential)/obj/Potential.o $(potential)/obj/StructureOptimization.o \
+POT_OBJS  := $(potential)/obj/Potential.o $(potential)/obj/StructureOptimization.o $(potential)/obj/LuksanPLIS.o \
              $(potential)/obj/MD_System.o
 
 .PHONY: all clean deps
@@ -64,7 +64,7 @@ $(ODIR):
 clean:
 	rm -f obj/*.[od] obj_finufft/*.[od] $(TARGET) mspb_pack.out bench_finufft.out test_finufft_multi.out test_indexed_view.out \
 	      test_finufft_plan_cache.out test_species_concurrent.out test_finufft_forces.out test_fused_contact.out test_finufft_blocks.out \
-	      calibrate_gate.out check_gate.out test_sequential_species.out bench_threading.out
+	      calibrate_gate.out check_gate.out test_sequential_species.out bench_threading.out bench_step.out test_contact_grid.out test_step_options.out
 
 # Offline archive management and multicomponent analysis stay local to this app.
 mspb_pack.out: $(ODIR)mspb_pack_main.o $(ODIR)MSPB_Pack.o $(ODIR)MultiStealthyPotential.o $(ODIR)MultiComponentPairStat.o deps
@@ -214,4 +214,37 @@ bench_threading.out: $(ODIR)bench_threading.o $(ODIR)MultiStealthyPotential.o de
 	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
 
 $(ODIR)bench_threading.o: tests/threading/bench_threading.cpp tests/threading/fixtures.h | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+# Cell-sorted contact kernel against the generic neighbor walk.
+test_contact_grid.out: $(ODIR)test_contact_grid.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_contact_grid.o: tests/threading/test_contact_grid.cpp tests/threading/fixtures.h | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-contact-grid
+test-contact-grid:
+	$(MAKE) USE_FINUFFT=1 test_contact_grid.out
+	./test_contact_grid.out
+	OMP_WAIT_POLICY=PASSIVE ./test_contact_grid.out
+
+# Paired Type 2 forces, configuration reuse and the L-BFGS implementations, each against the path it replaces.
+test_step_options.out: $(ODIR)test_step_options.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)test_step_options.o: tests/threading/test_step_options.cpp tests/threading/fixtures.h | $(ODIR)
+	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<
+
+.PHONY: test-step-options
+test-step-options:
+	$(MAKE) USE_FINUFFT=1 test_step_options.out
+	./test_step_options.out
+	OMP_WAIT_POLICY=PASSIVE ./test_step_options.out
+
+# Time per optimizer step of one variant per process (tests/threading/bench_step.py runs the comparison).
+bench_step.out: $(ODIR)bench_step.o $(ODIR)MultiStealthyPotential.o deps
+	$(CC) -o $@ $(filter %.o,$^) $(CORE_OBJS) $(PAIR_OBJS) $(POT_OBJS) $(LFLAGS) $(NLOPT_LIB) $(LIBS_FINUFFT)
+
+$(ODIR)bench_step.o: tests/threading/bench_step.cpp tests/threading/fixtures.h | $(ODIR)
 	$(CC) $(CFLAGS) $(INC) -MMD -MP -o $@ $<

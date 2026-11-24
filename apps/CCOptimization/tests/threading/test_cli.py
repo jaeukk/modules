@@ -48,6 +48,27 @@ with tempfile.TemporaryDirectory(prefix="cco-sequential-cli-") as temporary:
                                 input=text.replace("history 100", f"history {invalid}"),
                                 text=True, cwd=root, env=env, capture_output=True, timeout=30)
         assert result.returncode != 0 and "Expected: history N" in result.stdout, result.stdout + result.stderr
+    # L-BFGS implementation keyword: the default is the NLopt library; `ring` reproduces
+    # its endpoint byte for byte; `fast` runs and is reported; anything else is refused.
+    lbfgs = {}
+    for name in ("nlopt", "ring", "fast"):
+        commands = text.replace(str(prefix), str(root / f"lbfgs-{name}")).replace("history 100\n", f"lbfgs {name}\n")
+        result = subprocess.run([str(binary), "multi", "1", "17"], input=commands,
+                                text=True, cwd=root, env=env, capture_output=True, timeout=30)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert f"L-BFGS implementation in use = {name}" in result.stdout, result.stdout
+        lbfgs[name] = (root / f"lbfgs-{name}_Success_0.mspb").read_bytes()
+    assert lbfgs["nlopt"] == endpoints[None] == lbfgs["ring"]
+    assert "L-BFGS implementation in use = nlopt" in subprocess.run(
+        [str(binary), "multi", "1", "17"], input=text, text=True, cwd=root, env=env,
+        capture_output=True, timeout=30).stdout
+    # `paired-forces` is accepted and reported; it only takes effect with FINUFFT forces.
+    result = subprocess.run([str(binary), "multi", "1", "17"], input=text.replace("history 100", "paired-forces"),
+                            text=True, cwd=root, env=env, capture_output=True, timeout=30)
+    assert result.returncode == 0 and "FINUFFT force transforms carry two components each." in result.stdout, result.stdout + result.stderr
+    result = subprocess.run([str(binary), "multi", "1", "17"], input=text.replace("history 100", "lbfgs quick"),
+                            text=True, cwd=root, env=env, capture_output=True, timeout=30)
+    assert result.returncode != 0 and "Expected: lbfgs nlopt|ring|fast" in result.stdout, result.stdout + result.stderr
     # Exercise MINOP's zero-iteration and candidate-energy paths. The loose export
     # threshold above captures bounded endpoints; it is not physical acceptance.
     for steps in (0, 5):
@@ -60,4 +81,4 @@ with tempfile.TemporaryDirectory(prefix="cco-sequential-cli-") as temporary:
         final = float(re.search(r"E_relax=([^\s]+)", result.stdout).group(1))
         assert final <= initial, result.stdout
         assert (final == initial) if steps == 0 else (final < initial), result.stdout
-print("PASS: schedule selection, history defaults/overrides/rejections, MINOP candidate paths, and missing-backend behavior.")
+print("PASS: schedule selection, history defaults/overrides/rejections, L-BFGS implementations, MINOP candidate paths, and missing-backend behavior.")

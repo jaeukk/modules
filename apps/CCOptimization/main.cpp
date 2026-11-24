@@ -1351,6 +1351,11 @@ int GetMultiCCO(int argc, char ** argv){
 					potential->SetSequentialFinufftSpecies(tempstring2 == "finufft-sequential");
 					ofile << "Species schedule: " << (potential->GetSequentialFinufftSpecies() ? "sequential" : "concurrent") << '\n';
 				}
+				else if (tempstring2 == "paired-forces"){
+					// As in the ground block: two force components per FINUFFT Type 2 transform.
+					potential->SetFinufftPairedForces(true);
+					ofile << "\nFINUFFT force transforms carry two components each.\n";
+				}
 				else {
 					ofile << tempstring2 << " is an undefined command\n";
 				}
@@ -1489,6 +1494,25 @@ int GetMultiCCO(int argc, char ** argv){
 					potential->SetSequentialFinufftSpecies(tempstring2 == "finufft-sequential");
 					ofile << "Species schedule: " << (potential->GetSequentialFinufftSpecies() ? "sequential" : "concurrent") << '\n';
 				}
+				else if (tempstring2 == "paired-forces"){
+					// Two force components share one FINUFFT Type 2 transform (half the force transforms in 2D).
+					// The forces change at rounding level, so trajectories differ from runs without it.
+					potential->SetFinufftPairedForces(true);
+					ofile << "\nFINUFFT force transforms carry two components each.\n";
+				}
+				else if (tempstring2 == "lbfgs"){
+					// Implementation of the L-BFGS optimizer (StructureOptimization_LBFGSImplementation).
+					std::string name;
+					ifile >> name;
+					if (name == "nlopt") StructureOptimization_LBFGSImplementation = 0;
+					else if (name == "ring") StructureOptimization_LBFGSImplementation = 1;
+					else if (name == "fast") StructureOptimization_LBFGSImplementation = 3;
+					else {
+						ofile << "Expected: lbfgs nlopt|ring|fast\n";
+						return 1;
+					}
+					ofile << "\nL-BFGS implementation = " << name << "\n";
+				}
 				else if (tempstring2 == "history"){
 					// L-BFGS correction pairs kept by RelaxStructure_NLOPT (default 40).
 					// NLopt takes an unsigned int. Reject negative, fractional, trailing,
@@ -1533,6 +1557,8 @@ int GetMultiCCO(int argc, char ** argv){
 			ofile << "Energy tolerance is "<< tolerance <<std::endl;
 			ofile << "Max. steps of evaluations is "<< max_steps <<std::endl;
 			ofile << "L-BFGS history in use = " << StructureOptimization_LBFGSHistory << '\n';
+			ofile << "L-BFGS implementation in use = " << (StructureOptimization_LBFGSImplementation == 0 ? "nlopt" :
+				StructureOptimization_LBFGSImplementation == 1 ? "ring" : "fast") << '\n';
 
 
 			if (strcmp (InitCondition.c_str(), "random") == 0){

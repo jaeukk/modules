@@ -1,5 +1,9 @@
 #include "StructureOptimization.h"
+#include "LuksanPLIS.h"
 #include "CombinedEnergyForce.h"
+#include <algorithm>
+#include <optional>
+#include <omp.h>
 
 #define GSL_RANGE_CHECK_OFF
 
@@ -11,6 +15,8 @@ const double MinVolumeCoeff = 0.0;//structure is invalid if Volume < MinVolumeCo
 size_t StructureOptimization_SaveConfigurationInterval=std::numeric_limits<size_t>::max();
 bool StructureOptimization_SaveNumberedConfiguration = false;
 size_t StructureOptimization_LBFGSHistory = 40;
+int StructureOptimization_LBFGSImplementation = 0;
+bool StructureOptimization_ReuseConfiguration = true;
 
 //codes related to elastic constants
 //\epsilon_{ij}=C_{ijkl}*e_{kl}
@@ -317,12 +323,59 @@ namespace
 		int Switch;//Switch==1: move Basis Vectors, Switch==0: move atoms, Switch==2:move both
 		double RelativeCoordinatesRescale;
 		size_t NumParam;
+		Configuration work;	//< reused by Objective when only particles move (Switch 0), see FillParticles
 		/** \brief Construct the auxiliary state from the original configuration.
 			\param orig  Original (template) configuration. */
-		Aux(const Configuration & orig) : origConfig(orig)
+		Aux(const Configuration & orig) : origConfig(orig), work(orig)
 		{
 		}
 	};
+	/** \brief Replace every particle of list by the relative coordinates encoded in x (Switch 0 layout), keeping the
+		names of the original configuration; list must have the original basis vectors and cells. The particle
+		arrays and cells are then exactly those of a fresh copy of the original filled the same way.
+		\param pAux  Auxiliary state (dimension, particle number, rescale, original names).
+		\param x     Optimization parameter vector: dim relative coordinates per particle, times the rescale.
+		\param list  Configuration to refill. */
+	void FillParticles(Aux * pAux, const double * x, Configuration & list)
+	{
+		const DimensionType dim=pAux->Dim;
+		list.RemoveParticles();
+		for(size_t i=0; i<pAux->NumParticle; i++)
+		{
+			GeometryVector ParticleRelative(dim);
+			for(DimensionType j=0; j<dim; j++)
+				ParticleRelative.x[j]=x[dim*i+j]/pAux->RelativeCoordinatesRescale;
+			list.Insert(pAux->origConfig.GetCharacteristics(i).name, ParticleRelative);
+		}
+	}
+	/** \brief The time-limit exit and the periodic progress files of an objective evaluation.
+		\param pAux  Auxiliary state (evaluation counter).
+		\param list  Configuration of this evaluation. */
+	void SaveProgress(Aux * pAux, const Configuration & list)
+	{
+		if( std::time(nullptr) > ::TimeLimit )
+		{
+			std::fstream ofile("StructureOptimization_Progress_TimeLimit.configuration", std::fstream::out | std::fstream::binary);
+			list.WriteBinary(ofile);
+			ofile.close();
+			exit(0);
+		}
+		if ((pAux->NumEvaluation + 1) % (StructureOptimization_SaveConfigurationInterval) == 0 && StructureOptimization_SaveNumberedConfiguration)
+		{
+			ConfigurationPack pk("StructureOptimization_Progress");
+			pk.AddConfig(list);
+		}
+		if( (pAux->NumEvaluation+1)%(2*StructureOptimization_SaveConfigurationInterval)==StructureOptimization_SaveConfigurationInterval )
+		{
+			std::fstream ofile("StructureOptimization_Progress_a.configuration", std::fstream::out | std::fstream::binary);
+			list.WriteBinary(ofile);
+		}
+		else if( (pAux->NumEvaluation+1)%(2*StructureOptimization_SaveConfigurationInterval)==0 )
+		{
+			std::fstream ofile("StructureOptimization_Progress_b.configuration", std::fstream::out | std::fstream::binary);
+			list.WriteBinary(ofile);
+		}
+	}
 	/** \brief Build a Configuration from the optimizer's parameter vector, validating it and saving progress.
 		\param pAux  Auxiliary state describing the optimization (dimension, switch, rescale, etc.).
 		\param x     Optimization parameter vector encoding basis vectors and/or relative coordinates.
@@ -376,42 +429,8 @@ namespace
 			}
 		}
 		if(pAux->Switch==0)
-		{
-			list.RemoveParticles();
-			for(size_t i=0; i<pAux->NumParticle; i++)
-			{
-				GeometryVector ParticleRelative(dim);
-				for(DimensionType j=0; j<dim; j++)
-					ParticleRelative.x[j]=x[dim*i+j]/pAux->RelativeCoordinatesRescale;
-				list.Insert(pAux->origConfig.GetCharacteristics(i).name, ParticleRelative);
-			}
-		}
-		if( std::time(nullptr) > ::TimeLimit )
-		{
-			std::fstream ofile("StructureOptimization_Progress_TimeLimit.configuration", std::fstream::out | std::fstream::binary);
-			list.WriteBinary(ofile);
-			ofile.close();
-			exit(0);
-		}
-		if ((pAux->NumEvaluation + 1) % (StructureOptimization_SaveConfigurationInterval) == 0 && StructureOptimization_SaveNumberedConfiguration)
-		{
-			//std::stringstream ss;
-			//ss << "StructureOptimization_Progress_" << pAux->NumEvaluation<<".configuration";
-			//std::fstream ofile(ss.str(), std::fstream::out | std::fstream::binary);
-			//list.WriteBinary(ofile);
-			ConfigurationPack pk("StructureOptimization_Progress");
-			pk.AddConfig(list);
-		}
-		if( (pAux->NumEvaluation+1)%(2*StructureOptimization_SaveConfigurationInterval)==StructureOptimization_SaveConfigurationInterval )
-		{
-			std::fstream ofile("StructureOptimization_Progress_a.configuration", std::fstream::out | std::fstream::binary);
-			list.WriteBinary(ofile);
-		}
-		else if( (pAux->NumEvaluation+1)%(2*StructureOptimization_SaveConfigurationInterval)==0 )
-		{
-			std::fstream ofile("StructureOptimization_Progress_b.configuration", std::fstream::out | std::fstream::binary);
-			list.WriteBinary(ofile);
-		}
+			FillParticles(pAux, x, list);
+		SaveProgress(pAux, list);
 
 		return list;
 	}
@@ -433,7 +452,19 @@ namespace
 
 		try
 		{
-			Configuration list = GetConfig(pAux, x);
+			//When only the particles move (Switch 0), refill the reused workspace: GetConfig copies the original
+			//configuration, cells included, on every evaluation. The resulting configuration is the same.
+			std::optional<Configuration> fresh;
+			if(pAux->Switch==0 && StructureOptimization_ReuseConfiguration)
+			{
+				if(x[0]!=x[0])
+					throw NotANumberFound();
+				FillParticles(pAux, x, pAux->work);
+				SaveProgress(pAux, pAux->work);
+			}
+			else
+				fresh.emplace(GetConfig(pAux, x));
+			const Configuration & list = fresh ? *fresh : pAux->work;
 			double Volume = list.PeriodicVolume();
 			if(Volume< std::pow(::LengthPrecision, static_cast<double>(dim)))
 				return ::MaxEnergy;
@@ -872,6 +903,32 @@ void RelaxStructure_NLOPT_inner(Configuration & List, Potential & pot, double Pr
 	aux.NumParam=NumParam;
 	if(pParams==nullptr)
 		return;
+
+	if(StructureOptimization_LBFGSImplementation != 0)
+	{
+		//the same algorithm from LuksanPLIS.h: stop value and evaluation limit as below, NLopt's defaults otherwise
+		double minf;
+		const int plisStatus=LuksanPLIS(static_cast<int>(NumParam), Objective, reinterpret_cast<void *>(&aux), pParams, &minf, fmin,
+			static_cast<int>(MaxStep), static_cast<int>(StructureOptimization_LBFGSHistory), nullptr,
+			StructureOptimization_LBFGSImplementation == 1 ? 0 : StructureOptimization_LBFGSImplementation == 2 ? 1 : std::max(1, omp_get_max_threads()));
+		if (Verbosity > 3){
+			std::cout<<"NLopt return:"<<plisStatus<<'\n';
+			std::cout<<"NLopt fvalue after:"<<minf<<'\n';
+		}
+		if (Verbosity >= 3){
+			std::cout<<"Num evals:"<<aux.NumEvaluation<< " / " << MaxStep << "  (" << (double)aux.NumEvaluation/ (double)MaxStep * 100.0 << "%)\n";
+		}
+		try
+		{
+			Configuration List2 = GetConfig(&aux, pParams);
+			List=List2;
+		}
+		catch(InvalidStructure & a)
+		{
+		};
+		delete [] pParams;
+		return;
+	}
 
 	opt = nlopt_create(NLOPT_LD_LBFGS, NumParam);
 	nlopt_set_vector_storage(opt, StructureOptimization_LBFGSHistory);

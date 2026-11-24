@@ -230,7 +230,55 @@ protected:
 	 *  \return               u0 times the sum of N_s/N times the species energies, plus e0 times the contact sum. */
 	double TotalEnergy(const std::vector<double> & speciesEnergy, const std::vector<double> & contactEnergy) const;
 
+	/** \brief Flat copy of the cells of *pConfig for the contact sum (BuildContactGrid): the particles in the order
+	 *  of the configuration's cell list, with their positions and radii, and the cell offsets that
+	 *  Configuration::IterateThroughNeighbors visits for the cutoff rc. GridContact walks them in that order with the
+	 *  same arithmetic, so it gives the bits of the generic walk without its per-neighbor function call. */
+	struct ContactGrid
+	{
+		bool valid = false;	//< false: the contact sum uses Configuration::IterateThroughNeighbors
+		long rank[3] = {1, 1, 1};	//< cells along each basis vector (1 beyond the dimension)
+		double basis[3][3] = {};	//< basis vectors, Cartesian (zero beyond the dimension)
+		Configuration::NeighborCells cells;	//< export of the configuration (start: first sorted position of each cell)
+		std::vector<long> offset;	//< three cell offsets per visited cell image that can hold a contact, in visiting order
+		std::vector<size_t> where;	//< sorted position of each particle (cells.particle is the inverse)
+		std::vector<long> index;	//< three cell indices per sorted position (GetFullIndex of the particle)
+		std::vector<double> home;	//< three Cartesian coordinates per sorted position, recomputed from the relative ones
+		std::vector<double> position;	//< three stored Cartesian coordinates per sorted position
+		std::vector<double> radius;	//< radius at each sorted position
+	};
+	ContactGrid Grid;	//< contact grid of the current configuration (valid only when it can be used)
+	bool ContactGridEnabled = true;	//< SetContactGridEnabled
+
+	/** \brief Rebuild Grid from *pConfig and radii, serially, in O(N), after the configuration's cells are prepared
+	 *  for the cutoff (PrepareContactCells). Offsets whose cell images lie farther than rc from the home cell in some
+	 *  coordinate hold no contact and are dropped; the others keep their order. Leaves Grid invalid (the generic
+	 *  neighbor walk is then used) when the grid is disabled, repulsion is off or the dimension is not 1-3. */
+	void BuildContactGrid();
+
+	/** \brief Contact energy slot and contact force of the particle at one sorted position of Grid: the neighbors,
+	 *  their order and the arithmetic of ContactEnergyAndForce's generic walk, so the result is bitwise the same.
+	 *  Reads Grid only: any thread may call it.
+	 *  \param p           Sorted position (Grid.cells.particle[p] is the particle).
+	 *  \param[out] force  e0 times the contact force on the particle.
+	 *  \return            Contact energy of the pairs (i, j > i), before the factor e0. */
+	double GridContact(long p, GeometryVector & force) const;
+
+	/** \brief Particle handled by contact item p of a loop over all particles: sorted order with a valid Grid
+	 *  (neighboring items then share cells), else the particle index itself.
+	 *  \param p  Item index below the particle count.
+	 *  \return   The particle index. */
+	size_t ContactItem(long p) const { return this->Grid.valid ? this->Grid.cells.particle[p] : static_cast<size_t>(p); }
+
 public :
+	/** \brief Use the contact grid (default) or the generic neighbor walk for the contact sum.
+	 *  Both give bitwise the same energy and forces; the grid is faster.
+	 *  \param enabled  True for the grid (dimensions 1-3), false for the generic walk. */
+	void SetContactGridEnabled(bool enabled);
+	/** \brief Return whether the contact sum of the current configuration uses the contact grid.
+	 *  \return True if the grid is enabled, repulsion is on and the dimension is 1-3. */
+	bool ContactGridInUse() const { return this->Grid.valid; }
+
 	/** \brief Select sequential species with internally threaded FINUFFT (temporary Option B).
 	 *  FINUFFT uses the entire thread budget while an additional contact worker runs.
 	 *  Use process affinity or the job scheduler to enforce an allocation of that
@@ -247,6 +295,10 @@ public :
 	/** \brief Return whether the sequential species schedule is selected.
 	 *  \return True for Option B, false for the default concurrent schedule. */
 	bool GetSequentialFinufftSpecies() const { return SequentialFinufftSpecies; }
+
+	/** If true (default), SetConfiguration with an unchanged particle number assigns into the stored configuration
+	 *  instead of allocating a new copy. Energies and forces are bitwise the same. */
+	bool ReuseConfigurationStorage = true;
 
 	double e0 = 1.0;	//< energy scale for contact potential
 	double u0 = 1.0;	//< energy scale for collective-coordinate potential
@@ -317,6 +369,14 @@ public :
 	void SetRhoBackend(ShiftedCCPotential::RhoBackend backend){
 		for (auto & species : this->species_constraints)
 			species.CCPotential->SetRhoBackend(backend);
+	}
+
+	/** \brief Let two force components share one Type 2 transform in every species defined so far
+	 *  (ShiftedCCPotential::SetFinufftPairedForces; off by default).
+	 *  \param paired  True to pair components. */
+	void SetFinufftPairedForces(bool paired){
+		for (auto & species : this->species_constraints)
+			species.CCPotential->SetFinufftPairedForces(paired);
 	}
 
 	/** \brief Update rho values for selected species.

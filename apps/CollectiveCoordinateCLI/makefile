@@ -34,7 +34,7 @@ INC := -I$(core) -I$(pairstat) -I$(potential) $(models_INC) -I$(misc) \
 CORE_OBJS := $(core)/obj/GeometryVector.o $(core)/obj/PeriodicCellList.o $(core)/obj/SpherePacking.o \
              $(core)/obj/ConfigurationIO.o $(core)/obj/RandomGenerator.o $(core)/obj/etc.o
 PAIR_OBJS := $(pairstat)/obj/StructureFactor.o $(pairstat)/obj/PairCorrelation.o
-POT_OBJS  := $(potential)/obj/Potential.o $(potential)/obj/StructureOptimization.o \
+POT_OBJS  := $(potential)/obj/Potential.o $(potential)/obj/StructureOptimization.o $(potential)/obj/LuksanPLIS.o \
              $(potential)/obj/MD_System.o $(potential)/obj/MC_System.o
 MODEL_OBJS := $(models)/obj/RandomSequentialAddition.o
 

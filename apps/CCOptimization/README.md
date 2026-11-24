@@ -68,6 +68,8 @@ Keywords of the `ground` block (`GetMultiCCO`; `GetCCO` accepts `tolerance`, `ma
 | `algorithm NAME` | `LBFGS` (default), `LocalGradientDescent`, `ConjugateGradient`, `SteepestDescent`, `MINOP`. |
 | `finufft-sequential` | Option B: sequential species with internally threaded FINUFFT and concurrent contact (multicomponent only; see [threading notes](tests/threading/README.md)). |
 | `finufft` | Option A (default schedule): concurrent species with one internal FINUFFT thread each; a cost gate selects FINUFFT forces (needs `USE_FINUFFT=1`). |
+| `paired-forces` | With `finufft` in `GetMultiCCO`: two force components share one Type 2 transform (half the force transforms in 2D). Forces change at rounding level, so trajectories differ from runs without it. |
+| `lbfgs nlopt\|ring\|fast` | L-BFGS implementation (`GetMultiCCO` only; default `nlopt`, the NLopt library). `ring`: the same algorithm in the repository with a ring-buffer history, same iterates bit for bit. `fast`: `ring` with reordered dot products on all threads, the cheapest; iterates differ at rounding level. See [time per step](#time-per-optimizer-step). |
 | `history N` | L-BFGS correction pairs (default 40; `history 100` restores the previous setting). |
 | `combined` | Write the configurations of all species together. |
 | `export txt\|binary\|pack\|off` | Output format of accepted configurations. |
@@ -103,6 +105,8 @@ ground-state coordinates. GetMultiCCO uses C++ NLopt; it does not call SciPy.
   packings start with 10 cells per side, which made the contact sum O(N²) (80% of a 2D N = 10⁴
   FINUFFT evaluation before the fix).
 - **Repeatability.** Option A repeated bitwise for the tested build, settings, thread count and input.
+  Without `lbfgs fast` and `paired-forces`, `GetCCO` and `GetMultiCCO` write byte-identical output to commit
+  2459bdf (checked with direct sums and with `finufft`); those two keywords change trajectories at rounding level.
   Option B did not repeat bitwise in the bounded endpoint test. Neither schedule promises
   identical endpoints across different history settings or machines.
   Endpoints are not bitwise identical to builds before October 2026 (valid ground states either way),
@@ -110,12 +114,55 @@ ground-state coordinates. GetMultiCCO uses C++ NLopt; it does not call SciPy.
 - **Machine-specific constants.** The cost-gate and block constants were fitted on the development
   machine; refit them on a production node with [tests/finufft_gate/](tests/finufft_gate/).
 
+## Time per optimizer step
+
+November 21, 2026, on the threading fixture (three equal species, 2D, chi 0.30, packing fraction 0.70, contact
+strength 100, history 40, four pinned threads; method and commands in the
+[threading notes](tests/threading/README.md)). Half of a step was serial work outside the potential, and
+internally threaded FINUFFT (Option B) is slower than one thread per transform at these sizes, so the changes
+target the rest of the step:
+
+- **Contact grid** (on by default, results bitwise unchanged): the contact sum reads a flat copy of the
+  configuration's cells (`Configuration::ExportNeighborCells`) and visits the neighbors in the order and with the
+  arithmetic of `Configuration::IterateThroughNeighbors`, without its function call per neighbor.
+- **No configuration copies per evaluation** (on by default, results bitwise unchanged): the optimizer refills
+  one configuration and the potential assigns into its stored copy.
+- **`lbfgs fast`** (opt-in): NLopt's L-BFGS (Luksan's PLIS) vendored in `potential/LuksanPLIS.cpp`. NLopt copies
+  its whole history every iteration and sums every dot product in a scalar, masked loop; the vendored copy keeps a
+  ring buffer and vectorized, block-wise sums, on all threads above 12,000 variables. `lbfgs ring` is the bitwise
+  check against the library.
+- **`paired-forces`** (opt-in, with `finufft`): Hermitian mode coefficients make each Type 2 transform real, so
+  two force components share one transform; half the force transforms in 2D. Applies to the stealthy forces only.
+- **`OMP_WAIT_POLICY`**: the earlier comparisons pinned `PASSIVE`, which puts the threads to sleep between
+  parallel regions. With `ACTIVE` a step with both keywords takes 15% (4,000 per species) to 45% (300) less time
+  on this machine, and leaving the variable unset behaved like `ACTIVE` in a single probe; CPU utilization then
+  reads 100% because waiting threads spin, so it no longer measures useful work. Prefer it when the job owns its
+  cores.
+
+Median wall time per objective evaluation of a bounded optimization [ms]. "Before" is the code of commit 2459bdf,
+"default build" the same input on this code (bitwise the same results), "both keywords" adds `lbfgs fast` and
+`paired-forces`. Direct sums and B are from an earlier round of the same day:
+
+| Particles/species | Direct sums | B | Before | Default build | Both keywords | Both, `OMP_WAIT_POLICY=ACTIVE` |
+|---:|---:|---:|---:|---:|---:|---:|
+| 300 | 3.31 | 3.32 | 0.73 | 0.56 | 0.38 | 0.21 |
+| 1,000 | 20.9 | 4.38 | 1.88 | 1.35 | 0.80 | 0.60 |
+| 4,000 | 306 | 10.8 | 7.60 | 5.91 | 3.11 | 2.64 |
+
+At contact strength 1 and packing fraction 0.10, where runs reach ground states (10,000 evaluations per phase,
+six seeds per size), every run ended below 1e-14 by direct sums. The default build reached the same ground state
+as the old code on every seed, bit for bit (median 1,019 evaluations at 1,000 per species and 1,893 at 4,000), in
+1.37 s instead of 1.77 s and 11.85 s instead of 13.63 s. With both keywords the evaluation counts change by a few
+percent per seed (medians 1,002 and 1,895) and the runs take 0.78 s and 5.72 s. Whether runs with the keywords
+sample the same ensemble as before was not checked. Raw results are outside the repository.
+
 ## Tests and benchmarks
 
 ```sh
 make -C apps/CCOptimization -j8 all && python3 apps/CCOptimization/tests/test_cli.py
 make -C apps/CCOptimization USE_FINUFFT=1 test-finufft test-finufft-forces test-finufft-blocks \
-    test-species-concurrent test-indexed-view test-fused-contact
+    test-species-concurrent test-indexed-view test-fused-contact test-contact-grid test-step-options
+bash potential/tests/luksan_plis/run_tests.sh
 bash potential/tests/finufft_type1/run_tests.sh
 make -C apps/CCOptimization USE_FINUFFT=1 bench_finufft.out
 ./apps/CCOptimization/bench_finufft.out eval|opt DIM N SPECIES CHI THREADS SEED [direct|finufft [HISTORY]]

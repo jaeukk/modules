@@ -17,7 +17,7 @@ include ../config.mk
 ODIR := obj/
 
 SRCS := Potential.cpp LJPotential.cpp MD_System.cpp MC_System.cpp \
-        StructureOptimization.cpp
+        StructureOptimization.cpp LuksanPLIS.cpp
 OBJS := $(patsubst %.cpp,$(ODIR)%.o,$(SRCS))
 
 INC := -I$(core) -I$(potential) $(NLOPT_INC)
@@ -28,6 +28,10 @@ objs: $(OBJS)
 
 $(ODIR)%.o: %.cpp | $(ODIR)
 	$(CC) $(CFLAGS) $(INC) -o $@ $<
+
+# LuksanPLIS.cpp promises NLopt's arithmetic bit for bit: never contract a*b+c into a fused multiply-add,
+# whatever architecture flags a build adds.
+$(ODIR)LuksanPLIS.o: CFLAGS += -ffp-contract=off
 
 # No per-object header tracking here, so every object depends on every header of this module: a changed
 # class layout (for example a new virtual function in Potential.h) must rebuild all of them.

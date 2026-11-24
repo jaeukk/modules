@@ -32,6 +32,16 @@ extern size_t StructureOptimization_SaveConfigurationInterval;
 extern bool StructureOptimization_SaveNumberedConfiguration;
 // Number of correction pairs (s, y) that L-BFGS keeps in RelaxStructure_NLOPT and its variants (default 40).
 extern size_t StructureOptimization_LBFGSHistory;
+// L-BFGS implementation of RelaxStructure_NLOPT and RelaxStructure_NLOPT_Emin (default 0):
+// 0: the NLopt library (NLOPT_LD_LBFGS);
+// 1: LuksanPLIS.h, the same algorithm with a ring-buffer history, iterates bitwise those of 0;
+// 2: LuksanPLIS.h with reordered dot products on one thread, iterates differ from 0 at rounding level;
+// 3: as 2 on omp_get_max_threads() threads, iterates bitwise those of 2.
+extern int StructureOptimization_LBFGSImplementation;
+// If true (default), the objective of the NLopt-style optimizers refills one configuration per optimization when
+// only the particles move (Switch 0), instead of copying the original configuration on every evaluation.
+// The configurations handed to the potential are the same either way, so results do not change.
+extern bool StructureOptimization_ReuseConfiguration;
 
 /** \brief Exception thrown when a NaN is encountered during structure optimization. */
 class NotANumberFound : public std::exception

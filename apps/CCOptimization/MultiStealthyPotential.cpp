@@ -251,9 +251,20 @@ void MultiStealthyPotential::SetConfiguration(const Configuration &Position)
 		}
 	}
 	
-	// Invalidate the species views before their configuration is replaced.
+	// Invalidate the species views before their configuration is replaced: UpdateSubconfigs below rebinds every
+	// species, including a species potential the caller replaced since the last call.
 	this-> SubconfigValid = false;
-	pConfig = std::make_unique<Configuration>(Position, "a");
+	// Same object, new contents, when the particle number allows: assignment keeps the allocations. It also copies
+	// the cached vicinity lattices of Position, whose order depends on the queries Position has answered; a copy
+	// starts without them, so they are cleared here and neighbor iteration visits cells as on a fresh copy.
+	// Particle names are then those of Position, not "a"; nothing here reads them.
+	if (this->ReuseConfigurationStorage && pConfig && pConfig->GetDimension() == Position.GetDimension()
+		&& pConfig->NumParticle() == Position.NumParticle()) {
+		*pConfig = Position;
+		pConfig->ClearVicinityLatticeList();
+	}
+	else
+		pConfig = std::make_unique<Configuration>(Position, "a");
 	this->PrepareContactCells();
 
 	this-> UpdateSubconfigs();
@@ -273,6 +284,163 @@ void MultiStealthyPotential::PrepareContactCells()
 	const double spacing = std::pow(this->pConfig->PeriodicVolume() / n, 1.0 / this->Dimension);
 	this->pConfig->SetCellSize(std::max(this->rc, spacing));
 	this->pConfig->PrepareIterateThroughNeighbors(this->rc);
+	this->BuildContactGrid();
+}
+
+/** \brief Select the contact grid or the generic neighbor walk and rebuild the contact data.
+ *  \param enabled True for the grid. */
+void MultiStealthyPotential::SetContactGridEnabled(bool enabled)
+{
+	this->ContactGridEnabled = enabled;
+	if (this->pConfig)
+		this->PrepareContactCells();
+}
+
+/** \brief Rebuild the flat contact grid of the current configuration (see ContactGrid). */
+void MultiStealthyPotential::BuildContactGrid()
+{
+	ContactGrid & g = this->Grid;
+	g.valid = false;
+	const DimensionType dim = this->Dimension;
+	const size_t n = this->pConfig->NumParticle();
+	if (!this->ContactGridEnabled || !this->WithRepulsion || dim < 1 || dim > 3 || this->radii.size() != n)
+		return;
+	this->pConfig->ExportNeighborCells(this->rc, g.cells);
+	double width[3] = {0.0, 0.0, 0.0};	// distance between the faces of one cell along each relative coordinate
+	for (int d = 0; d < 3; d++) {
+		g.rank[d] = 1;
+		for (int a = 0; a < 3; a++)
+			g.basis[d][a] = 0.0;
+	}
+	for (DimensionType d = 0; d < dim; d++) {
+		const GeometryVector b = this->pConfig->GetBasisVector(d);
+		for (DimensionType a = 0; a < dim; a++)
+			g.basis[d][a] = b.x[a];
+		g.rank[d] = g.cells.rank[d];
+		// two points whose relative coordinate d differs by t are at least t * 2 pi / |reciprocal basis vector d| apart
+		width[d] = 2.0 * ::pi / std::sqrt(this->pConfig->GetReciprocalBasisVector(d).Modulus2()) / static_cast<double>(g.rank[d]);
+	}
+	// Keep, in order, the cell images that can hold a contact: an image |offset_d| cells away is at least
+	// (|offset_d| - 1) cell widths away. The margin keeps every image a rounded distance test could accept.
+	g.offset.clear();
+	for (size_t k = 0; k + dim <= g.cells.offset.size(); k += dim) {
+		bool near = true;
+		for (DimensionType d = 0; d < dim; d++)
+			near = near && !(static_cast<double>(std::labs(g.cells.offset[k + d]) - 1) * width[d] > this->rc * (1.0 + 1e-9));
+		if (near)
+			for (int d = 0; d < 3; d++)
+				g.offset.push_back(d < static_cast<int>(dim) ? g.cells.offset[k + d] : 0);
+	}
+	g.where.resize(n);
+	g.index.resize(3 * n);
+	g.home.resize(3 * n);
+	g.position.resize(3 * n);
+	g.radius.resize(n);
+	for (size_t p = 0; p < n; p++) {
+		const size_t i = g.cells.particle[p];
+		g.where[i] = p;
+		g.radius[p] = this->radii[i];
+		const GeometryVector & rel = this->pConfig->GetRelativeCoordinates(i);
+		const GeometryVector & cart = this->pConfig->GetCartesianCoordinates(i);
+		double wrapped[3] = {0.0, 0.0, 0.0};
+		for (int d = 0; d < 3; d++) {
+			g.index[3 * p + d] = 0;
+			g.position[3 * p + d] = d < static_cast<int>(dim) ? cart.x[d] : 0.0;
+			if (d >= static_cast<int>(dim))
+				continue;
+			// the wrap and the cell index of IterateThroughNeighbors (GetFullIndex), kept inside the cell range
+			wrapped[d] = rel.x[d] - std::floor(rel.x[d]);
+			wrapped[d] -= std::floor(wrapped[d]);
+			const double cell = std::floor(wrapped[d] * static_cast<double>(g.rank[d]));
+			g.index[3 * p + d] = cell >= 0.0 && cell < static_cast<double>(g.rank[d]) ? static_cast<long>(cell) : 0;
+		}
+		// the start point of IterateThroughNeighbors: the sum of basis vector d times coordinate d, in that order
+		for (int a = 0; a < 3; a++) {
+			double x = 0.0;
+			for (DimensionType d = 0; d < dim; d++)
+				x += g.basis[d][a] * wrapped[d];
+			g.home[3 * p + a] = x;
+		}
+	}
+	g.valid = true;
+}
+
+/** \brief Contact energy slot and contact force of the particle at sorted position p (see the header).
+ *  \param p Sorted position.
+ *  \param force Output: e0 times the contact force on the particle.
+ *  \return Contact energy of the pairs (i, j > i), before the factor e0. */
+double MultiStealthyPotential::GridContact(long p, GeometryVector &force) const
+{
+	const ContactGrid & g = this->Grid;
+	const size_t i = g.cells.particle[p];
+	const double rc2 = this->rc * this->rc;
+	const double * const mine = &g.home[3 * p];
+	const long * const cell = &g.index[3 * p];
+	const double radius = g.radius[p];
+	const int dim = static_cast<int>(this->Dimension);
+	double E = 0.0, f[3] = {0.0, 0.0, 0.0};
+	for (size_t k = 0; k < g.offset.size(); k += 3) {
+		// cell of this image and the number of basis vectors it is shifted by, as IterateThroughNeighbors
+		size_t flat = 0;
+		long wraps[3] = {0, 0, 0};
+		for (int d = 0; d < dim; d++) {
+			long n = cell[d] + g.offset[k + d];
+			while (n < 0) {
+				n += g.rank[d];
+				wraps[d]--;
+			}
+			while (n >= g.rank[d]) {
+				n -= g.rank[d];
+				wraps[d]++;
+			}
+			flat = d == 0 ? static_cast<size_t>(n) : flat * static_cast<size_t>(g.rank[d]) + static_cast<size_t>(n);
+		}
+		const size_t first = g.cells.start[flat], last = g.cells.start[flat + 1];
+		if (first == last)
+			continue;
+		double image[3] = {0.0, 0.0, 0.0};
+		for (int d = 0; d < dim; d++)
+			for (int a = 0; a < 3; a++)
+				image[a] += static_cast<double>(wraps[d]) * g.basis[d][a];
+		for (size_t q = first; q < last; q++) {
+			const double shift[3] = {(g.position[3 * q] - mine[0]) + image[0], (g.position[3 * q + 1] - mine[1]) + image[1],
+				(g.position[3 * q + 2] - mine[2]) + image[2]};
+			const double r2 = shift[0] * shift[0] + shift[1] * shift[1] + shift[2] * shift[2];
+			if (!(r2 < rc2))
+				continue;
+			const double sigma = radius + g.radius[q];
+			// Clearly apart: both tests below (r / sigma < 1 and r < sigma) would fail; skips the square root.
+			if (r2 > 1.0000001 * sigma * sigma)
+				continue;
+			const size_t j = g.cells.particle[q];
+			if (j == i)
+				continue;
+			const double r = sqrt(r2);
+			/*Energy: prevent double-counting */
+			if (i < j) {
+				const double rs = r / sigma;
+				if (rs < 1.0)
+					E += (1.0 - rs)*(1.0 - rs);
+			}
+			if (r < 1e-15) {
+				/* two particles are completely overlapped.*/
+				const double c = 2.0 / sigma;
+				f[0] = f[0] - c * (i > j ? -1.0 : 1.0);
+				f[1] = f[1] - c * shift[1];
+				f[2] = f[2] - c * shift[2];
+			}
+			else if (r < sigma) {
+				const double c = 2.0 / sigma * (1.0 / r - 1.0 / sigma);
+				for (int a = 0; a < 3; a++)
+					f[a] = f[a] + c * (-1.*shift[a]);
+			}
+		}
+	}
+	force = GeometryVector(static_cast<int> (this->Dimension));
+	for (DimensionType a = 0; a < this->Dimension; a++)
+		force.x[a] = f[a];
+	force.MultiplyFrom(this->e0);
+	return E;
 }
 
 /** \brief Set particle radii for a configuration.
@@ -534,6 +702,10 @@ double MultiStealthyPotential::Energy()
 			speciesEnergy[s] = this->species_constraints[s].CCPotential->Energy();
 	/* compute the contact potential contribution (CP) of particle i */
 	auto contact = [this](size_t i) {
+		if (this->Grid.valid) {
+			GeometryVector unused;
+			return this->GridContact(static_cast<long>(this->Grid.where[i]), unused);
+		}
 		double E = 0.0;
 		pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc,
 			[&i, &E, this](const GeometryVector & shift, const GeometryVector &, const signed long *, size_t SourceParticle)->void {
@@ -566,7 +738,7 @@ double MultiStealthyPotential::Energy()
 		std::vector<char> bulk(numSpecies, 0);
 #pragma omp parallel num_threads(this->ParallelNumThread)
 		this->RunSpeciesWork(work, &speciesEnergy, nullptr, bulk, numContact, chunk,
-			[&](long i) { contactEnergy[i] = contact(i); });
+			[&](long p) { const size_t i = this->ContactItem(p); contactEnergy[i] = contact(i); });
 	}
 	return this->TotalEnergy(speciesEnergy, contactEnergy);
 }
@@ -627,6 +799,10 @@ void MultiStealthyPotential::Force(GeometryVector &force, size_t i)
 GeometryVector MultiStealthyPotential::ContactForce(size_t i) const
 {
 	GeometryVector force_CP(static_cast<int> (this->Dimension));
+	if (this->Grid.valid) {
+		this->GridContact(static_cast<long>(this->Grid.where[i]), force_CP);
+		return force_CP;
+	}
 	if (this->WithRepulsion){
 		pConfig->IterateThroughNeighbors(pConfig->GetRelativeCoordinates(i), this->rc,
 			[&i, &force_CP, this](const GeometryVector & shift, const GeometryVector &, const signed long *, size_t SourceParticle)->void {
@@ -658,6 +834,8 @@ GeometryVector MultiStealthyPotential::ContactForce(size_t i) const
  *  \return Contact energy of the pairs (i, j > i), before the factor e0 (zero when repulsion is off). */
 double MultiStealthyPotential::ContactEnergyAndForce(size_t i, GeometryVector &force) const
 {
+	if (this->Grid.valid)
+		return this->GridContact(static_cast<long>(this->Grid.where[i]), force);
 	double E = 0.0;
 	force = GeometryVector(static_cast<int> (this->Dimension));
 	if (this->WithRepulsion){
@@ -732,7 +910,7 @@ void MultiStealthyPotential::AllForce(std::vector<GeometryVector> &results)
 #pragma omp parallel num_threads(tempNumThread) default(shared)
 		{
 			this->RunSpeciesWork(work, nullptr, &speciesForce, bulk, end, chunk,
-				[&](long i) { results[i] = this->ContactForce(i); });
+				[&](long p) { const size_t i = this->ContactItem(p); results[i] = this->ContactForce(i); });
 #pragma omp for
 			for (long i = 0; i<end; i++)
 				results[i] = this->WithSpeciesForce(i, results[i], bulk, speciesForce);
@@ -794,7 +972,7 @@ double MultiStealthyPotential::EnergyAndAllForce(std::vector<GeometryVector> &re
 		}
 		else {
 			this->RunSpeciesWork(work, &speciesEnergy, &speciesForce, bulk, end, chunk,
-				[&](long i) { contact(i, results[i]); });
+				[&](long p) { const size_t i = this->ContactItem(p); contact(i, results[i]); });
 #pragma omp for
 			for (long i = 0; i < end; i++)
 				results[i] = this->WithSpeciesForce(i, results[i], bulk, speciesForce);
